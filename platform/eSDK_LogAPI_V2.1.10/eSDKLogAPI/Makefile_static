@@ -1,0 +1,26 @@
+CXX = g++
+CXXFLAGS = -g -fPIC -fno-stack-protector  -lrt -lm -Wl,--no-as-needed -ldl
+#SHARED = -shared
+TARGET = libeSDKLogAPI.a
+LIBS = /usr/local/log4cpp/lib/liblog4cpp.a
+INCLUDEDIR = -I ../../../platform/huaweisecurec/include -I ../output/include -I ../ -I ../vos -I../log4cpp
+
+../../../platform/huaweisecurec/src/%.o : ../../../platform/huaweisecurec/src/%.c
+	$(CXX) $(CXXFLAGS) $(INCLUDEDIR) $(LIBS) -c -DENV_LINUX -DLOG4CPP_HAVE_SSTREAM -fno-stack-protector  $< -o $@ $(CXXFLAGS)
+
+.cpp.o:
+	$(CXX) $(CXXFLAGS) $(INCLUDEDIR) $(LIBS) -c -DENV_LINUX -DLOG4CPP_HAVE_SSTREAM -fno-stack-protector $< -o $@  $(CXXFLAGS)
+
+SOURCES = $(wildcard *.cpp) $(wildcard ./../vos/*.cpp) 
+OBJS = $(patsubst %.cpp,%.o,$(SOURCES))
+SECUREC_SOURCES = $(wildcard ../../../platform/huaweisecurec/src/*.c)
+SECUREC_OBJS = $(patsubst %.c,%.o,$(SECUREC_SOURCES))
+OBJS += $(SECUREC_OBJS)
+
+$(TARGET): $(OBJS)
+	ar rc libeSDKLogAPI.a $^ 
+
+.PHONY: clean
+clean:
+	-rm -f $(TARGET) $(OBJS)
+

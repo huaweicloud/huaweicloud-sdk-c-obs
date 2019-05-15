@@ -1,0 +1,144 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{b8df74e3-bea9-4abf-9015-958145af13cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{06adc39d-d009-4cec-8580-0065882e8330}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\vos">
+      <UniqueIdentifier>{e7aa1b43-7393-463b-9301-7ebd2d27a371}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\Common">
+      <UniqueIdentifier>{0d280cd0-898a-4edc-ac33-dc41da2bee74}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ConfigMgr">
+      <UniqueIdentifier>{517ca755-346e-49ff-83c4-2d6aafc30344}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\FileMgr">
+      <UniqueIdentifier>{5dd37bca-3798-4acf-920f-35c6a216aa51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\Log4cpp">
+      <UniqueIdentifier>{f9e77416-cc22-4c1d-a6f0-5753261b874c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\LoggerMgr">
+      <UniqueIdentifier>{92e2ca92-0c32-4943-a568-894c6f711692}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="huaweisecurec">
+      <UniqueIdentifier>{08257a5b-85a6-4755-bef9-49e1397fb017}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="targetver.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="eSDKTool.h">
+      <Filter>source\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="ConfigMgr.h">
+      <Filter>source\ConfigMgr</Filter>
+    </ClInclude>
+    <ClInclude Include="FileMgr.h">
+      <Filter>source\FileMgr</Filter>
+    </ClInclude>
+    <ClInclude Include="eSDKLog.h">
+      <Filter>source\Log4cpp</Filter>
+    </ClInclude>
+    <ClInclude Include="LoggerMgr.h">
+      <Filter>source\LoggerMgr</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vos\vos.h">
+      <Filter>source\vos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vos\vos_basetype.h">
+      <Filter>source\vos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vos\vos_common.h">
+      <Filter>source\vos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vos\vos_cond.h">
+      <Filter>source\vos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vos\vos_config.h">
+      <Filter>source\vos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vos\vos_errno.h">
+      <Filter>source\vos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vos\vos_mem.h">
+      <Filter>source\vos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vos\vos_mutex.h">
+      <Filter>source\vos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vos\vos_sema.h">
+      <Filter>source\vos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vos\vos_thread.h">
+      <Filter>source\vos</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vos\vos_time.h">
+      <Filter>source\vos</Filter>
+    </ClInclude>
+    <ClInclude Include="eSDKLogAPI.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="eSDKLogDataType.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\platform\huaweisecurec\include\securec.h">
+      <Filter>huaweisecurec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\platform\huaweisecurec\include\securectype.h">
+      <Filter>huaweisecurec</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="eSDKLogAPI.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="eSDKTool.cpp">
+      <Filter>source\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="ConfigMgr.cpp">
+      <Filter>source\ConfigMgr</Filter>
+    </ClCompile>
+    <ClCompile Include="FileMgr.cpp">
+      <Filter>source\FileMgr</Filter>
+    </ClCompile>
+    <ClCompile Include="eSDKLog.cpp">
+      <Filter>source\Log4cpp</Filter>
+    </ClCompile>
+    <ClCompile Include="LoggerMgr.cpp">
+      <Filter>source\LoggerMgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vos\vos_cond.cpp">
+      <Filter>source\vos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vos\vos_mem.cpp">
+      <Filter>source\vos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vos\vos_mutex.cpp">
+      <Filter>source\vos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vos\vos_sema.cpp">
+      <Filter>source\vos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vos\vos_thread.cpp">
+      <Filter>source\vos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vos\vos_time.cpp">
+      <Filter>source\vos</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\platform\huaweisecurec\src\memset_s.c">
+      <Filter>huaweisecurec</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram1.cd" />
+  </ItemGroup>
+</Project>

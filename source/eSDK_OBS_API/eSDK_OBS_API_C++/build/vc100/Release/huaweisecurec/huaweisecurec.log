@@ -1,0 +1,25 @@
+﻿Build started 2019/5/6 20:57:07.
+     1>Project "D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\huaweisecurec.vcxproj" on node 2 (rebuild target(s)).
+     1>_PrepareForClean:
+         Deleting file "D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec\huaweisecurec.lastbuildstate".
+       InitializeBuildStatus:
+         Creating "D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec\huaweisecurec.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         d:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /I..\..\..\..\..\platform\huaweisecurec\include /Zi /nologo /W3 /WX- /O2 /Oi /Oy- /GL /D HUAWEISECUREC_WXPORTS /D WIN32 /D _WINDLL /D _WINDLL /D _MBCS /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec\\" /Fd"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec\vc100.pdb" /Gd /TC /analyze- /errorReport:prompt ..\..\..\..\..\platform\huaweisecurec\src\memset_s.c
+         memset_s.c
+       Link:
+         d:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec.dll" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /ManifestFile:"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec\huaweisecurec.dll.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /DEBUG /PDB:"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\build\vc100\Release\huaweisecurec.pdb" /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec.lib" /MACHINE:X86 /SAFESEH /DLL D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec\memset_s.obj
+            Creating library D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec.lib and object D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec.exp
+         Generating code
+         Finished generating code
+         huaweisecurec.vcxproj -> D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec.dll
+       Manifest:
+         C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\bin\mt.exe /nologo /verbose /outputresource:"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec.dll;#2" /manifest D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec\huaweisecurec.dll.intermediate.manifest
+       FinalizeBuildStatus:
+         Deleting file "D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec\huaweisecurec.unsuccessfulbuild".
+         Touching "D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\huaweisecurec\huaweisecurec.lastbuildstate".
+     1>Done Building Project "D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\huaweisecurec.vcxproj" (rebuild target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:01.00

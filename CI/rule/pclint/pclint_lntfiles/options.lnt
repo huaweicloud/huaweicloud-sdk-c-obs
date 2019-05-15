@@ -1,0 +1,175 @@
+/* Ver：0.4，Create Date：2007.02.12，Author：guoshuguang 11211, dailei 12967 */
+/*  options.lnt存放统一的配置，custom.lnt存放产品定制的配置。产品不能修改options.lnt */
+
+/* 目的：这个配置文件的目的是为了避免PCLint报告中出现过多告警，特别是新老代码混合在一起时，老代码中告警太多，导致很难确认新代码的告警。
+  策略：如果确认有些告警是不必要的，则将确认结果明确写在配置文件中，即在配置中对特定文件/函数屏蔽相应告警。特别是确认不需要修改的老代码，可以屏蔽大多数告警。
+  期望结果：使用此配置文件，运行PCLint后，PCLint报告中没有任何告警。PCLint报告的最后一行必须输出下面的信息：
+  Note 900: Successful completion, 0 messages produced
+*/
+/*  告警分5级，缺省告警级别为w3，即输出0/1/2/3级告警
+告警类型               C            C++     告警级别       说明
+Internal Errors           200 - 299            0     PCLINT内部错误，一般不会产生
+Fatal Errors              300 - 399            0     PCLINT无法执行，一般是超出了某些限制
+Syntax Errors      1 - 199     1001 - 1199     1     语法错误，可能存在不太标准的语法
+Warnings           400 - 699   1400 - 1699     2     很可能（likely）存在缺陷
+Informational      700 - 899   1700 - 1899     3     可能（Conceivable）存在缺陷
+Elective Notes     900 - 999   1900 - 1999     4     非缺陷，但不好的编程习惯
+*/
+
+-w3   /* 整体屏蔽4级的告警。然后打开部分告警，当前只打开指针相关告警(重复打开了相关的2/3级告警) */
+
+esdk_obs_c/CI/rule/pclint/pclint_lntfiles/custom.lnt  /* 载入用户自定义配置文件，用户在custom.lnt中定义检查需要的宏，需要局部屏蔽的告警等 */
+
++fva            /* 支持变参函数，抑制对变参函数产生515, 516告警 */
+/* 下面的配置必须在custom.lnt之后载入，以保证不被custom.lnt中的配置覆盖 */
++macros +macros  /* 宏定义大小增加为4096×4 */
+
+-e686 //Option '-elib(*)' is suspicious
++libclass(all)    //all header files as library
+
++e900 /* PCLint运行结束后，打印成功信息，并输出告警条数 */
+
+-e19
+-e31	/* Added by l00416558 wrong with -e1001; */
+-e43
+-e49
+-e59
+-e96	/* Added by l00416558 */
+-e119
+-e438
+-e451
+-e459
+-e504
+-e574
+-e665
+-e686
+-e701
+-e718
+-e793
+-e808
+-e835
+-e838
+
+-e703
+-e705
+-e712
+-e734
+-e740
+-e745
+-e78  /* add by l00416107 */
+-e530 /* add by l00416107 */
+-e552 /* add by l00416107 for rocksdb warning of code note invalid with lint !e552*/
+-e553 /* add by l00416107 for rocksdb warning of open source gtest code */
+-e753 /* add by l00416107  */
+
+-e747
+-e749
+-e750
+-e751
+-e752
+-e754
+-e760
+-e762
+-e766
+-e772
+-e773
+-e774
+-e783
+-e785
+-e792
+-e801
+-e813
+-e840
+-e843
+-e844
+-e845
+-e849
+-e850
+-e866
+-e1001	/* Added by l00416558 */
+-e1791
+-"esym(793,significant characters in an external identifier)"
+-esym(718,__sync*)
+-esym(144,__sync*)
+-esym(160,abs)
+-esym(14,main)
+-emacro(409, MAP_GET, MAP_PUT, MAP_DEL, MAP_CONTAIN, MAP_REMOVE)
+-esym(718, __must_be_array, strftime)
+-emacro(64, MAP_INIT)
++e1546 +e1550   /* 没有捕获异常 */
++e568  +e650  +e685  /* 整数溢出或精度下降 */
++e564  +e666  /* 表达式存在非预期副作用，条件运算符可能产生564的误告警，应拆分复杂表达式以消除告警*/
+
++e1404               /* 在定义类之前使用delete，可能导致delete不能重载 */
++e1509 +e1510 +e1524  /* 析构函数存在问题，如基类的析构函数不是虚函数，没有析构函数等 */
+
+/* 下面的告警检查对华为编程规范的遵守情况，打开 */
++e413  +e613         /* 空指针，没有检查指针合法性 */
++e418  +e668  +e1532 /* 空指针，没有检查输入参数中指针的合法性 */
++e415  +e540  +e661  /* 内存越界，指针或数组超出范围 */
++e416  +e662         /* 内存越界，创建的指针可能越界 */
++e419  +e669         /* 内存越界，memcpy/strcpy/fgets/fread等函数没有检查指针越界 */
++e420  +e670         /* 内存越界，memcmp/fwrite等函数没有检查指针越界 */
++e433                /* 内存越界，指针指向的空间不够。可能是较小的指针转换成较大指针 */
++e558  +e560  +e561  /* 内存越界，参数类型不正确，例如scanf函数家族的类型不正确 */
++e784                /* 字符串缺少最后\0 */
+
++e424  +e1507        /* malloc/free，new/delete，new[]/delete[] 不配对 */
++e429                /* 异常返回没有释放内存 */
++e423  +e672         /* 重复分配内存，指针重新赋值 */
++e1540               /* 析构函数里面没有释放类指针成员 */
++e449                /* 野指针，其它地方已经释放了这个指针 */
+
++e682                /* 对函数入参中的指针使用sizeof */
++e813                /* 栈溢出 */
+
+
++e604  +e674  +e684  +e733  +e789  /* 函数返回临时变量地址 */
++e744  +e787         /* switch语句缺少default分支 */
++e616                /* case语句执行完没有break进入下一个case，在应该存在break的地方添加任意注释可屏蔽616 */
++e539                /* if语句缺乏括号 */
++e681                 /* 条件控制永远不满足，不执行loop */
+
++e514  +e774         /* 不常见的布尔表达式用法，建议增加括号 */
+//+e944 
+
+/* 下面的告警检查对华为编程规范的遵守情况，暂时屏蔽 */
+-e427  -e525  -e537  -e544  -e602  -e725  -e726  /* 注释和排版 */
+//-e578  -e1516        /* 局部变量与全局变量或基类的变量同名 */
+-e528  -e529  -e563             /* 变量未使用 */
+//-e530  -e603  -e644  -e645  -e1401 -e1402 -e1403 -e1539 -e1541   /* 变量没有初始化 */
+-e727  -e728  -e729  -e1729 -e1741  -e1742  -e1743  -e1744  /* 变量没有初始化或初始化顺序不对 */
+-e505  -e527  -e551  -e714  -e715  -e717  -e755  -e756  -e757  -e758  -e759  -e768  -e769  /* 冗余代码 */
+-e1527 -e1701 -e1715 -e1716 -e1736       /* 冗余代码 */
+//-e502  -e524  -e569  -e570 -e571 -e573 -e574 -e605 -e619 -e643 -e648  -e679  -e1774 /* 默认类型转换 */
+-e641                              /* 表达式缺少括号 */
+-e834                              /* 表达式缺少括号 */
+
+
+/* 屏蔽下面的告警 */
+-e533                /* 返回值的原型定义和实现不符 */
+-e515  -e516  -e628  -e730  -e746  /* 函数原型找不到，或不正确 */
+-e522                /* 表达式没有副作用 */
+-e526  -e565  -e601      /* 没有找到类型定义，支持多OS的产品经常找不到类型定义，忽略 */
+-e713  -e737  -e775  -e732      /* 整数溢出或精度改变 */
+-e765  -e818  -e830  -e831  -e1536 -e1702 -e1704 -e1711 -e1717 -e1746 -e1762 -e1764 /* 类型定义不合适 */
+-e794  -e802  -e796  -e797  -e803  -e804  -e826  /* 指针类的Info消息 */
+-e1551               /* 析构函数抛出异常 */
+-e1514               /* 产生了临时对象 */
+-e1740               /* 析构函数里面没有释放类指针成员 */
+
+/* 暂且不需要的告警，注释掉
++e428	// negative subscript (Integer) in operator 'String'
++e752   // local declarator 'Symbol' (Location) not referenced
++e773	// Expression-like macro 'Symbol' not parenthesized
++e774	// Boolean within 'String' always evaluates to [True/False]
++e787	// enum constant 'Symbol' not used within switch
++e794	// Conceivable use of null pointer 'Symbol' in [left/right] argument to operator 'String’ Reference
++e796	// Conceivable access of out-of-bounds pointer ('Integer' beyond end of data) by operator 'String'
++e797	// Conceivable creation of out-of-bounds pointer ('Integer' beyond end of data) by operator 'String'
++e801	// Use of goto is deprecated
++e802	// Conceivably passing a null pointer to function 'Symbol', Context Reference
++e803	// Conceivable data overrun for function 'Symbol', argument Integer exceeds argument Integer Reference
++e831   // Reference cited in prior message
++e1768  // Virtual function 'Symbol' has an access (String) different from the access (String) in the base class (String)
+*/

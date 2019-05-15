@@ -1,0 +1,17 @@
+CXX = g++
+CXXFLAGS = -m64 -fPIC
+SHARED = -shared
+TARGET = libeSDKLogAPI.so
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c -DENV_LINUX -g $< -o $@ 
+
+SOURCES = $(wildcard *.cpp) $(wildcard ./vos/*.cpp) 
+OBJS = $(patsubst %.cpp,%.o,$(SOURCES))
+$(TARGET): $(OBJS)
+	$(CXX) $(CXXFLAGS) $(SHARED) -DDEBUG -DENV_LINUX -g -llog4cpp -L /usr/local/lib -o $(TARGET) $^ -lpthread 
+
+.PHONY: clean
+clean:
+	-rm -f $(TARGET) $(OBJS)
+

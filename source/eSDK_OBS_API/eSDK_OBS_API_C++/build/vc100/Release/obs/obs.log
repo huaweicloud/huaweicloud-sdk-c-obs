@@ -1,0 +1,57 @@
+﻿Build started 2019/5/6 20:57:08.
+     1>Project "D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\obs.vcxproj" on node 2 (rebuild target(s)).
+     1>_PrepareForClean:
+         Deleting file "D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\obs.lastbuildstate".
+       InitializeBuildStatus:
+         Creating "D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\obs.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         d:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /I..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include /I..\..\include /I..\..\inc /I..\..\inc\mingw /I..\..\..\..\..\platform\huaweisecurec\include /I..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include /Zi /nologo /W4 /WX- /O2 /Oi /Oy- /GL /D WIN32 /D NDEBUG /D _WINDOWS /D _USRDLL /D OBS_EXPORTS /D _CRT_SECURE_NO_WARNINGS /D HUAWEISECUREC_WXPORTS /D _WINDLL /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\\" /Fd"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt ..\..\src\bucket.c ..\..\src\error_parser.c ..\..\src\general.c ..\..\src\log.c ..\..\src\object.c ..\..\src\request.c ..\..\src\request_context.c ..\..\src\response_headers_handler.c ..\..\src\simplexml.c ..\..\src\util.c ..\..\src\request_util.c
+         bucket.c
+         error_parser.c
+         general.c
+     1>D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\include\iconv.h : warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+     1>d:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\errno.h(81): warning C4005: 'EINVAL' : macro redefinition
+                 D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\platform\huaweisecurec\include\securec.h(55) : see previous definition of 'EINVAL'
+     1>d:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\errno.h(82): warning C4005: 'ERANGE' : macro redefinition
+                 D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\platform\huaweisecurec\include\securec.h(61) : see previous definition of 'ERANGE'
+     1>d:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\errno.h(83): warning C4005: 'EILSEQ' : macro redefinition
+                 D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\platform\huaweisecurec\include\securec.h(70) : see previous definition of 'EILSEQ'
+         log.c
+         object.c
+     1>D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\include\iconv.h : warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+     1>d:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\errno.h(81): warning C4005: 'EINVAL' : macro redefinition
+                 D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\platform\huaweisecurec\include\securec.h(55) : see previous definition of 'EINVAL'
+     1>d:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\errno.h(82): warning C4005: 'ERANGE' : macro redefinition
+                 D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\platform\huaweisecurec\include\securec.h(61) : see previous definition of 'ERANGE'
+     1>d:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\errno.h(83): warning C4005: 'EILSEQ' : macro redefinition
+                 D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\platform\huaweisecurec\include\securec.h(70) : see previous definition of 'EILSEQ'
+     1>..\..\src\object.c(2763): warning C4244: '=' : conversion from '__int64' to 'int', possible loss of data
+         request.c
+         request_context.c
+         response_headers_handler.c
+         simplexml.c
+     1>D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\include\iconv.h : warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+         util.c
+     1>..\..\src\util.c(406): warning C4244: '=' : conversion from 'int' to 'char', possible loss of data
+     1>..\..\src\util.c(411): warning C4244: '=' : conversion from 'int' to 'char', possible loss of data
+     1>..\..\src\util.c(416): warning C4244: '=' : conversion from 'int' to 'char', possible loss of data
+     1>..\..\src\util.c(851): warning C4127: conditional expression is constant
+         request_util.c
+       Link:
+         d:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\libeSDKOBS.dll" /INCREMENTAL:NO /NOLOGO /LIBPATH:..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\release /LIBPATH:"C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\\Lib" /LIBPATH:..\..\lib\win32_x86_msvc\release /LIBPATH:..\..\build\vc100\Release libcurl.lib libeay32.lib ssleay32.lib eSDKLogAPI.lib pcre.lib libiconv.lib libxml2.lib WSock32.Lib huaweisecurec.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /ManifestFile:"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\libeSDKOBS.dll.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /PDB:"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\build\vc100\Release\libeSDKOBS.pdb" /SUBSYSTEM:WINDOWS /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\libeSDKOBS.lib" /MACHINE:X86 /SAFESEH /DLL D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\bucket.obj
+         D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\error_parser.obj
+         D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\general.obj
+         D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\log.obj
+         D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\object.obj
+         D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\request.obj
+         D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\request_context.obj
+         D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\response_headers_handler.obj
+         D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\simplexml.obj
+         D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\util.obj
+         D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\..\..\build\vc100\Release\obs\request_util.obj
+     1>LINK : fatal error LNK1181: cannot open input file 'libcurl.lib'
+     1>Done Building Project "D:\document\eSDK\OBS\OBSCSDK\esdk_obs_c_3.1.3_\esdk_obs_c\source\eSDK_OBS_API\eSDK_OBS_API_C++\sln\vc100\obs.vcxproj" (rebuild target(s)) -- FAILED.
+
+Build FAILED.
+
+Time Elapsed 00:00:07.32

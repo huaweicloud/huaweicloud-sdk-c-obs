@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<sourcemonitor_commands>
+    <command>
+        <!-- 指定项目代码的语言和源代码路径 -->
+        <project_language>C</project_language>
+        <source_directory>esdk_obs_c/source/eSDK_OBS_API/eSDK_OBS_API_C++/src</source_directory>
+
+        <!--
+        <source_subdirectory_list>
+            <exclude_subdirectories>true</exclude_subdirectories>
+            <source_subtree>bin</source_subtree>
+            <source_subtree>obj</source_subtree>
+            <source_subdirectory>test</source_subdirectory>
+        </source_subdirectory_list>
+        -->
+    </command>
+</sourcemonitor_commands>

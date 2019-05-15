@@ -1,0 +1,25 @@
+
+-i"esdk_obs_c/CI/rule/pclint/pclint_include"
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/bbox"
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/scsi" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/linux" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/asm" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/sys" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/net" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/netinet" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/libxml" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/libvirt" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/bits" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/axis2" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/axis2/third/platforms" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/rampart-1.2.0" -elib(*)
+
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/third/include" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/third/include/scew" -elib(*)
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/c++/4.8.2"
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/c++/4.8.2/tr1"
+
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/curl/"
+-i"esdk_obs_c/CI/rule/pclint/pclint_include/include_linux/openssl/"
+-i"esdk_obs_c/source/eSDK_OBS_API/eSDK_OBS_API_C++/src/"

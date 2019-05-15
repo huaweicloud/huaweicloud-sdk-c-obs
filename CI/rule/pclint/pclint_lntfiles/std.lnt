@@ -1,0 +1,42 @@
+//  中央平台开发部PC-Lint标准配置文件
+//
+// 本文件只能由专门人员修改，其他任何人不得修改此文件
+// 只可以修改env.lnt文件，在env.lnt文件里也只能修改环境设置，不能增加其他选项
+//
+//  2005-11-4 create by lidongqin.  
+//	2005-11-9 modified by yanyanfeng.
+
+
+//编译器告警屏蔽文件，只可单选，各个TDT选择自己所需要的，不需要的请用双斜杠注释掉
+esdk_obs_c/CI/rule/pclint/pclint_lntfiles/co-gnu.lnt        //OSTA1.0,OSTA2.0 V2,OSTA2.0 V3,MRS,DOPRA,VRM,VPP 可选择此项
+//co-gnu3.lnt       //iGWB,MRS可选择此项
+//co-msc60.lnt      //iGWB,DOPRA,iMAP 可选择此项
+//co-msc70.lnt      //iMAP 可选择此项
+//co-msc90.lnt
+//co-unix.lnt       //iGWB 可选择此项
+//co-cc386.lnt      //AdaptiveLM 可选择此项
+
+
+//编译器对应库头文件的告警屏蔽文件，可多选，各个TDT选择自己所需要的，不需要的请用双斜杠注释掉
+//lib-mfc.lnt    //Library Options File for the Microsoft Foundation Class library,
+               //Other options useful for MFC have been placed in the compiler options files for the Microsoft C compiler (co-msc.lnt).
+//lib-stl.lnt    //PC-lint options for the Standard Template Library
+//lib-w32.lnt    //PC-lint Library Options File for 32-bit mode windows.h,在windows下开发的一般要选中lib-w32.lnt 
+//lib-wnt.lnt    //PC-lint Library Options File for Windows NT
+
+
+//平台自定义的选项屏蔽文件，不需要的请用双斜杠注释掉
+esdk_obs_c/CI/rule/pclint/pclint_lntfiles/options.lnt       //中央平台部统一定制，不得随意修改
+//iMAP.lnt          //iMAP第三方代码屏蔽
+
+// 环境设置文件，各个TDT可根据自己应用的实际情况选择一种或多种开发环境，不需要的请用双斜杠注释掉
+//env-si.lnt       //对于Source insight 开发环境 
+//env-vc6.lnt      //对于vc6开发环境
+//env-vc7.lnt      //对于vc7开发环境
+-width(200,4)  //lint输出的宽度定义，方便在SI中查看
+esdk_obs_c/CI/rule/pclint/pclint_lntfiles/env-xml.lnt
+
+// 包含include路径设置的lnt文件，各TDT根据自己实际的路径进行修改
+esdk_obs_c/CI/rule/pclint/pclint_lntfiles/include.lnt
+
+

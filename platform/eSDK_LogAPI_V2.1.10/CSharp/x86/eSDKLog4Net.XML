@@ -1,0 +1,150 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>eSDKLog4Net</name>
+    </assembly>
+    <members>
+        <member name="T:eSDKLog4Net.LoggerMgr">
+            <summary>
+            LoggerMgr类，实现C++ eSDK_LOG_API接口,对外开放日志接口
+            </summary>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.LogInit(System.String,System.String,System.Int32[],System.String)">
+            <summary>
+            该函数用于初始化数据
+            </summary>
+            <param name="product">使用日志模块的产品名字，同进程中的唯一标示</param>
+            <param name="iniFile">日志配置文件路径（包括配置文件名，如：D:\eSDKClientLogCfg.ini）</param>
+            <param name="logLevel">logLevel[0]接口日志级别, logLevel[1]操作日志级别, logLevel[2]运行日志级别，参考枚举LOGLEVEL</param>
+            <param name="logPath">日志保存路径（如：D:\log\），必须是绝对路径，如要使用默认配置请用INVALID_LOG_LEVEL</param>
+            <returns>非0失败（请参考错误返回码枚举类型RetCode）</returns>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.LogFini(System.String)">
+            <summary>
+            该函数用于进程不使用本API后，去初始化数据
+            </summary>
+            <param name="product">使用日志模块的产品名字，同进程中的唯一标示</param>
+            <returns>非0失败（请参考错误返回码枚举类型RetCode）</returns>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.Log_Interface_Info(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Object[])">
+            <summary>
+            该函数用于写interface下的info日志
+            </summary>
+            <param name="product">填写接口所属的产品，如UC的接口填写UC。包括UC、IVS、TP、FusionSphere、 Storage等</param>
+            <param name="interfaceType">接口类型，值为1和2：其中1标识为北向接口；2标识为南向接口</param>
+            <param name="protocolType">接口类型，值为SOAP（细分ParlayX）、Rest、COM、Native、HTTP+XML，SMPP</param>
+            <param name="interfaceName">接口名称</param>
+            <param name="TransactionID">唯一标识接口消息所属事务，不存在时为空</param>
+            <param name="reqTime">请求时间</param>
+            <param name="RespTime">应答时间</param>
+            <param name="resultCode">接口返回结果码</param>
+            <param name="param">请求和响应参数，格式为“paramname=value”等,关键字需要用*替换</param>
+            <param name="otherParams">可变参数</param>
+            <returns></returns>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.Log_Interface_Error(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Object[])">
+            <summary>
+            该函数用于写interface下的error日志
+            </summary>
+            <param name="product">填写接口所属的产品，如UC的接口填写UC。包括UC、IVS、TP、FusionSphere、 Storage等</param>
+            <param name="interfaceType">接口类型，值为1和2：其中1标识为北向接口；2标识为南向接口</param>
+            <param name="protocolType">接口类型，值为SOAP（细分ParlayX）、Rest、COM、Native、HTTP+XML，SMPP</param>
+            <param name="interfaceName">接口名称</param>
+            <param name="TransactionID">唯一标识接口消息所属事务，不存在时为空</param>
+            <param name="reqTime">请求时间</param>
+            <param name="RespTime">应答时间</param>
+            <param name="resultCode">接口返回结果码</param>
+            <param name="param">请求和响应参数，格式为“paramname=value”等,关键字需要用*替换</param>
+            <param name="otherParams">可变参数</param>
+            <returns></returns>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.Log_Operate_Debug(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Object[])">
+            <summary>
+            该函数用于写operate下的Debug日志
+            </summary>
+            <param name="product">使用日志模块的产品名字，同进程中的唯一标示</param>
+            <param name="moduleName">内部模块名称，暂时分为：login、config、log、version</param>
+            <param name="userName">操作用户名</param>
+            <param name="clientFlag">操作客户端标识，一般为客户端IP</param>
+            <param name="resultCode">操作结果码</param>
+            <param name="keyInfo">关键描述信息：查询类操作，需要包括查询对象标识、名称、相关属性名称和属性值。设置类操作，需要包括设置对象标识、名称、相关属性名称和属性新值和旧值。创建类操作，需要包括创建涉及对象标识、名称。删除类操作，需要包括删除涉及对象标识、名称。</param>
+            <param name="param">无</param>
+            <param name="otherParams">可变参数</param>
+            <returns></returns>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.Log_Operate_Info(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Object[])">
+            <summary>
+            该函数用于写operate下的Info日志
+            </summary>
+            <param name="product">使用日志模块的产品名字，同进程中的唯一标示</param>
+            <param name="moduleName">内部模块名称，暂时分为：login、config、log、version</param>
+            <param name="userName">操作用户名</param>
+            <param name="clientFlag">操作客户端标识，一般为客户端IP</param>
+            <param name="resultCode">操作结果码</param>
+            <param name="keyInfo">关键描述信息：查询类操作，需要包括查询对象标识、名称、相关属性名称和属性值。设置类操作，需要包括设置对象标识、名称、相关属性名称和属性新值和旧值。创建类操作，需要包括创建涉及对象标识、名称。删除类操作，需要包括删除涉及对象标识、名称。</param>
+            <param name="param">无</param>
+            <param name="otherParams">可变参数</param>
+            <returns></returns>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.Log_Operate_Warn(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Object[])">
+            <summary>
+            该函数用于写operate下的Warn日志
+            </summary>
+            <param name="product">使用日志模块的产品名字，同进程中的唯一标示</param>
+            <param name="moduleName">内部模块名称，暂时分为：login、config、log、version</param>
+            <param name="userName">操作用户名</param>
+            <param name="clientFlag">操作客户端标识，一般为客户端IP</param>
+            <param name="resultCode">操作结果码</param>
+            <param name="keyInfo">关键描述信息：查询类操作，需要包括查询对象标识、名称、相关属性名称和属性值。设置类操作，需要包括设置对象标识、名称、相关属性名称和属性新值和旧值。创建类操作，需要包括创建涉及对象标识、名称。删除类操作，需要包括删除涉及对象标识、名称。</param>
+            <param name="param">无</param>
+            <param name="otherParams">可变参数</param>
+            <returns></returns>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.Log_Operate_Error(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.Object[])">
+            <summary>
+            该函数用于写operate下的Error日志
+            </summary>
+            <param name="product">使用日志模块的产品名字，同进程中的唯一标示</param>
+            <param name="moduleName">内部模块名称，暂时分为：login、config、log、version</param>
+            <param name="userName">操作用户名</param>
+            <param name="clientFlag">操作客户端标识，一般为客户端IP</param>
+            <param name="resultCode">操作结果码</param>
+            <param name="keyInfo">关键描述信息：查询类操作，需要包括查询对象标识、名称、相关属性名称和属性值。设置类操作，需要包括设置对象标识、名称、相关属性名称和属性新值和旧值。创建类操作，需要包括创建涉及对象标识、名称。删除类操作，需要包括删除涉及对象标识、名称。</param>
+            <param name="param">无</param>
+            <param name="otherParams">可变参数</param>
+            <returns></returns>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.Log_Run_Debug(System.String,System.String)">
+            <summary>
+            该函数用于写run下的Debug日志
+            </summary>
+            <param name="product">使用日志模块的产品名字，同进程中的唯一标示</param>
+            <param name="param">param</param>
+            <returns></returns>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.Log_Run_Info(System.String,System.String)">
+            <summary>
+            该函数用于写run下的Info日志
+            </summary>
+            <param name="product">使用日志模块的产品名字，同进程中的唯一标示</param>
+            <param name="param">param</param>
+            <returns></returns>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.Log_Run_Warn(System.String,System.String)">
+            <summary>
+            该函数用于写run下的Warn日志
+            </summary>
+            <param name="product">使用日志模块的产品名字，同进程中的唯一标示</param>
+            <param name="param">param</param>
+            <returns></returns>
+        </member>
+        <member name="M:eSDKLog4Net.LoggerMgr.Log_Run_Error(System.String,System.String)">
+            <summary>
+            该函数用于写run下的Error日志
+            </summary>
+            <param name="product">使用日志模块的产品名字，同进程中的唯一标示</param>
+            <param name="param">param</param>
+            <returns></returns>
+        </member>
+    </members>
+</doc>

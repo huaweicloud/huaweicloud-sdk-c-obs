@@ -1,0 +1,40 @@
+ifdef BUILD_FOR_ARM
+CXX=aarch64-linux-gnu-gcc
+else
+CXX=gcc
+endif
+EXTRA_LIB_DIR=-L../lib_static
+EXTRA_INCLUDE_DIR=-I../include_static
+CFLAGS=-g -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64  -D NDEBUG -O0  -I../include_static -fno-stack-protector -Wl,--no-as-needed -ldl
+LDFLAGS += -lpthread -lm -lssl -lcurl
+
+LINKOPT= -ldl -lrt -lm -lz -llzma -fno-stack-protector \
+        ../lib_static/libeSDKOBS.a \
+        ../lib_static/libeSDKLogAPI.a \
+        ../lib_static/liblog4cpp.a \
+        ../lib_static/libsecurec.a  \
+        ../lib_static/libxml2.a \
+        ../lib_static/libcurl.a \
+	../lib_static/libnghttp2.a\
+        ../lib_static/libssl.a  \
+        ../lib_static/libcrypto.a \
+        ../lib_static/libpcre.a  \
+        ../lib_static/libpcrecpp.a  \
+        ../lib_static/libpcreposix.a \
+        ../lib_static/libiconv.a  \
+        ../lib_static/libcharset.a
+
+TARGET_DEMO=demo
+TARGET_TEST=object_test
+
+SRC_DEMO=demo_common.c demo.c
+SRC_TEST=demo_common.c object_test.c
+
+all: demo object_test
+$(TARGET_DEMO):
+	$(CXX) $(CFLAGS) $(SRC_DEMO) $(EXTRA_INCLUDE_DIR) -L$(LINKOPT) -fPIC -o $(TARGET_DEMO) -Wl,--no-as-needed -ldl -lstdc++
+
+$(TARGET_TEST):
+	$(CXX) $(CFLAGS) $(SRC_TEST) $(EXTRA_INCLUDE_DIR) $(LINKOPT) -fPIC -o $(TARGET_TEST) -Wl,--no-as-needed -ldl -lstdc++
+clean:
+	rm -f object_test demo;rm -f *.o

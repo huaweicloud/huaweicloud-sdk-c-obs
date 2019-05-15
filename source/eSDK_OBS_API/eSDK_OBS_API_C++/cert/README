@@ -1,0 +1,6 @@
+server.jks与client.crt为测试用证书。
+
+请将server.jks导入到服务器的ISM上，路径为https://ip:28443/app/html/main.html#/rack	（ip为服务器的ip地址）。
+
+请保证client.crt的名字不变，如果需要使用自制的证书来验证，请将新证书命名成client.crt，然后替换。
+

@@ -1,0 +1,19 @@
+
+/*  env-xml.lnt
+    The following options cause the output of PC-lint/Flexelint to
+    assume the format of an XML file.  The tags chosen are the obvious
+    ones; but they can be customized as needed.
+ */
+
+
+-v          // turn off verbosity
+-width(0)   // don't insert line breaks (unlimited output width).
++xml(?xml version="1.0" ?)   // add version information
++xml(doc)   // turn on xml escapes; the whole is bracketed with the
+            // pair <doc> ... </doc>
+-"format=<message><file>%f</file> <line>%l</line> <type>%t</type> <code>%n</code> <desc>%m</desc></message>"
+-"format_specific= "
+-hFs1   // The height of a message should be 1 (i.e. don't output the
+        // line in error); always produce File information; and Space
+        // between messages
+-pragma(message)    // do not issue pragma messages

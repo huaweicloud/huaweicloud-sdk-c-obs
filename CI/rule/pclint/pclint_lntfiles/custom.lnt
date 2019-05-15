@@ -1,0 +1,169 @@
+/* Ver：0.3，Create Date：2007.01.09，Author：guoshuguang 11211, dailei 12967 */
+/* 推荐安装服务器上的PCLint 8.00x版本，不要使用PCLint 8.00h版本 */
+/* 定义被包含文件的路径，路径中如果有括号则用引号括起来 */
+//-i"C:\Program Files\Microsoft Visual Studio\VC98\Include"
+//include.lnt
+
+/* 定义PCLint检查的环境，语言标准 */
++D_WIN32;WIN32
+//+D__cplusplus
++D__STDC__
+
+/* 定义编译器类型和版本，在下面几种编译器中选择一种 */
+//+D_MSC_VER=1200		       /* 定义VC的版本为 6.0 */
+//+D__BORLANDC__=0x0560    /* 定义C++ Builder的版本为 6.0 */
++D__GNUC__               /* 定义使用GCC */
+
+/* 定义makefile里面其它的编译开关，请产品自行添加 */
++DXXX
++DYYY
++DZZZ
+
+
++rw(typedef)    /* 定义typedef为保留字 */
++rw(typeof)     /* 定义typeof为保留字 */
+//+rw(type)       /* 定义type为保留字 */
+-size(a,2048)   /* 最多允许单个函数定义2K的auto变量，超过则发生813告警。项目组可修改此参数 */
+
++fnn            /* 允许new返回NULL，而不是抛出异常 */
+
+/* 定义ANSI标准头文件，用<>引用的头文件，所有不在当前目录的头文件是库文件 
+定义库文件，下列文件认为是库文件(根据libclass配置）：
+angle: 用<>引用的头文件；
+foreign: 1 -i定义的路径下的文件，例如-i"c:/test/include",c:/test/include目录下的文件是库文件
+		 2 环境变量INCLUDE目录
+		 需要注意的是：-i定义的路径，可以使用-libdir取消路径，例如-libdir(c:/test/include)定义c:\test\include目录下的文件不是库文件
+		 环境变量INCLUDE目录不能使用-libdir取消，只能使用-libh单独取消，例如-libh(assert.h)定义assert.h不是库文件
+ansi：  标准的ANSI头文件
+		assert.h limits.h stddef.h
+		ctype.h locale.h stdio.h
+		errno.h math.h stdlib.h
+		float.h setjmp.h string.h
+		fstream.h signal.h strstream.h
+		iostream.h stdarg.h time.h		 	 
+默认是+libclass(angle,foreign)
+注意：libclass选项不能积累，即只有最后一个才生效。
+      可以使用libh定义或取消某一个或某一类（*,?)指定文件是库文件 */      
++libclass(angle,ansi,foreign)
+/* 定义下面目录下的所有头文件都是库文件，产品可增加系统或平台的目录，以屏蔽对这些外部头文件的检查 */
+//+libdir("C:\Program Files\Microsoft Visual Studio\VC98\Include")
++libdir("%LINT_INC_DIR%")
+/* 屏蔽库文件的所有告警 */
+-elibsym(*)
+
+/* 不需要判断返回值的标准函数，建议使用-esym的方式屏蔽这些函数的告警；不需要判断返回值的自行开发的函数，建议在代码中增加(void)来规避。尽量不要全局屏蔽534，既然提供了返回值，就应该认真的判断。全局屏蔽534只适用于老代码很多的情况。通常情况下，建议将下面的"-e534"注释掉 */
+//-e534
+
+/* 产品可以在下面使用-esym, -emacro屏蔽特定符号产生的告警，也可以使用-function -sem增加检查。
+必须增加注释，说明被屏蔽告警的含义，以确保正确的修订配置 */
+
+/* 定义平台提供的相应函数等价与标准函数，强迫PCLint检查这些函数 */
+//-function(malloc,VOS_malloc) -function(free,VOS_Free)
+//-function(sprintf,VOS_sprintf) -function(sscanf,VOS_sscanf)
+//-function(strcpy,VOS_strcpy) -function(strcat,VOS_strcat) -function(strlen,VOS_strlen)
+//-function(strncpy,VOS_strncpy) -function(strcat,VOS_strncat)
+//-function(memcpy,VOS_memcpy) -function(memmove,VOS_memmove) -function(memset,VOS_memset)
+
+/* 告警429表示内存泄漏，以下配置说明：AddList的第1个参数, SendMsg的第2个参数的指针不需要释放 */
+-sem(AddList,custodial(1))
+-sem(SendMsg,custodial(2))
+/* 标准C++库中，将指针加入链表的函数，第1个参数的指针不需要释放 */
+-sem(std::list::push_front,custodial(1))
+-sem(std::list::push_back,custodial(1))
+
+/* 告警572表示整数右移超出范围，屏蔽字节序转换的宏产生的告警 */
+-emacro(572,VOS_HTONL) -emacro(572,VOS_NTOHL)
+
+/* 告警774表示布尔值恒为TRUE或FALSE，屏蔽特定宏产生的告警 */
+-emacro(774,DELETE)
+
+/* 告警534表示没有判断函数返回值，下面的函数使用普遍且通常不判断返回值 */
+-esym(534,close,creat,fclose,fflush,_flsbuf,fprintf,fgetc,fputc,fgetch,fputch)
+-esym(534,fputs,fscanf,fseek,fwrite,lseek,memcpy,memmove,memset)
+-esym(534,printf,puts,scanf,sprintf,vsprintf,sscanf,strcat,strcpy,getc,gets,putc,getch,putch)
+-esym(534,snprintf,strncat,strncpy,fgets,unlink,write)
+-esym(534,VOS_printf,VOS_sprintf,VOS_Free,VOS_MemFree,VOS_FreeMsg,SMP_Free)
+-esym(534,VOS_Mem_Zero,VOS_Mem_Copy,VOS_Mem_Set)
+
+/* 告警1532表示没有判断输入参数为空，已经在options.lnt里面打开，只允许使用esym局部屏蔽 */
+-esym(1532,DeleteMaibox)
+
+/* 告警1551表示在析构函数中抛出异常，已经在options.lnt里面打开，只允许使用esym局部屏蔽 */
+-esym(1551,nm_service)
+
+/* 告警1740表示内存泄漏，在析构函数中没有释放指针，已经在options.lnt里面打开，只允许使用esym局部屏蔽 */
+-esym(1740,CDBOperation)
+
+/* Location cited in prior message, 协助定位PCLint的告警信息 */
++e830
++e831   
+
+-e40
+
+-e10
+-e132
+-e101
+-e63
+-e129
+
+-e115
+-e534
+
+-e617
+
+/*linux系统屏蔽*/
+-e716
+-efile(537,stdarg.h)
+-emacro(530,va_start)
+ 
+/*include头文件屏蔽*/
+-e322
+-e7
+-e1013
+-e1055
+
+-e1714
+-e1526
+-e1502
+-e1022
+-e1042
+-e14
+-e1002
+-e1058
+-e1413
+-e401
+-e26
+-e1024
+-e1703
+-e36
+-e18
+-e1018
+-e84
+-e1043
+-e52
+-e550
+-e64
+-e578
+-e767
+-e1786
+-e110
+-e512
+-e1075
+-e55
+-e24
+-e1072
+-e1775
+-e30
+-e142
+-e61
+
+/*remove C++11 errors*/
+-e48
+-e503
+-e50
+-e155
+-e1074
+-e150
+-e1025
+
+-e453

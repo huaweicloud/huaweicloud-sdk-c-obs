@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<sourcemonitor_commands>
+    <write_log>true</write_log>
+
+    <command>
+
+        <project_file>PublicCloudStorageSolution.smp</project_file>
+
+
+        <project_language>C++</project_language>
+        <modified_complexity>true</modified_complexity>
+        <source_directory>esdk_obs_c</source_directory>
+        <!--
+        <source_subdirectory_list>
+            <exclude_subdirectories>false</exclude_subdirectories>
+			<source_subtree>rocksdb-5.1.2\store_mgmt\common\</source_subtree>
+			<source_subtree>rocksdb-5.1.2\store_mgmt\core\</source_subtree>
+			<source_subtree>component-monitor\src\componentmonitor\</source_subtree>
+			<source_subtree>mongo-r3.4.0\src\mongo\db\repl\repl_extend\</source_subtree>
+			<source_subtree>mongo-r3.4.0\src\mongo\s\catalog\catalog_extend\</source_subtree>
+			<source_subtree>mongo-r3.4.0\src\mongo\util\util_extend\</source_subtree>
+			<source_subtree>mongo-r3.4.0\src\mongo\db\s\config\config_extend\</source_subtree>
+        </source_subdirectory_list>
+        -->
+        <parse_utf8_files>True</parse_utf8_files>
+      
+        <checkpoint_name>Baseline</checkpoint_name>
+        <checkpoint_date>2017-02-28T12:24:56</checkpoint_date>
+
+        <file_extensions>*.h,*.hpp,*.c,*.cc,*cpp</file_extensions>
+        <include_subdirectories>true</include_subdirectories>
+      
+        <ignore_headers_footers>True</ignore_headers_footers>
+
+
+        <export>
+            <export_insert>xml-stylesheet type='text/xsl' href='SourceMonitor.xslt'</export_insert>
+            <export_file>temp\SourceMonitor-summary_cpp.xml</export_file>
+            <export_type>1 (project summary as XML)</export_type>
+        </export>
+
+    </command>
+
+ 
+    <command>
+
+        <project_file>PublicCloudStorageSolution.smp</project_file>
+        <checkpoint_name>detail</checkpoint_name>
+        <export>
+            <export_insert>xml-stylesheet type='text/xsl' href='SourceMonitor.xslt'</export_insert>
+            <export_file>temp\SourceMonitor-details_cpp.xml</export_file>
+            <export_type>2</export_type>
+        </export>
+
+        <delete_checkpoint />
+
+    </command>
+
+  
+</sourcemonitor_commands>
