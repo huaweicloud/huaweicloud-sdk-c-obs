@@ -701,11 +701,11 @@ obs_status request_compose_encrypt_params_s3(request_computed_values *values, co
                              params->encryption_params->ssec_customer_key, NULL)) != OBS_STATUS_OK) {
                 return status;
             }
-            char buffer[SSEC_KEY_MD5_LENGTH] = {0};
+            char buffer[SSEC_KEY_MD5_LENGTH + 1] = {0};
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
             base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5);
+            compute_md5(buffer,SSEC_KEY_MD5_LENGTH,ssec_key_md5);
             if ((status = headers_append(len, values,1, 
                              "x-amz-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL)) !=OBS_STATUS_OK) {
@@ -725,11 +725,11 @@ obs_status request_compose_encrypt_params_s3(request_computed_values *values, co
                              params->encryption_params->des_ssec_customer_key, NULL)) != OBS_STATUS_OK) {
                 return status;
             }
-            char buffer[SSEC_KEY_MD5_LENGTH] = {0};
+            char buffer[SSEC_KEY_MD5_LENGTH + 1] = {0};
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
             base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5);
+            compute_md5(buffer,SSEC_KEY_MD5_LENGTH,ssec_key_md5);
             status = headers_append(len, values,1, 
                              "x-amz-copy-source-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL);
@@ -771,11 +771,11 @@ obs_status request_compose_encrypt_params_obs(request_computed_values *values, c
                              params->encryption_params->ssec_customer_key, NULL)) != OBS_STATUS_OK) {
                 return status;
             }
-            char buffer[SSEC_KEY_MD5_LENGTH] = {0};
+            char buffer[SSEC_KEY_MD5_LENGTH + 1] = {0};
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
             base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5);
+            compute_md5(buffer,SSEC_KEY_MD5_LENGTH,ssec_key_md5);
             if ((status = headers_append(len, values,1, 
                              "x-obs-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL)) !=OBS_STATUS_OK) {
@@ -795,11 +795,11 @@ obs_status request_compose_encrypt_params_obs(request_computed_values *values, c
                              params->encryption_params->des_ssec_customer_key, NULL)) != OBS_STATUS_OK) {
                 return status;
             }
-            char buffer[SSEC_KEY_MD5_LENGTH] = {0};
+            char buffer[SSEC_KEY_MD5_LENGTH + 1] = {0};
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
             base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5);
+            compute_md5(buffer,SSEC_KEY_MD5_LENGTH,ssec_key_md5);
             status = headers_append(len, values,1, 
                              "x-obs-copy-source-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL);
