@@ -790,7 +790,7 @@ void request_perform(const request_params *params)
     {   
         accessmode="Path";
     }
-    COMMLOG(OBS_LOGWARN, "%s OBS SDK Version= v3.1.3; Endpoint = http://%s; Access Mode = %s", __FUNCTION__,
+    COMMLOG(OBS_LOGWARN, "%s OBS SDK Version= v3.1.3.1; Endpoint = http://%s; Access Mode = %s", __FUNCTION__,
         params->bucketContext.host_name,accessmode); 
     COMMLOG(OBS_LOGINFO, "%s start curl_easy_perform now", __FUNCTION__);
     CURLcode code = curl_easy_perform(request->curl);
