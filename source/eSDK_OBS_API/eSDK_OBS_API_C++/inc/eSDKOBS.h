@@ -518,6 +518,8 @@ typedef struct obs_response_properties
     const char *obs_next_append_position;
     
     const char *obs_head_epid;
+
+	const char *reserved_indicator;
 } obs_response_properties;
 
 typedef struct obs_list_objects_content
@@ -956,6 +958,19 @@ typedef enum
     OBS_OPENSSL_OPEN                     = 1
 } obs_openssl_switch;
 
+typedef enum
+{
+	OBS_NEGOTIATION_TYPE	                   =0,
+	OBS_OBS_TYPE                               =1,
+	OBS_S3_TYPE                                =2
+}obs_auth_switch;
+
+typedef enum
+{
+	OBS_NO_METADATA_ACTION	                   =0,
+	OBS_REPLACE                                =1,
+	OBS_REPLACE_NEW                            =2
+}metadata_action_indicator;
 
 typedef struct obs_http_request_option
 {
@@ -968,6 +983,7 @@ typedef struct obs_http_request_option
     char *ssl_cipher_list;
     obs_http2_switch http2_switch;
     obs_bbr_switch   bbr_switch;
+	obs_auth_switch  auth_switch;
 } obs_http_request_option;
 
 typedef struct temp_auth_configure
@@ -1033,6 +1049,7 @@ typedef struct obs_put_properties
     int meta_data_count;
     obs_name_value *meta_data;
     file_object_config * file_object_config;
+	metadata_action_indicator metadata_action;
 } obs_put_properties;
 
 typedef struct server_side_encryption_params
@@ -1100,14 +1117,14 @@ eSDK_OBS_API int obs_status_is_retryable(obs_status status);
 eSDK_OBS_API obs_status set_online_request_max_count(uint32_t online_request_max);
 
 eSDK_OBS_API obs_status init_certificate_by_path(obs_protocol protocol, 
-                            obs_certificate_conf ca_conf, char *path, int path_length);
+                            obs_certificate_conf ca_conf, const char *path, int path_length);
 
-eSDK_OBS_API obs_status init_certificate_by_buffer(char *buffer, int buffer_length);
+eSDK_OBS_API obs_status init_certificate_by_buffer(const char *buffer, int buffer_length);
 
 /*************************************bucket handle**************************************/
 
 eSDK_OBS_API void create_bucket(obs_options *options, obs_canned_acl canned_acl,
-            char *location_constraint, obs_response_handler *handler, void *callback_data);
+            const char *location_constraint, obs_response_handler *handler, void *callback_data);
 
 eSDK_OBS_API void list_bucket(obs_options *options, obs_list_service_handler *handler, 
                    void *callback_data);
@@ -1118,11 +1135,11 @@ eSDK_OBS_API void list_bucket_obs(obs_options *options, obs_list_service_obs_han
 eSDK_OBS_API void delete_bucket(obs_options *options, obs_response_handler *handler, void *callback_data);
 
 
-eSDK_OBS_API void list_bucket_objects(obs_options *options, char *prefix, char *marker, char *delimiter, 
+eSDK_OBS_API void list_bucket_objects(obs_options *options, const char *prefix, const char *marker, const char *delimiter, 
             int maxkeys, obs_list_objects_handler *handler, void *callback_data);
 
-eSDK_OBS_API void list_versions(obs_options *options, char *prefix, char *key_marker, char *delimiter, 
-           int maxkeys, char *version_id_marker, obs_list_versions_handler *handler, void *callback_data);
+eSDK_OBS_API void list_versions(obs_options *options, const char *prefix, const char *key_marker, const char *delimiter, 
+           int maxkeys, const char *version_id_marker, obs_list_versions_handler *handler, void *callback_data);
 
 eSDK_OBS_API void set_bucket_quota(obs_options *options, uint64_t storage_quota, 
                                obs_response_handler *handler, void *callback_data);
@@ -1130,7 +1147,7 @@ eSDK_OBS_API void set_bucket_quota(obs_options *options, uint64_t storage_quota,
 eSDK_OBS_API void get_bucket_quota(obs_options *options, uint64_t *storagequota_return,
             obs_response_handler *handler,  void *callback_data);
  
-eSDK_OBS_API void set_bucket_policy(obs_options *options, char *policy, 
+eSDK_OBS_API void set_bucket_policy(obs_options *options, const char *policy, 
             obs_response_handler *handler,  void *callback_data);
  
 eSDK_OBS_API void get_bucket_policy(obs_options *options, int policy_return_size, 
@@ -1140,7 +1157,7 @@ eSDK_OBS_API void get_bucket_policy(obs_options *options, int policy_return_size
 eSDK_OBS_API void delete_bucket_policy(obs_options *options, obs_response_handler *handler,
                       void *callback_data);
  
-eSDK_OBS_API void set_bucket_version_configuration(obs_options *options, char *version_status, 
+eSDK_OBS_API void set_bucket_version_configuration(obs_options *options, const char *version_status, 
            obs_response_handler *handler, void *callback_data);
  
 eSDK_OBS_API void get_bucket_version_configuration(obs_options *options, int status_return_size, 
@@ -1188,8 +1205,8 @@ eSDK_OBS_API void get_bucket_storage_info(obs_options *options, int capacity_len
                     int object_number_length, char *object_number,
                     obs_response_handler *handler, void *callback_data);
  
- eSDK_OBS_API void list_multipart_uploads(obs_options *options, char *prefix, char *marker, char *delimiter,
-                    char* uploadid_marke, int max_uploads, obs_list_multipart_uploads_handler *handler, 
+ eSDK_OBS_API void list_multipart_uploads(obs_options *options, const char *prefix, const char *marker, const char *delimiter,
+                    const char* uploadid_marke, int max_uploads, obs_list_multipart_uploads_handler *handler, 
                     void *callback_data);
 
 eSDK_OBS_API void set_bucket_lifecycle_configuration(obs_options *options, 
@@ -1248,6 +1265,11 @@ eSDK_OBS_API void obs_head_bucket(obs_options *options, obs_response_handler *ha
 eSDK_OBS_API void get_object_metadata(obs_options *options, obs_object_info *object_info, 
                                   server_side_encryption_params *encryption_params,
                                   obs_response_handler *handler, void *callback_data);
+								  
+eSDK_OBS_API void set_object_metadata(obs_options *options, obs_object_info *object_info, 
+								  obs_put_properties *put_properties,
+								  server_side_encryption_params *encryption_params,
+								  obs_response_handler *handler, void *callback_data);
 
 eSDK_OBS_API void put_object(obs_options *options, char *key, uint64_t content_length,
                          obs_put_properties *put_properties,
@@ -1287,17 +1309,17 @@ eSDK_OBS_API void initiate_multi_part_upload(obs_options *options, char *key,int
                                          server_side_encryption_params *encryption_params,
                                          obs_response_handler *handler, void *callback_data);
 
-eSDK_OBS_API void complete_multi_part_upload(obs_options *options, char *key, char *upload_id, unsigned int part_number, 
+eSDK_OBS_API void complete_multi_part_upload(obs_options *options, char *key, const char *upload_id, unsigned int part_number, 
                                          obs_complete_upload_Info *complete_upload_Info,obs_put_properties *put_properties,
                                          obs_complete_multi_part_upload_handler *handler, void *callback_data);
 
 eSDK_OBS_API void list_parts (obs_options *options, char *key, list_part_info *listpart,
                           obs_list_parts_handler *handler, void *callback_data);
 
-eSDK_OBS_API void abort_multi_part_upload(obs_options *options, char *key, char *upload_id,
+eSDK_OBS_API void abort_multi_part_upload(obs_options *options, char *key, const char *upload_id,
                                       obs_response_handler *handler, void *callback_data);
 
-eSDK_OBS_API void copy_object(obs_options *options, char *key, char *version_id, obs_copy_destination_object_info *object_info,
+eSDK_OBS_API void copy_object(obs_options *options, char *key, const char *version_id, obs_copy_destination_object_info *object_info,
                           unsigned int is_copy, obs_put_properties *put_properties, server_side_encryption_params *encryption_params,
                           obs_response_handler *handler, void *callback_data);
 
@@ -1305,7 +1327,7 @@ eSDK_OBS_API void copy_part(obs_options *options, char *key, obs_copy_destinatio
                         obs_upload_part_info *copypart, obs_put_properties *put_properties, 
                         server_side_encryption_params *encryption_params,obs_response_handler *handler, void *callback_data);
 
-eSDK_OBS_API void restore_object(obs_options *options, obs_object_info *object_info, char *days, 
+eSDK_OBS_API void restore_object(obs_options *options, obs_object_info *object_info, const char *days, 
                              obs_tier tier,const obs_response_handler *handler, void *callback_data);
 
 eSDK_OBS_API void obs_options_object(obs_options *options, char* key, char* origin,
@@ -1338,13 +1360,13 @@ eSDK_OBS_API void set_object_acl(obs_options *options, manager_acl_info *aclinfo
 eSDK_OBS_API void set_object_acl_by_head(obs_options *options, obs_object_info *object_info, obs_canned_acl canned_acl, 
                                          obs_response_handler *handler, void *callback_data);
 
-eSDK_OBS_API void append_object(obs_options *options, char *key, uint64_t content_length, char * position,
+eSDK_OBS_API void append_object(obs_options *options, char *key, uint64_t content_length, const char * position,
                    obs_put_properties *put_properties,server_side_encryption_params *encryption_params,
                    obs_append_object_handler *handler, void *callback_data);
 
-eSDK_OBS_API void compute_md5(char *buffer, int64_t buffer_size, char *outbuffer);
+eSDK_OBS_API void compute_md5(const char *buffer, int64_t buffer_size, char *outbuffer);
 
-eSDK_OBS_API int set_obs_log_path(char *log_path);
+eSDK_OBS_API int set_obs_log_path(const char *log_path);
 
 eSDK_OBS_API void set_openssl_callback(obs_openssl_switch switch_flag);
 

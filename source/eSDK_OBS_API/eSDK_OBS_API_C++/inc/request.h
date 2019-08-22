@@ -25,7 +25,7 @@
 
 #ifdef WIN32
 #define LIBOBS_VER_MAJOR "3.1"
-#define LIBOBS_VER_MINOR "3.1"
+#define LIBOBS_VER_MINOR "3"
 #endif
 
 #if defined __GNUC__ || defined LINUX

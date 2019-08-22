@@ -567,7 +567,7 @@ static void test_head_object(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
         
     obs_response_handler response_handler =
     { 
@@ -641,6 +641,61 @@ void print_grant_info(int acl_grant_count,obs_acl_grant *acl_grants)
     }
 }
 
+//set object metadata---------------------------------------------------------------
+static void test_set_object_metadata(char* bucket_name, char * key, char *version_id)
+{
+	obs_canned_acl canned_acl = OBS_CANNED_ACL_PRIVATE;
+	char *content_encoding = NULL;
+	char *expires = NULL;
+
+	obs_object_info objectinfo;
+	memset(&objectinfo,0,sizeof(obs_object_info));
+	objectinfo.key=key;
+	objectinfo.version_id=version_id;
+	// init struct obs_option
+	obs_options option;
+	obs_status ret_status = OBS_STATUS_BUTT;
+	init_obs_options(&option);
+
+	option.bucket_options.host_name = HOST_NAME;
+	option.bucket_options.bucket_name = bucket_name;
+	option.bucket_options.access_key = ACCESS_KEY_ID;
+	option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+	option.bucket_options.uri_style = OBS_URI_STYLE_VIRTUALHOST;
+	option.request_options.auth_switch = OBS_OBS_TYPE;
+
+
+	obs_response_handler response_handler =
+	{ 
+		&response_properties_callback,
+		&response_complete_callback
+	};
+
+
+	server_side_encryption_params encryption_params;
+	memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+
+
+	obs_put_properties put_properties;
+	init_put_properties(&put_properties);
+	put_properties.canned_acl = canned_acl;
+	put_properties.content_encoding = content_encoding;
+	put_properties.content_type = "text/json";
+	put_properties.metadata_action = OBS_REPLACE_NEW;
+
+	set_object_metadata(&option,&objectinfo,&put_properties, NULL, &response_handler,0);
+
+	if (statusG == OBS_STATUS_OK) {
+		printf("set object metadata  successfully. \n");
+	}
+	else
+	{
+		printf("set object metadata  failed.\n");
+		printError();
+	}
+}
+
+
 
 // get object metadata---------------------------------------------------------------
 static void test_get_object_metadata(char * key, char *version_id)
@@ -659,7 +714,7 @@ static void test_get_object_metadata(char * key, char *version_id)
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -774,7 +829,7 @@ static void test_create_bucket(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -803,7 +858,6 @@ static void test_create_bucket_with_option(obs_canned_acl canned_acl, char *buck
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
     option.bucket_options.certificate_info = NULL;
 
     obs_response_handler response_handler =
@@ -854,7 +908,7 @@ static void test_delete_bucket(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -886,7 +940,7 @@ static void test_set_bucket_quota( char *bucket_name)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -918,7 +972,7 @@ static void test_get_bucket_quota(char *bucket_name)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler response_handler =
     { 
@@ -949,7 +1003,7 @@ void test_set_bucket_policy(char *bucket_name)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -987,7 +1041,6 @@ void test_get_bucket_policy(char *bucket_name)
     option->bucket_options.bucket_name = bucket_name;
     option->bucket_options.access_key = ACCESS_KEY_ID;
     option->bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option->bucket_options.uri_style = OBS_URI_STYLE_PATH;
 
     obs_response_handler response_handler =
     { 
@@ -1020,7 +1073,6 @@ void test_delete_bucket_policy(char *bucket_name)
     option->bucket_options.bucket_name = bucket_name;
     option->bucket_options.access_key = ACCESS_KEY_ID;
     option->bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option->bucket_options.uri_style = OBS_URI_STYLE_PATH;
 
     obs_response_handler response_handler =
     { 
@@ -1062,7 +1114,7 @@ static void test_set_bucket_version(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -1095,7 +1147,7 @@ void test_get_bucket_version(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -1128,7 +1180,7 @@ static void test_set_bucket_storage_class(char *bucket_name, obs_storage_class s
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler response_handler =
     { 
@@ -1163,7 +1215,7 @@ static void test_get_bucket_storage_class(char *bucket_name)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -1199,7 +1251,7 @@ static void test_set_bucket_tagging(int argc, char** argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -1293,7 +1345,7 @@ void test_get_bucket_tagging(int argc, char** argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
      obs_get_bucket_tagging_handler response_handler = 
     {
@@ -1331,7 +1383,7 @@ void test_delete_bucket_tagging(int argc, char** argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -1362,7 +1414,7 @@ static void set_log_delivery_acl(char *bucket_name_target)
     option->bucket_options.bucket_name = bucket_name_target;
     option->bucket_options.access_key = ACCESS_KEY_ID;
     option->bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option->bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler response_handler =
     { 
@@ -1425,7 +1477,7 @@ static void test_set_bucket_logging_without_grant(char *bucket_name_src, char *b
     option.bucket_options.bucket_name = bucket_name_src;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;    
+        
 
     obs_response_handler response_handler =
     { 
@@ -1456,7 +1508,7 @@ void test_close_bucket_logging(char *bucket_name_src)
     option.bucket_options.bucket_name = bucket_name_src;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;    
+        
 
     obs_response_handler response_handler =
     { 
@@ -1509,7 +1561,7 @@ void test_get_bucket_logging(char *bucket_name)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
      obs_response_handler response_handler = 
     {
@@ -1556,7 +1608,7 @@ static void test_set_bucket_website_conf(char *bucket_name)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_set_bucket_website_conf set_bucket_website_conf; 
     set_bucket_website_conf.suffix = "index.html"; 
@@ -1607,7 +1659,7 @@ static void test_set_bucket_website_all(char *bucket_name)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_set_bucket_redirect_all_conf set_bucket_redirect_all;
 
@@ -1669,7 +1721,7 @@ void test_get_bucket_website(char *bucket_name)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
      obs_get_bucket_websiteconf_handler response_handler = 
     {
@@ -1698,7 +1750,7 @@ void test_delete_bucket_website(char *bucket_name)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -1793,7 +1845,7 @@ void test_set_bucket_acl(int argc, char** argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler response_handler =
     { 
@@ -1915,7 +1967,7 @@ void test_get_bucket_acl(int argc, char** argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler response_handler =
     { 
@@ -1967,7 +2019,7 @@ void test_set_bucket_acl_byhead(int argc, char** argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler response_handler =
     { 
@@ -2005,7 +2057,7 @@ void test_set_object_acl(int argc, char** argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler response_handler =
     { 
@@ -2048,7 +2100,7 @@ void test_get_object_acl(int argc, char** argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler response_handler =
     { 
@@ -2103,7 +2155,7 @@ void test_set_object_acl_byhead(int argc, char** argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler response_handler =
     { 
@@ -2276,7 +2328,7 @@ static void test_list_bucket_objects(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_list_objects_handler list_bucket_objects_handler =
     {
@@ -2465,7 +2517,7 @@ static void test_list_versions(char *bucket_name,char *version_id_marker)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_list_versions_handler list_versions_handler =
     {
@@ -2515,7 +2567,7 @@ static void test_get_bucket_storage_info(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler response_handler =
     { 
@@ -2543,15 +2595,15 @@ static void test_set_bucket_lifecycle_configuration()
     obs_options option;
     obs_status  ret_status = OBS_STATUS_BUTT;
 
-    // 设置option
+    // set option
     init_obs_options(&option);
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
-    // 设置完成的回调函数
+    // Set the completed callback function
     obs_response_handler response_handler =
     { 
         NULL, &response_complete_callback
@@ -2560,15 +2612,15 @@ static void test_set_bucket_lifecycle_configuration()
     obs_lifecycle_conf bucket_lifecycle_conf;
     memset(&bucket_lifecycle_conf, 0, sizeof(obs_lifecycle_conf)); 
 
-    //生命周期规则的id
+    //Lifecycle rule id
     bucket_lifecycle_conf.id = "test1"; 
-    // 指定前缀"test"
+    // Specify the prefix "test"
     bucket_lifecycle_conf.prefix = "test"; 
-    // 指定满足前缀的对象创建10天后过期 
+    // Specify that the object that meets the prefix expires after 10 days of creation
     bucket_lifecycle_conf.days = "10"; 
-    // 指定满足前缀的对象的历史版本20天后过期 
+    // Specifies that the historical version of the object that satisfies the prefix expires after 20 days 
     bucket_lifecycle_conf.noncurrent_version_days = "20";
-    // 该生命周期规则生效
+    // Enable lifecycle rule 
     bucket_lifecycle_conf.status = "Enabled"; 
 
     set_bucket_lifecycle_configuration(&option, &bucket_lifecycle_conf, 1, 
@@ -2590,15 +2642,15 @@ static void test_set_bucket_lifecycle_configuration2()
     obs_options option;
     obs_status  ret_status = OBS_STATUS_BUTT;
 
-    // 设置option
+    // set option
     init_obs_options(&option);
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
-    // 设置完成的回调函数
+    // Set the completed callback function
     obs_response_handler response_handler =
     { 
         NULL, &response_complete_callback
@@ -2607,27 +2659,27 @@ static void test_set_bucket_lifecycle_configuration2()
     obs_lifecycle_conf bucket_lifecycle_conf;
     memset(&bucket_lifecycle_conf, 0, sizeof(obs_lifecycle_conf)); 
     
-    //生命周期规则的id
+    //Lifecycle rule id
     bucket_lifecycle_conf.id = "test3"; 
-    // 指定前缀"test"
+    // Specify the prefix "test"
     bucket_lifecycle_conf.prefix = "bcd"; 
-    // 该生命周期规则生效
+    // Enable lifecycle rule 
     bucket_lifecycle_conf.status = "Enabled"; 
     
     obs_lifecycle_transtion transition;
     memset(&transition, 0, sizeof(obs_lifecycle_transtion));
-    // 指定满足前缀的对象创建30天后转换 
+    // Specify that the object that satisfies the prefix is ??converted after 30 days of creation. 
     transition.days = "30";
-    // 指定对象转换后的存储类型 
+    // Specify the storage type after the object is converted
     transition.storage_class = OBS_STORAGE_CLASS_STANDARD_IA;
     bucket_lifecycle_conf.transition = &transition;
     bucket_lifecycle_conf.transition_num = 1;
 
     obs_lifecycle_noncurrent_transtion noncurrent_transition;
     memset(&noncurrent_transition, 0, sizeof(obs_lifecycle_noncurrent_transtion));
-    // 指定满足前缀的对象的历史版本30天后转换 
+    // Specify a historical version of the object that satisfies the prefix to convert after 30 days 
     noncurrent_transition.noncurrent_version_days = "30";
-    // 指定满足前缀的对象的历史版本转换后的存储类型 
+    // Specifies the storage type of the historical version of the object that satisfies the prefix 
     noncurrent_transition.storage_class = OBS_STORAGE_CLASS_STANDARD_IA;
     bucket_lifecycle_conf.noncurrent_version_transition = &noncurrent_transition;
     bucket_lifecycle_conf.noncurrent_version_transition_num = 1;
@@ -2681,15 +2733,15 @@ static void test_get_lifecycle_config()
     obs_options option; 
     obs_status  ret_status = OBS_STATUS_BUTT;
     
-    // 设置option
+    // set option
     init_obs_options(&option);
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
-    // 设置回调函数
+    // Set callback function
     obs_lifecycle_handler lifeCycleHandlerEx =
     {
         {&response_properties_callback, &response_complete_callback},
@@ -2714,13 +2766,13 @@ static void test_delete_lifecycle_config()
     obs_options option; 
     obs_status  ret_status = OBS_STATUS_BUTT;
 
-    // 设置option
+    // set option
     init_obs_options(&option);    
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler response_handler =
     { 
@@ -2745,14 +2797,14 @@ static void test_set_bucket_cors()
     obs_status  ret_status = OBS_STATUS_BUTT;
 
     obs_bucket_cors_conf bucketCorsConf; 
-    // 设置option
+    // set option
     init_obs_options(&option);
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
-    // 设置回调函数
+    
+    // Set callback function
     obs_response_handler response_handler =
     { 
         NULL, &response_complete_callback
@@ -2760,15 +2812,15 @@ static void test_set_bucket_cors()
 
     
     char *id_1= "1"; 
-    // 指定浏览器对特定资源的预取(OPTIONS)请求返回结果的缓存时间,单位为秒 
+    // Specifies the cache time in seconds for the browser to return results for a specific resource's prefetch (OPTIONS) request. 
     char *max_age_seconds = "100";
-    // 指定允许的跨域请求方法(GET/PUT/DELETE/POST/HEAD) 
+    // Specify allowed cross-domain request methods(GET/PUT/DELETE/POST/HEAD) 
     const char* allowedMethod_1[5] = {"GET","PUT","HEAD","POST","DELETE"};
-    // 指定允许跨域请求的来源 
+    // Specify the source that allows cross-domain requests 
     const char* allowedOrigin_1[2] = {"obs.xxx.com", "www.xxx.com"}; 
-    // 指定允许用户从应用程序中访问的header
+    // Specify a header that allows users to access from the application
     const char* allowedHeader_1[2] = {"header-1", "header-2"}; 
-    // 响应中带的附加头域
+    // Attachment header field in response
     const char* exposeHeader_1[2]  = {"hello", "world"}; 
      
     memset(&bucketCorsConf, 0, sizeof(obs_bucket_cors_conf)); 
@@ -2830,14 +2882,14 @@ static void test_get_cors_config()
 {
     obs_options option; 
     obs_status  ret_status = OBS_STATUS_BUTT;
-    // 设置option
+    // set option
     init_obs_options(&option);
     option.bucket_options.host_name     = HOST_NAME;
     option.bucket_options.bucket_name   = BUCKET_NAME;
     option.bucket_options.access_key    = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style     = OBS_URI_STYLE_PATH;
-    // 设置回调函数
+    
+    // Set callback function
     obs_cors_handler cors_handler_info =
     {
         {&response_properties_callback, &response_complete_callback},
@@ -2858,14 +2910,14 @@ static void test_delete_cors_config()
 {
     obs_options option; 
     obs_status  ret_status = OBS_STATUS_BUTT;
-    // 设置option
+    // set option
     init_obs_options(&option);
     option.bucket_options.host_name     = HOST_NAME;
     option.bucket_options.bucket_name   = BUCKET_NAME;
     option.bucket_options.access_key    = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style     = OBS_URI_STYLE_PATH;
-    // 设置回调函数
+    
+    // Set callback function
     obs_response_handler response_handler =
     { 
         0, &response_complete_callback
@@ -2891,28 +2943,28 @@ static void test_set_notification_configuration(char *bucket_name)
     obs_smn_topic_configuration topic_conf;
     obs_smn_event_enum topic1_event[2];
     obs_smn_filter_rule filter_rule;
-    // 设置option
+    // set option
     init_obs_options(&option);
     option.bucket_options.host_name     = HOST_NAME;
     option.bucket_options.bucket_name   = bucket_name;
     option.bucket_options.access_key    = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style     = OBS_URI_STYLE_PATH;
-    // 设置回调函数
+    
+    // Set callback function
     obs_response_handler response_handler =
     { 
         NULL, &response_complete_callback
     };
-    // 设置通知配置的id，该配置唯一标示
+    // Set the id of the notification configuration, which is uniquely labeled
     topic_conf.id    = "Id001"; 
-    // 设置事件通知主题的URN
+    // Set the URN of the event notification topic
     topic_conf.topic = "urn:smn:southchina:ea79855fbe0642718cb4df1551c3cb4e:test_cwx298983";
-    // 设置通知的操作
+    // Set notification action
     topic_conf.event = topic1_event; 
     topic_conf.event[0] = SMN_EVENT_OBJECT_CREATED_ALL; 
     topic_conf.event[1] = SMN_EVENT_OBJECT_CREATED_POST; 
     topic_conf.event_num = 2; 
-    // 设置通知对象的过滤规则
+    // Set the filtering rules for notification objects
     filter_rule.name = OBS_SMN_FILTER_PREFIX; 
     filter_rule.value = "aaa"; 
     topic_conf.filter_rule = &filter_rule; 
@@ -2967,14 +3019,14 @@ static void test_get_notification_config(char *bucket_name)
 {
     obs_options option; 
     obs_status  ret_status = OBS_STATUS_BUTT;
-    // 设置option
+    // set option
     init_obs_options(&option);
     option.bucket_options.host_name     = HOST_NAME;
     option.bucket_options.bucket_name   = bucket_name;
     option.bucket_options.access_key    = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style     = OBS_URI_STYLE_PATH;
-    // 设置回调函数
+    
+    // Set callback function
     obs_smn_handler notification_handler_info =
     {
         {&response_properties_callback, &response_complete_callback},
@@ -2997,14 +3049,14 @@ static void test_close_notification_configuration(char *bucket_name)
     obs_status  ret_status = OBS_STATUS_BUTT;
     obs_smn_notification_configuration notification_conf; 
     
-    // 设置option
+    // set option
     init_obs_options(&option);
     option.bucket_options.host_name     = HOST_NAME;
     option.bucket_options.bucket_name   = bucket_name;
     option.bucket_options.access_key    = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style     = OBS_URI_STYLE_PATH;
-    // 设置回调函数
+    
+    // Set callback function
     obs_response_handler response_handler =
     { 
         NULL, &response_complete_callback
@@ -3041,7 +3093,6 @@ void test_bucket_option(char *bucket_name)
     option->bucket_options.access_key = ACCESS_KEY_ID;
     option->bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option->bucket_options.protocol = OBS_PROTOCOL_HTTPS;
-    option->bucket_options.uri_style = OBS_URI_STYLE_PATH;
    
     obs_response_handler resqonseHandler =
     { 
@@ -3191,22 +3242,22 @@ static void test_put_object_from_file(int argc, char **argv, int optindex)
     char *bucket_name = argv[optindex++];
     printf("Bucket's name is == %s \n", bucket_name);
 
-    // 上传对象名
+    // name of upload object
     char *key = argv[optindex++];
     printf("key is == %s \n", key);
-    // 上传的文件
+    // file to upload
     char *file_name = argv[optindex++];
     printf("file_name is == %s \n", file_name);
     uint64_t content_length = 0;
     
-    // 初始化option
+    // Initialize option
     obs_options option;
     init_obs_options(&option);
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
 
     temp_auth_configure tempauth;
@@ -3237,7 +3288,7 @@ static void test_put_object_from_file(int argc, char **argv, int optindex)
     }
 
 
-    // 初始化上传对象属性
+    // Initialize upload object properties
     obs_put_properties put_properties;
     init_put_properties(&put_properties);
     put_properties.canned_acl = canned_acl;
@@ -3247,13 +3298,13 @@ static void test_put_object_from_file(int argc, char **argv, int optindex)
         put_properties.expires = convertInt(expires, "expires");
     }
 	
-    //服务端加密
-    /*SSE-KMS加密*/
+    //Server encryption
+    /*SSE-KMS encryption*/
     server_side_encryption_params encryption_params;
     memset(&encryption_params, 0, sizeof(server_side_encryption_params));
     //encryption_params.use_kms = '1';
     //encryption_params.kms_server_side_encryption = "kms";
-    //不设置 系统会生成默认的加密密钥
+    //Do not set the system will generate a default encryption key
     //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/4f1cd4de-ab64-4807-920a-47fc42e7f0d0";
 
     /*SSE-C*/
@@ -3262,13 +3313,13 @@ static void test_put_object_from_file(int argc, char **argv, int optindex)
     encryption_params.ssec_customer_algorithm = "AES256";
     encryption_params.ssec_customer_key = buffer;*/
 
-    // 初始化存储上传数据的结构体
+    // Initialize the structure that stores the uploaded data
     put_file_object_callback_data data;
     memset(&data, 0, sizeof(put_file_object_callback_data));
-    // 打开文件，并获取文件长度
+    // Open the file and get the file length
     content_length = open_file_and_get_length(file_name, &data);
 	printf("content_length = %d\n",content_length);
-    // 设置回调函数
+    // Set callback function
     obs_put_object_handler putobjectHandler =
     { 
         { &response_properties_callback, &put_file_complete_callback },
@@ -3296,16 +3347,16 @@ static void test_put_object_from_buffer(int argc, char **argv, int optindex)
     char *bucket_name = argv[optindex++];
     printf("Bucket's name is == %s \n", bucket_name);
     
-    // 上传的对象名
+    // name of upload object
     char *key = argv[optindex++];
     printf("key's name is == %s \n", key);
-    // 待上传的buffer
+    //  buffer to be uploaded
     char *buffer = argv[optindex++];
     printf("buffer's name is == %s \n", buffer);
-    // 待上传的buffer的长度
+    // Length of the buffer to be uploaded
     int buffer_size = strlen(buffer);
 
-    // 初始化option
+    // Initialize option
     obs_options option;
     init_obs_options(&option);
 
@@ -3313,7 +3364,7 @@ static void test_put_object_from_buffer(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     temp_auth_configure tempauth;
     tempAuthResult  ptrResult;
@@ -3343,7 +3394,7 @@ static void test_put_object_from_buffer(int argc, char **argv, int optindex)
     }
 
 
-    // 初始化上传对象属性
+    // Initialize upload object properties
     obs_put_properties put_properties;
     init_put_properties(&put_properties);
     put_properties.canned_acl = canned_acl;
@@ -3354,15 +3405,15 @@ static void test_put_object_from_buffer(int argc, char **argv, int optindex)
     }
     
 
-    //初始化存储上传数据的结构体
+    //Initialize the structure that stores the uploaded data
     put_buffer_object_callback_data data;
     memset(&data, 0, sizeof(put_buffer_object_callback_data));
-    // 把buffer赋值到上传数据结构中
+    // Assign buffer to the uploaded data structure
     data.put_buffer = buffer;
-    // 设置buffersize
+    // Set buffersize
     data.buffer_size = buffer_size;
 
-    // 设置回调函数
+    // Set callback function
     obs_put_object_handler putobjectHandler =
     { 
         { &response_properties_callback, &put_buffer_complete_callback },
@@ -3443,16 +3494,16 @@ static void test_get_object(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 	option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
 
-	//服务端加密
-    /*SSE-KMS加密*/
+	//Server encryption
+    /*SSE-KMS encryption*/
     server_side_encryption_params encryption_params;
     memset(&encryption_params, 0, sizeof(server_side_encryption_params));
     //encryption_params.use_kms = '1';
     //encryption_params.kms_server_side_encryption = "aws:kms";
-	//该参数可以不填 系统有默认的加密密钥
+	//This parameter can be left blank. The system has a default encryption key.
     //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/4f1cd4de-ab64-4807-920a-47fc42e7f0d0";
 
     /*SSE-C*/
@@ -3471,9 +3522,9 @@ static void test_get_object(int argc, char **argv, int optindex)
     obs_get_conditions getcondition;
     memset(&getcondition, 0, sizeof(obs_get_conditions));
     init_get_properties(&getcondition);
-    // 读取的开始位置
+    // The starting position of the reading
     getcondition.start_byte = 0;
-    // 读取长度，默认0，读到对象尾
+    // Read length, default 0: read to the end of the object
     getcondition.byte_count = 100;
     obs_get_object_handler get_object_handler =
     { 
@@ -3513,7 +3564,7 @@ static void test_delete_object(int argc, char **argv, int optindex)
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler resqonseHandler =
     { 
@@ -3567,7 +3618,7 @@ static void test_batch_delete_objects(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_object_info objectinfo[1000];
     char tmp[1000][10];
@@ -3642,17 +3693,17 @@ static void test_copy_object(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = source_bucket;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 	option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
 
 	
-	//服务端加密
-    /*SSE-KMS加密*/
+	//Server encryption
+    /*SSE-KMS encryption*/
     server_side_encryption_params encryption_params;
     memset(&encryption_params, 0, sizeof(server_side_encryption_params));
     //encryption_params.use_kms = '1';
     //encryption_params.kms_server_side_encryption = "aws:kms";
-    //该参数可以为NULL 默认系统的密钥
+    //This parameter can be NULL the default system key
     //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/4f1cd4de-ab64-4807-920a-47fc42e7f0d0";
 
     /*SSE-C*/
@@ -3661,7 +3712,7 @@ static void test_copy_object(int argc, char **argv, int optindex)
     encryption_params.ssec_customer_algorithm = "AES256";
     encryption_params.ssec_customer_key = buffer;
     
-    //解密源对象参数;用于将一个加密对象拷贝给另外一个对象
+    //Decrypt source object parameters; used to copy one encrypted object to another object
     char *des_key = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
     encryption_params.des_ssec_customer_algorithm = "AES256";
     encryption_params.des_ssec_customer_key = des_key;*/
@@ -3752,7 +3803,7 @@ static void test_restore_object(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
         
     obs_response_handler handler =
@@ -3872,7 +3923,7 @@ static void test_list_bucket()
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     list_service_data data;
     memset(&data, 0, sizeof(list_service_data));
@@ -3914,7 +3965,7 @@ void test_object_option(char *bucket_name)
     option->bucket_options.access_key = ACCESS_KEY_ID;
     option->bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option->bucket_options.protocol = OBS_PROTOCOL_HTTPS;
-    option->bucket_options.uri_style = OBS_URI_STYLE_PATH;
+
    
     obs_response_handler resqonseHandler =
     { 
@@ -3950,7 +4001,7 @@ static void test_head_bucket(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     obs_response_handler response_handler =
     { 
@@ -3981,7 +4032,6 @@ static void test_get_bucket_metadata_with_cors(char *bucket_name)
     option->bucket_options.bucket_name = bucket_name;
     option->bucket_options.access_key = ACCESS_KEY_ID;
     option->bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option->bucket_options.uri_style = OBS_URI_STYLE_PATH;
     
     obs_response_handler response_handler =
     { 
@@ -4017,7 +4067,7 @@ static void test_init_upload_part(char *key)
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     char upload_id[OBS_COMMON_LEN_256] = {0};
     int upload_id_size = OBS_COMMON_LEN_256;
@@ -4067,7 +4117,9 @@ static int test_upload_file_data_callback(int buffer_size, char *buffer,
                     (unsigned) buffer_size : data->part_size);
     ret = fread(buffer, 1, toRead, data->infile);
 
-    return ret;
+    data->start_byte += toRead;
+	
+	return ret;
 }
 
 uint64_t get_file_info(char *localfile, test_upload_file_callback_data *data)
@@ -4109,7 +4161,7 @@ static void test_upload_part(char *filename, char *key)
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_put_properties putProperties={0};
     init_put_properties(&putProperties);
@@ -4198,7 +4250,7 @@ static void test_complete_upload(char *filename, char *key)
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_put_properties putProperties={0};
     init_put_properties(&putProperties);
@@ -4233,7 +4285,7 @@ static void test_abort_multi_part_upload(char *key)
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler responseHandler =
     { 
@@ -4373,7 +4425,7 @@ static void test_list_parts(char *key)
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_list_parts_handler Handler =
     { 
@@ -4413,16 +4465,16 @@ static void test_copy_part()
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 	option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
 
-	//服务端加密
-    /*SSE-KMS加密*/
+	//Server encryption
+    /*SSE-KMS encryption*/
     server_side_encryption_params encryption_params;
     memset(&encryption_params, 0, sizeof(server_side_encryption_params));
     /*encryption_params.use_kms = '1';
     encryption_params.kms_server_side_encryption = "aws:kms";
-    //该参数可以为NULL 默认系统的密钥
+    //This parameter can be NULL the default system key
     encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/4f1cd4de-ab64-4807-920a-47fc42e7f0d0";*/
 
     /*SSE-C*/
@@ -4431,7 +4483,7 @@ static void test_copy_part()
     encryption_params.ssec_customer_algorithm = "AES256";
     encryption_params.ssec_customer_key = buffer;
     
-    //解密源对象参数;用于将一个加密对象拷贝给另外一个对象
+    //Decrypt source object parameters; used to copy one encrypted object to another object
     char *des_key = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
     encryption_params.des_ssec_customer_algorithm = "AES256";
     encryption_params.des_ssec_customer_key = des_key;*/
@@ -4533,7 +4585,7 @@ static void test_upload_file(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
 
 
@@ -4618,7 +4670,7 @@ static void test_download_file(char *filename, char *key)
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_get_conditions getConditions;
     memset_s(&getConditions,sizeof(obs_get_conditions),0,sizeof(obs_get_conditions));
@@ -4855,7 +4907,7 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_response_handler Handler =
     { 
@@ -4871,7 +4923,7 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     };
         
     
-    //大文件信息:文件指针，文件大小，按照分段大小的分段数
+    //Large file information: file pointer, file size, number of segments according to segment size
     test_upload_file_callback_data data;
     memset(&data, 0, sizeof(test_upload_file_callback_data));
     if (filesize == 0)
@@ -4882,7 +4934,7 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     data.part_size = uploadSize;
     data.part_num = (filesize % uploadSize == 0) ? (filesize / uploadSize) : (filesize / uploadSize +1);
 
-    //初始化上传段任务返回uploadId: uploadIdReturn
+    //Initialize the upload segment task to return uploadId: uploadIdReturn
     char uploadIdReturn[256] = {0};
     int upload_id_return_size = 255;
     initiate_multi_part_upload(&option,key,upload_id_return_size,uploadIdReturn, &putProperties,0,&Handler, 0);
@@ -4895,9 +4947,9 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
         printf("test init upload part faied.\n");
         printError();
     }
-    //并发上传分段
+    //Concurrent upload segment
     test_concurrent_upload_part_callback_data *concurrent_upload_file;
-    concurrent_upload_file =(test_concurrent_upload_part_callback_data *)malloc(sizeof(test_concurrent_upload_part_callback_data)*1000);
+    concurrent_upload_file =(test_concurrent_upload_part_callback_data *)malloc(sizeof(test_concurrent_upload_part_callback_data)*(data.part_num + 1));
     if(concurrent_upload_file == NULL)
     {
         printf("malloc test_concurrent_upload_file_callback_data failed!!!\n");
@@ -4906,7 +4958,7 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     test_concurrent_upload_part_callback_data *concurrent_upload_file_complete = concurrent_upload_file;
     start_upload_threads(data, concurrent_upload_id,filesize,key, option, concurrent_upload_file_complete);
 
-    // 合并段
+    // Merging segment
     obs_complete_upload_Info *upload_Info=(obs_complete_upload_Info *)malloc(sizeof(obs_complete_upload_Info)*(data.part_num));
 	if(upload_Info == NULL)
     {
@@ -4950,7 +5002,7 @@ static void test_append_object_from_file(char *key, char *file_name, char * posi
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     obs_put_properties put_properties;
     init_put_properties(&put_properties);
@@ -5025,15 +5077,15 @@ static void test_append_object_from_buffer(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
 
-    //初始化存储上传数据的结构体
+    //Initialize the structure that stores the uploaded data
     put_buffer_object_callback_data data;
     memset(&data, 0, sizeof(put_buffer_object_callback_data));
-    // 把buffer赋值到上传数据结构中
+    // Assign buffer to the uploaded data structure
     data.put_buffer = buffer;
-    // 设置buffersize
+    // Set buffersize
     data.buffer_size = buffer_size;
 
     obs_append_object_handler putobjectHandler =
@@ -5065,7 +5117,7 @@ static void test_gen_signed_url_create_bucket(obs_canned_acl canned_acl, char *b
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
 
     
     temp_auth_configure tempauth;
@@ -5095,9 +5147,9 @@ static void test_gen_signed_url_create_bucket(obs_canned_acl canned_acl, char *b
 }
 static void test_gen_signed_url_put_object()
 {
-    // 上传对象名
+    // name of upload object
     char *key = "put_file_test";
-    // 上传的文件
+    // file to upload
     char file_name[256] = "C:\\a.txt";
     uint64_t content_length = 0;
 
@@ -5109,18 +5161,18 @@ static void test_gen_signed_url_put_object()
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
-    // 初始化上传对象属性
+    
+    // Initialize upload object properties
     obs_put_properties put_properties;
     init_put_properties(&put_properties);
 
-    // 初始化存储上传数据的结构体
+    // Initialize the structure that stores the uploaded data
     put_file_object_callback_data data;
     memset(&data, 0, sizeof(put_file_object_callback_data));
-    // 打开文件，并获取文件长度
+    // Open the file and get the file length
     content_length = open_file_and_get_length(file_name, &data);
 
-    // 设置回调函数
+    // Set callback function
     obs_put_object_handler putobjectHandler =
     { 
         { &response_properties_callback, &put_file_complete_callback },
@@ -5165,7 +5217,7 @@ static void test_gen_signed_url_get_object(char *key, char *versionid)
     option.bucket_options.bucket_name = BUCKET_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    
     
     get_object_callback_data data;
     data.ret_status = OBS_STATUS_BUTT;

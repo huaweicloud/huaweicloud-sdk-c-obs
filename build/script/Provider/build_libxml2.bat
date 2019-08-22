@@ -1,7 +1,7 @@
 @echo off
 
 rem …Ë÷√±‰¡ø
-SET LIBXML_VERSION=libxml2-2.9.7
+SET LIBXML_VERSION=libxml2-2.9.9
 SET LIBXML2_PATH=%cd%\..\..\..\third_party_groupware\eSDK_Storage_Plugins\%LIBXML_VERSION%
 SET SOLUTION="%LIBXML2_PATH%\win32\VC10\libxml2.sln"
 if {x64} == {%~1} (

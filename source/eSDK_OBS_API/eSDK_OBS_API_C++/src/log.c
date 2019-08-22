@@ -31,7 +31,7 @@
 
 static char OBS_LOG_PATH[OBS_LOG_PATH_LEN]={0};
 
-int set_obs_log_path(char *log_path)
+int set_obs_log_path(const char *log_path)
 {
     if( log_path == NULL || strlen(log_path)> OBS_LOG_PATH_LEN)
     {
@@ -254,9 +254,14 @@ int LOG_INIT()
     }
     memcpy_s(confPath, sizeof(char)*MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
     strcat_s(confPath, sizeof(char)*MAX_MSG_SIZE, "/OBS.ini");
-    if(NULL == fopen(confPath, "r")) {
+	
+	FILE* confPathFile = fopen(confPath, "r");
+    if(NULL == confPathFile) 
+    {
         return -1;
     }
+    fclose(confPathFile);
+	
     GetIniSectionItem(SECTION_PATH, PATH_VALUE, confPath, tempLogPath);
     tempLogPath[MAX_MSG_SIZE - 1] = '\0';
     memcpy_s(logPath, sizeof(char)*MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
@@ -319,7 +324,7 @@ int LOG_INIT()
     CHECK_NULL_FREE(confPath);
     CHECK_NULL_FREE(logPath);
     CHECK_NULL_FREE(tempLogPath);
-
+	
     if(iRet)
     {
         return -1;

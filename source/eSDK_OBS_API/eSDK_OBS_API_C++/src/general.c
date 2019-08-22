@@ -218,6 +218,7 @@ void init_obs_options(obs_options *options)
     options->request_options.ssl_cipher_list = NULL;
     options->request_options.http2_switch = OBS_HTTP2_CLOSE;
     options->request_options.bbr_switch = OBS_BBR_CLOSE;
+	options->request_options.auth_switch = OBS_NEGOTIATION_TYPE;
         
     options->bucket_options.access_key = NULL;
     options->bucket_options.secret_access_key =NULL;
@@ -233,7 +234,7 @@ void init_obs_options(obs_options *options)
 }
 
 obs_status init_certificate_by_path(obs_protocol protocol, obs_certificate_conf ca_conf, 
-                                    char *path, int path_length)
+                                    const char *path, int path_length)
 {
     char ca_path[PATH_LENGTH] = {0};
     obs_status status = OBS_STATUS_OK;
@@ -293,7 +294,7 @@ obs_status init_certificate_by_path(obs_protocol protocol, obs_certificate_conf 
     return status;
 }
 
-obs_status init_certificate_by_buffer(char *buffer, int buffer_length)
+obs_status init_certificate_by_buffer(const char *buffer, int buffer_length)
 {
     if (NULL == buffer)
     {
@@ -327,6 +328,7 @@ void init_put_properties(obs_put_properties *put_properties)
     put_properties->start_byte=0;
     put_properties->website_redirect_location=0;
     put_properties->domain_config = NULL;
+	put_properties->metadata_action = OBS_NO_METADATA_ACTION;
 }
 
 void init_get_properties(obs_get_conditions *get_conditions)
@@ -366,7 +368,7 @@ int obs_status_is_retryable(obs_status status) //lint !e578
     }
 }
 
-void compute_md5(char *buffer, int64_t buffer_size, char *outbuffer)
+void compute_md5(const char *buffer, int64_t buffer_size, char *outbuffer)
 {
     unsigned char buffer_md5[16] = {0};
     char base64_md5[64] = {0};

@@ -3,7 +3,7 @@
 open_src_path=`pwd`
 echo_openssl_version=`echo ${openssl_version}NULL`
 if [ ${echo_openssl_version} = "NULL" ]; then
-  openssl_version=openssl-1.0.2n
+  openssl_version=openssl-1.0.2r
 fi
 openssl_dir=./../../../third_party_groupware/eSDK_Storage_Plugins/${openssl_version}
 openssl_lib=`pwd`/build/${openssl_version}/lib
@@ -19,10 +19,12 @@ if [ $# = 0 ]; then
 if [ -z $BUILD_FOR_ARM ]; then
 ./Configure threads shared --prefix=/usr/local/openssl --openssldir=/usr/local/ssl/ linux-x86_64
 elif [ $BUILD_FOR_ARM = "true" ]; then
-./Configure threads shared --prefix=/usr/local/openssl --openssldir=/usr/local/ssl/ --cross-compile-prefix=aarch64-linux-gnu- linux-aarch64
+./Configure threads shared --prefix=/usr/local/openssl --openssldir=/usr/local/ssl/ linux-aarch64
+#./Configure threads shared --prefix=/usr/local/openssl --openssldir=/usr/local/ssl/ --cross-compile-prefix=aarch64-linux-gnu- linux-aarch64
 fi
 elif [ $1 = "BUILD_FOR_ARM" ]; then
-./Configure threads shared --prefix=/usr/local/openssl --openssldir=/usr/local/ssl/ --cross-compile-prefix=aarch64-linux-gnu- linux-aarch64
+./Configure threads shared --prefix=/usr/local/openssl --openssldir=/usr/local/ssl/ linux-aarch64
+#./Configure threads shared --prefix=/usr/local/openssl --openssldir=/usr/local/ssl/ --cross-compile-prefix=aarch64-linux-gnu- linux-aarch64
 fi
 
 make clean 

@@ -1,6 +1,6 @@
 @echo off
 
-set OPENSSL_VERSION=openssl-1.0.2n
+set OPENSSL_VERSION=openssl-1.0.2r
 
 set OPENSSL_PATH=%cd%\..\..\..\third_party_groupware\eSDK_Storage_Plugins\%OPENSSL_VERSION%
 

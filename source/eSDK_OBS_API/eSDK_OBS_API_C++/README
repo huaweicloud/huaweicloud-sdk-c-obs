@@ -2,3 +2,8 @@ This directory contains the libs3 library.
 
 The libs3 library is free software.  See the file LICENSE for copying
 permission.
+
+
+version 3.19.5
+1. add "option.request_options.auth_switch" field to choose S3 or OBS authorization type
+2. delete demo's uri_style assignments

@@ -2,7 +2,7 @@
 @echo off
 
 rem 设置变量
-set libssh2_version=libssh2-1.7.0
+set libssh2_version=libssh2-1.9.0
 SET LIBSSH2_PATH=%cd%\..\..\..\third_party_groupware\eSDK_Storage_Plugins\%libssh2_version%
 SET SOLUTION="%LIBSSH2_PATH%\win32\libssh2.sln"
 SET PROJECT="libssh2"

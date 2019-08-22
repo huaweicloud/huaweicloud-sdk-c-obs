@@ -2,7 +2,7 @@
 echo =========== compile libxml2 ==================
 open_src_path=`pwd`
 if [ "NULL"${libxml2_version} = "NULL" ]; then
- libxml2_version=libxml2-2.9.7
+ libxml2_version=libxml2-2.9.9
 fi
 libxml2_dir=./../../../third_party_groupware/eSDK_Storage_Plugins/${libxml2_version}
 libxml2_lib=`pwd`/build/${libxml2_version}/lib

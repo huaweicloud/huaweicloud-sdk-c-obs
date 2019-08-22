@@ -47,7 +47,7 @@ typedef struct error_parser
 // Always call this
 void error_parser_initialize(error_parser *errorParser);
 
-obs_status error_parser_add(error_parser *errorParser, char *buffer,
+obs_status error_parser_add(error_parser *errorParser, const char *buffer,
                           int buffer_size);
 
 void error_parser_convert_status(error_parser *errorParser, obs_status *status);

@@ -65,19 +65,21 @@ endif
 #endif
 
 ifdef BUILD_FOR_ARM
-   CC := aarch64-linux-gnu-gcc 
+   CC := gcc 
    libPath := aarch64
+   includePath := arm
 else
    CC := gcc
    libPath := linux_64
+   includePath := linux
 endif
 
 ifndef openssl_version
-   openssl_version := openssl-1.0.2n
+   openssl_version := openssl-1.0.2r
 endif
 
 ifndef curl_version
-   curl_version := curl-7.56.1
+   curl_version := curl-7.64.1
 endif
 
 ifndef nghttp2_version
@@ -85,34 +87,34 @@ ifndef nghttp2_version
 endif
 
 ifndef libxml2_version
-   libxml2_version := libxml2-2.9.7
+   libxml2_version := libxml2-2.9.9
 endif
 # --------------------------------------------------------------------------
 # Acquire configuration information for libraries that libeSDKOBS depends upon
-export LD_LIBRARY_PATH=./../../../build/script/Provider/build/${openssl_version}/lib
+export LD_LIBRARY_PATH=./../../../build/script/Provider/build/${includePath}/${openssl_version}/lib
 
 ifndef NGHTTP2_LIBS
-    NGHTTP2_LIBS := -L./../../../build/script/Provider/build/${nghttp2_version}/lib -lnghttp2
+    NGHTTP2_LIBS := -L./../../../build/script/Provider/build/${includePath}/${nghttp2_version}/lib -lnghttp2
 endif
 
 ifndef NGHTTP2_CFLAGS
-    NGHTTP2_CFLAGS := -I./../../../build/script/Provider/build/${nghttp2_version}/include
+    NGHTTP2_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/${nghttp2_version}/include
 endif
 
 ifndef CURL_LIBS
-    CURL_LIBS := -L./../../../build/script/Provider/build/${curl_version}/lib -lcurl
+    CURL_LIBS := -L./../../../build/script/Provider/build/${includePath}/${curl_version}/lib -lcurl
 endif
 
 ifndef CURL_CFLAGS
-    CURL_CFLAGS := -I./../../../build/script/Provider/build/${curl_version}/include
+    CURL_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/${curl_version}/include
 endif
 
 ifndef LIBXML2_LIBS
-    LIBXML2_LIBS := -L./../../../build/script/Provider/build/${libxml2_version}/lib -lxml2 -lm -ldl 
+    LIBXML2_LIBS := -L./../../../build/script/Provider/build/${includePath}/${libxml2_version}/lib -lxml2 -lm -ldl 
 endif
 
 ifndef LIBXML2_CFLAGS
-    LIBXML2_CFLAGS := -I./../../../build/script/Provider/build/${libxml2_version}/include
+    LIBXML2_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/${libxml2_version}/include
 endif
 
 ifndef LIBESDKLOGAPI_CFLAGS
@@ -124,21 +126,21 @@ ifndef LIBESDKLOGAPI_LIBS
 endif
 
 ifndef LIBOPENSSL_LIBS
-	LIBOPENSSL_LIBS := -L./../../../build/script/Provider/build/${openssl_version}/lib -lssl -lcrypto
+	LIBOPENSSL_LIBS := -L./../../../build/script/Provider/build/${includePath}/${openssl_version}/lib -lssl -lcrypto
 #LIBOPENSSL_LIBS := -L/usr/local/ssl/lib -lssl -lcrypto
 #	LIBOPENSSL_LIBS := -L/arm/cross_compile/install/sysroot/lib64 -lssl -lcrypto
 endif
 
 ifndef LIBOPENSSL_CFLAGS
-     LIBOPENSSL_CFLAGS := -I./../../../build/script/Provider/build/${openssl_version}/include
+     LIBOPENSSL_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/${openssl_version}/include
 endif
 
 ifndef LIBPCRE_LIBS
-     LIBPCRE_LIBS := -L./../../../build/script/Provider/build/pcre-8.39/lib -lpcre
+     LIBPCRE_LIBS := -L./../../../build/script/Provider/build/${includePath}/pcre-8.39/lib -lpcre
 endif
 
 ifndef LIBPCRE_CFLAGS
-     LIBPCRE_CFLAGS := -I./../../../build/script/Provider/build/pcre-8.39/include/pcre
+     LIBPCRE_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/pcre-8.39/include/pcre
 endif
 
 # add libsecurec by jwx329074 2016.09.18
@@ -155,7 +157,7 @@ ifndef LIBICONV_CFLAGS
 endif
 
 ifndef LIBICONV_LIBS
-     LIBICONV_LIBS := -L./../../../build/script/Provider/build/iconv-1.15/lib -liconv
+     LIBICONV_LIBS := -L./../../../build/script/Provider/build/${includePath}/iconv-1.15/lib -liconv
 endif
 
 # --------------------------------------------------------------------------
@@ -180,7 +182,7 @@ CFLAGS += -Wall -Werror -Wshadow -Wextra -Iinc \
           -D_ISOC99_SOURCE \
           -D_POSIX_C_SOURCE=200112L \
 		  -std=c99 \
-		  -Wno-char-subscripts
+		  -Wno-char-subscripts -Wno-implicit-fallthrough
 
 LDFLAGS = $(NGHTTP2_LIBS) $(CURL_LIBS) $(LIBXML2_LIBS) $(LIBESDKLOGAPI_LIBS) $(LIBOPENSSL_LIBS) $(LIBPCRE_LIBS) $(LIBSSH2_LIBS) $(LIBSECUREC_LIBS) $(LIBICONV_LIBS) -lpthread
 
