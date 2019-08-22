@@ -81,7 +81,7 @@ misrepresented as being the original software.
 3. This notice may not be removed or altered from any source
 distribution.
 
-Software: libssh2 1.7.0
+Software: libssh2 1.9.0
 Copyright notice: 
 Copyright (c) 2014 Alexander Lamaison &lt;alexander.lamaison@gmail.com&gt;
 Copyright (c) 2014, 2015  Alexander Lamaison &lt;alexander.lamaison@gmail.com&gt;
@@ -153,7 +153,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 
 
-Software: curl 7.64.0
+Software: curl 7.64.1
 Copyright notice: 
 Copyright (C) 1998 - 2019, Daniel Stenberg, <daniel@haxx.se>, et al.
 Copyright (C) 1998 - 2018, Daniel Stenberg, <daniel@haxx.se>, et al.
@@ -274,7 +274,7 @@ Except as contained in this notice, the name of a copyright holder shall not be 
 
 
 
-Software: libxml2 2.9.7
+Software: libxml2 2.9.9
 Copyright notice: 
 Copy: See Copyright for the status of this software.
 See Copyright for the status of this software.
@@ -319,7 +319,7 @@ THE SOFTWARE.
 
 
 
-Software: OpenSSL 1.0.2n
+Software: OpenSSL 1.0.2r
 Copyright notice: 
 Copyright (c) 1999-2010 The OpenSSL Project.  All rights reserved.
 Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
