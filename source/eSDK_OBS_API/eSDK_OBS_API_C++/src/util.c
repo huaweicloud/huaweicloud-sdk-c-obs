@@ -126,6 +126,13 @@ char* string_To_UTF8(const char* pSource)
     size_t i_length = strlen(pSource);
     size_t o_length = (i_length + 1) * 2;
     char* pmbs = (char*)malloc(o_length);
+	
+	if (pmbs == NULL)
+	{
+		COMMLOG(OBS_LOGERROR, "string_To_UTF8: Malloc str failed!");
+		return NULL;
+	}
+	
     memset_s(pmbs, o_length, 0, o_length);
     char* result = pmbs; 
     size_t retsize;
@@ -157,6 +164,13 @@ char* UTF8_To_String(const char* pSource)
     size_t i_length = strlen(pSource);
     size_t o_length = (i_length + 1) * 2;
     char* pmbs = (char*)malloc(o_length);
+	
+	if (pmbs == NULL)
+	{
+		COMMLOG(OBS_LOGERROR, "UTF8_To_String: Malloc str failed!");
+		return NULL;
+	}
+	
     memset_s(pmbs, o_length, 0, o_length);
     char* result = pmbs;  
     size_t retsize;
@@ -397,22 +411,22 @@ char * base64Decode(const char *base64Char, const long base64CharSize, char *ori
         toInt[(int)ENC[i]] = i;
         i++;
     }
-    int int255 = 0xFF;
+    unsigned int int255 = 0xFF;
     int index = 0;
     i = 0;
     while(i < base64CharSize) {
-        int c0 = toInt[(int)base64Char[i]];
-        int c1 = toInt[(int)base64Char[i + 1]];
+        unsigned int c0 = toInt[(int)base64Char[i]];
+        unsigned int c1 = toInt[(int)base64Char[i + 1]];
         originChar[index++] = (((c0 << 2) | (c1 >> 4)) & int255);
         if (index >= originCharSize) {
             return originChar;
         }
-        int c2 = toInt[(int)base64Char[i + 2]];
+        unsigned int c2 = toInt[(int)base64Char[i + 2]];
         originChar[index++] = (((c1 << 4) | (c2 >> 2)) & int255);
         if (index >= originCharSize) {
             return originChar;
         }
-        int c3 = toInt[(int)base64Char[i + 3]];
+        unsigned int c3 = toInt[(int)base64Char[i + 3]];
         originChar[index++] = (((c2 << 6) | c3) & int255);
         i += 4;
     }
@@ -555,7 +569,7 @@ static void SHA1_update(SHA1Context *context, const unsigned char *data,
                         unsigned int len)
 {
     uint32_t i, j;
-
+	errno_t err = EOK;
     j = (context->count[0] >> 3) & 63;
 
     if ((context->count[0] += len << 3) < (len << 3)) {
@@ -564,8 +578,14 @@ static void SHA1_update(SHA1Context *context, const unsigned char *data,
 
     context->count[1] += (len >> 29);
 
-    if ((j + len) > 63) {
-        memcpy_s(&(context->buffer[j]), sizeof(context->buffer) - j, data, (i = 64 - j));
+    if ((j + len) > 63) {		
+		err = EOK;  
+		err = memcpy_s(&(context->buffer[j]), sizeof(context->buffer) - j, data, (i = 64 - j));
+		if (err != EOK)
+		{
+			COMMLOG(OBS_LOGWARN, "SHA1_update: memcpy_s failed!\n");
+		}
+		
         SHA1_transform(context->state, context->buffer);
         for ( ; (i + 63) < len; i += 64) {
             SHA1_transform(context->state, &(data[i]));
@@ -576,7 +596,12 @@ static void SHA1_update(SHA1Context *context, const unsigned char *data,
         i = 0;
     }
 
-    memcpy_s(&(context->buffer[j]), sizeof(context->buffer) - j, &(data[i]), len - i);
+	err = EOK;  
+	err = memcpy_s(&(context->buffer[j]), sizeof(context->buffer) - j, &(data[i]), len - i);
+	if (err != EOK)
+	{
+		COMMLOG(OBS_LOGWARN, "SHA1_update: memcpy_s failed!\n");
+	}
 }
 
 static void SHA1_final(unsigned char digest[20], SHA1Context *context)

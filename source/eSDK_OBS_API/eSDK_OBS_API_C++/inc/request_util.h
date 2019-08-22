@@ -52,7 +52,7 @@ size_t curl_read_func(void *ptr, size_t size, size_t nmemb, void *data);
 
 size_t curl_write_func(void *ptr, size_t size, size_t nmemb,void *data);
 
-CURLcode sslctx_function(CURL *curl, void *sslctx, void *parm);
+CURLcode sslctx_function(CURL *curl, const void *sslctx, void *parm);
 
 void init_locks(void);
 

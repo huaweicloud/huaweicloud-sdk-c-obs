@@ -109,7 +109,7 @@ void error_parser_initialize(error_parser *errorParser)
 }
 
 
-obs_status error_parser_add(error_parser *errorParser, char *buffer,
+obs_status error_parser_add(error_parser *errorParser, const char *buffer,
                           int buffer_size)
 {/*lint !e101 */
     if (!errorParser->errorXmlParserInitialized) {

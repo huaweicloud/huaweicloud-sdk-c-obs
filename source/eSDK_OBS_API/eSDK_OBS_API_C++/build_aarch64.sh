@@ -98,7 +98,7 @@ compileThirty()
 }
 
 #----------±àÒëthird_party_groupware------------
-compileThirty L_THIRTY_DIR
+#compileThirty L_THIRTY_DIR
 
 #cd ${G_BUILD_DIR}
 
@@ -132,14 +132,14 @@ cp -f ${g_PATH}/include/* include
 cp -f ${g_PATH}/lib/*.so lib
 cp -f ./../../../platform/huaweisecurec/include/* include
 cp -f ./../../../platform/huaweisecurec/lib/libsecurec.so lib
-cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/eSDKLogAPI/libeSDKLogAPI.so lib
+cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/C/aarch64/libeSDKLogAPI.so lib
 cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/log4cpp/lib/* lib 
-cp -f ./../../../build/script/Provider/build/${curl_version}/lib/* lib
-cp -f ./../../../build/script/Provider/build/${libxml2_version}/lib/* lib
-cp -f ./../../../build/script/Provider/build/${openssl_version}/lib/* lib 
-cp -f ./../../../build/script/Provider/build/pcre-8.39/lib/* lib 
-cp -f ./../../../build/script/Provider/build/iconv-1.15/lib/* lib 
-cp -f ./../../../build/script/Provider/build/${nghttp2_version}/lib/* lib 
+cp -f ./../../../build/script/Provider/build/arm/${curl_version}/lib/* lib
+cp -f ./../../../build/script/Provider/build/arm/${libxml2_version}/lib/* lib
+cp -f ./../../../build/script/Provider/build/arm/${openssl_version}/lib/* lib 
+cp -f ./../../../build/script/Provider/build/arm/pcre-8.39/lib/* lib 
+cp -f ./../../../build/script/Provider/build/arm/iconv-1.15/lib/* lib 
+cp -f ./../../../build/script/Provider/build/arm/${nghttp2_version}/lib/* lib 
 echo "BUILD_FOR_ARM=true" >  demo/Makefile
 cat Makefile_obs >> demo/Makefile
 cp -f OBS.ini lib

@@ -2,7 +2,7 @@
 echo =========== compile curl ==================
 open_src_path=`pwd`
 if [ "NULL"${curl_version} = "NULL" ]; then
-   curl_version=curl-7.64.0
+   curl_version=curl-7.64.1
 fi
 curl_dir=./../../../third_party_groupware/eSDK_Storage_Plugins/${curl_version}
 curl_lib=`pwd`/build/${curl_version}/lib

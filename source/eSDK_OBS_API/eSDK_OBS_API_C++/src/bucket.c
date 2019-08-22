@@ -39,9 +39,16 @@ static int update_bucket_common_data_callback(int buffer_size, char *buffer,
     if (!toCopy) {
         return 0;
     }
-
-    memcpy_s(buffer,buffer_size,&(bucket_data->doc[bucket_data->docBytesWritten]),toCopy);
-    bucket_data->docBytesWritten += toCopy;
+    
+	errno_t err = EOK;  
+	err = memcpy_s(buffer,buffer_size,&(bucket_data->doc[bucket_data->docBytesWritten]),toCopy);
+    if (err != EOK)
+    {
+		COMMLOG(OBS_LOGWARN, "update_bucket_common_data_callback: memcpy_s failed!\n");
+		return 0;
+    }
+	
+	bucket_data->docBytesWritten += toCopy;
 
     return toCopy;
 }
@@ -59,7 +66,7 @@ static void update_bucket_common_complete_callback(obs_status status,
     return;
 }
 
-update_bucket_common_data* init_create_bucket_cbdata(char *location_constraint, obs_use_api use_api)
+update_bucket_common_data* init_create_bucket_cbdata(const char *location_constraint, obs_use_api use_api)
 {
     update_bucket_common_data *bucket_data = (update_bucket_common_data *) malloc(sizeof(update_bucket_common_data));
     if (!bucket_data) 
@@ -112,7 +119,7 @@ obs_status update_bucket_common_properties_callback(const obs_response_propertie
 }
 
 void create_bucket(obs_options *options, obs_canned_acl canned_acl,
-        char *location_constraint, obs_response_handler *handler,
+        const char *location_constraint, obs_response_handler *handler,
         void *callback_data)
 {
     request_params      params;
@@ -287,6 +294,17 @@ static obs_status data_callback(int buffer_size, const char *buffer,
 
 void list_bucket(obs_options *options, obs_list_service_handler *handler, void *callback_data)
 {
+	obs_use_api use_api = OBS_USE_API_S3;
+
+	if (options->request_options.auth_switch == OBS_OBS_TYPE)
+	{
+		use_api = OBS_USE_API_OBS;
+	}
+	else if (options->request_options.auth_switch == OBS_S3_TYPE)
+	{
+		use_api = OBS_USE_API_S3;
+	}
+	
     request_params      params;
     
     COMMLOG(OBS_LOGINFO, "Enter list_bucket successfully !");
@@ -328,6 +346,7 @@ void list_bucket(obs_options *options, obs_list_service_handler *handler, void *
     params.isCheckCA             = options->bucket_options.certificate_info ? 1 : 0;
     params.storageClassFormat    = no_need_storage_class;
     params.temp_auth             = options->temp_auth; 
+	params.use_api               = use_api;
 
     request_perform(&params);
     COMMLOG(OBS_LOGINFO, "Leave list_bucket successfully !");
@@ -337,15 +356,28 @@ void list_bucket_obs(obs_options *options, obs_list_service_obs_handler *handler
 {
     request_params      params;
     obs_use_api use_api = OBS_USE_API_S3;
-    if (get_api_version(options->bucket_options.bucket_name, options->bucket_options.host_name,options->bucket_options.protocol) == 
-        OBS_STATUS_OK)
-    {
-        use_api = OBS_USE_API_OBS;
-    }
-    else
-    {
-        use_api = OBS_USE_API_S3;
-    }
+	
+	if (options->request_options.auth_switch == OBS_NEGOTIATION_TYPE)
+	{
+		if (get_api_version(NULL, options->bucket_options.host_name,options->bucket_options.protocol) == 
+			OBS_STATUS_OK)
+		{
+			use_api = OBS_USE_API_OBS;
+		}
+		else
+		{
+			use_api = OBS_USE_API_S3;
+		}
+	}
+	else if (options->request_options.auth_switch == OBS_OBS_TYPE)
+	{
+		use_api = OBS_USE_API_OBS;
+	}
+	else if (options->request_options.auth_switch == OBS_S3_TYPE)
+	{
+		use_api = OBS_USE_API_S3;
+	}
+	
     COMMLOG(OBS_LOGINFO, "Enter list_bucket obs successfully !");
     xml_obs_callback_data *data = (xml_obs_callback_data *)malloc(sizeof(xml_obs_callback_data));
     if (!data) 
@@ -690,7 +722,7 @@ static void list_objects_complete_callback(obs_status requestStatus,
     return ;
 }
 
-static obs_status set_objects_query_params(char *prefix, char *marker, char *delimiter, int maxkeys, 
+static obs_status set_objects_query_params(const char *prefix, const char *marker, const char *delimiter, int maxkeys, 
             char* query_params)
 {  
     string_buffer(queryParams, QUERY_STRING_LEN);
@@ -1032,7 +1064,7 @@ static void list_versions_complete_callback(obs_status requestStatus,
 }
 
 
-void list_bucket_objects(obs_options *options, char *prefix, char *marker, char *delimiter, 
+void list_bucket_objects(obs_options *options, const char *prefix, const char *marker, const char *delimiter, 
             int maxkeys, obs_list_objects_handler *handler, void *callback_data)
 {
     request_params params;
@@ -1090,8 +1122,8 @@ void list_bucket_objects(obs_options *options, char *prefix, char *marker, char 
 }
 
 /************************************list_versions**********************************************/
-static obs_status set_versions_query_params(char *prefix, char *key_marker, char *delimiter, 
-            int maxkeys, char *version_id_marker, char* query_params)
+static obs_status set_versions_query_params(const char *prefix, const char *key_marker, const char *delimiter, 
+            int maxkeys, const char *version_id_marker, char* query_params)
 {  
     string_buffer(queryParams, QUERY_STRING_LEN);
     string_buffer_initialize(queryParams);
@@ -1131,8 +1163,8 @@ static obs_status set_versions_query_params(char *prefix, char *key_marker, char
 }
 
 
-void list_versions(obs_options *options, char *prefix, char *key_marker, char *delimiter, 
-           int maxkeys, char *version_id_marker, obs_list_versions_handler *handler, void *callback_data)
+void list_versions(obs_options *options, const char *prefix, const char *key_marker, const char *delimiter, 
+           int maxkeys, const char *version_id_marker, obs_list_versions_handler *handler, void *callback_data)
 {
     request_params params;
     char queryParams[QUERY_STRING_LEN + 1] = {0};
@@ -1324,8 +1356,8 @@ void get_bucket_storage_info(obs_options *options, int capacity_length, char *ca
 
 
 /**************************list_multipart_uploads************************************************/
-static obs_status set_multipart_query_params(char *prefix, char *marker, char *delimiter,
-        char* uploadid_marke, int max_uploads, char* query_params)
+static obs_status set_multipart_query_params(const char *prefix, const char *marker, const char *delimiter,
+        const char* uploadid_marke, int max_uploads, char* query_params)
 {  
     string_buffer(queryParams, QUERY_STRING_LEN);
     string_buffer_initialize(queryParams);
@@ -1615,8 +1647,8 @@ static void list_multipart_uploads_complete_callback(obs_status requestStatus,
 }
 
 
-void list_multipart_uploads(obs_options *options, char *prefix, char *marker, char *delimiter,
-        char* uploadid_marke, int max_uploads, obs_list_multipart_uploads_handler *handler, 
+void list_multipart_uploads(obs_options *options, const char *prefix, const char *marker, const char *delimiter,
+        const char* uploadid_marke, int max_uploads, obs_list_multipart_uploads_handler *handler, 
         void *callback_data)
 {
     request_params params;
@@ -1871,7 +1903,7 @@ void get_bucket_quota(obs_options *options, uint64_t *storagequota_return,
     COMMLOG(OBS_LOGINFO, "get bucket quota finish!");
 }
 
-void set_bucket_policy(obs_options *options, char *policy, obs_response_handler *handler, 
+void set_bucket_policy(obs_options *options, const char *policy, obs_response_handler *handler, 
             void *callback_data)
 {
     request_params params;
@@ -2022,7 +2054,7 @@ void delete_bucket_policy(obs_options *options, obs_response_handler *handler, v
     COMMLOG(OBS_LOGINFO, "delete bucket policy finish!");
 }
 
-obs_status init_set_bucket_version_data(char *version_status, update_bucket_common_data **out_data)
+obs_status init_set_bucket_version_data(const char *version_status, update_bucket_common_data **out_data)
 {
     int tmplen = 0;
     int mark = 0;
@@ -2062,7 +2094,7 @@ obs_status init_set_bucket_version_data(char *version_status, update_bucket_comm
     return OBS_STATUS_OK;
 }
 
-void set_bucket_version_configuration(obs_options *options, char *version_status, 
+void set_bucket_version_configuration(obs_options *options, const char *version_status, 
                                     obs_response_handler *handler, void *callback_data)
 {
     request_params params;
@@ -2334,8 +2366,15 @@ int set_common_data_callback(int buffer_size, char *buffer, void *callback_data)
         return 0;
     }
 
-    memcpy_s(buffer, buffer_size, &(common_data->xml_document
+	errno_t err = EOK; 
+    err = memcpy_s(buffer, buffer_size, &(common_data->xml_document
         [common_data->xml_document_bytes_written]), ret);
+	if (err != EOK)
+	{
+		COMMLOG(OBS_LOGWARN, "set_common_data_callback: memcpy_s failed!\n");
+		return 0;
+	}
+		
     common_data->xml_document_bytes_written += ret;
 
     return ret;
@@ -2959,8 +2998,14 @@ static int set_lifecycle_data_callback(int buffer_size, char *buffer, void *call
         return 0;
     }
 
-    memcpy_s(buffer, buffer_size, &(sblcData->doc[sblcData->docBytesWritten]), toCopy); 
-
+	errno_t err = EOK;  
+	err = memcpy_s(buffer, buffer_size, &(sblcData->doc[sblcData->docBytesWritten]), toCopy); 
+    if (err != EOK)
+    {
+		COMMLOG(OBS_LOGWARN, "set_lifecycle_data_callback: memcpy_s failed!\n");
+		return 0;
+    }
+	
     sblcData->docBytesWritten += toCopy;
     return toCopy;
 }
@@ -4486,7 +4531,7 @@ obs_status convert_bucket_logging_xml_callback(const char *element_path,
     return status;
 }
 
-obs_status convert_bls(char *blsXml, bucket_logging_message *logging_message,obs_use_api use_api)
+obs_status convert_bls(const char *blsXml, bucket_logging_message *logging_message,obs_use_api use_api)
 {
     convert_bucket_logging_data data;
 
@@ -5491,8 +5536,14 @@ static int set_notification_data_callback(int buffer_size, char *buffer,
         return 0;
     }
 
-    memcpy_s(buffer, buffer_size, &(sncData->doc[sncData->doc_bytes_written]), toCopy);
-
+	errno_t err = EOK;  
+	err = memcpy_s(buffer, buffer_size, &(sncData->doc[sncData->doc_bytes_written]), toCopy);
+    if (err != EOK)
+    {
+		COMMLOG(OBS_LOGWARN, "set_notification_data_callback: memcpy_s failed!\n");
+		return 0;
+    }
+	
     sncData->doc_bytes_written += toCopy;
 
     return toCopy;
@@ -5600,11 +5651,18 @@ static obs_status malloc_smn_data_s3(const char *element_path, get_smn_data *smn
         }
 
         memset_s(tmpFilter, alloc_size, 0, alloc_size);
-        memcpy_s(tmpFilter, alloc_size, smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule,
+        errno_t err = EOK;
+		err = memcpy_s(tmpFilter, alloc_size, smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule,
                 sizeof(obs_smn_filter_rule) * 
                 smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule_num);
         free(smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule);
         smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule = tmpFilter;
+		
+		if (err != EOK)
+		{
+			COMMLOG(OBS_LOGWARN, "malloc_smn_data_s3: memcpy_s failed!\n");
+			return OBS_STATUS_OutOfMemory;
+		}
     }
     else if (!strcmp(element_path, "NotificationConfiguration/TopicConfiguration"))
     {
@@ -5641,10 +5699,17 @@ static obs_status malloc_smn_data_s3(const char *element_path, get_smn_data *smn
         }
         memset_s((tmpTopicConf+nTmpIdx)->event, sizeof(obs_smn_event_enum), 0, sizeof(obs_smn_event_enum));
 
-        memcpy_s(tmpTopicConf, alloc_topic_size, smn_data->notification_conf.topic_conf,
-            sizeof(obs_smn_topic_configuration) * nTmpIdx);
+        errno_t err = EOK;  
+		err = memcpy_s(tmpTopicConf, alloc_topic_size, smn_data->notification_conf.topic_conf,
+            sizeof(obs_smn_topic_configuration) * nTmpIdx);		
         free(smn_data->notification_conf.topic_conf);
         smn_data->notification_conf.topic_conf = tmpTopicConf;
+		
+		if (err != EOK)
+		{
+			COMMLOG(OBS_LOGWARN, "malloc_smn_data_s3: memcpy_s failed!\n");
+			return OBS_STATUS_OutOfMemory;
+		}
     }
     else if (!strcmp(element_path, "NotificationConfiguration/TopicConfiguration/Event"))
     {
@@ -5658,11 +5723,19 @@ static obs_status malloc_smn_data_s3(const char *element_path, get_smn_data *smn
             return OBS_STATUS_OutOfMemory;
         }
         memset_s(tmpEvent, alloc_event_size, 0, alloc_event_size);
-        memcpy_s(tmpEvent, alloc_event_size,
+
+		errno_t err = EOK;  
+		err = memcpy_s(tmpEvent, alloc_event_size,
         smn_data->notification_conf.topic_conf[nTopicConfIdx].event, sizeof(obs_smn_event_enum) * 
         (smn_data->notification_conf.topic_conf[nTopicConfIdx].event_num));
-        free(smn_data->notification_conf.topic_conf[nTopicConfIdx].event);
+        free(smn_data->notification_conf.topic_conf[nTopicConfIdx].event);		
         smn_data->notification_conf.topic_conf[nTopicConfIdx].event = tmpEvent;
+		
+		if (err != EOK)
+		{
+			COMMLOG(OBS_LOGWARN, "malloc_smn_data_s3: memcpy_s failed!\n");
+			return OBS_STATUS_OutOfMemory;
+		}
     }
 
     return OBS_STATUS_OK;
@@ -5671,6 +5744,7 @@ static obs_status malloc_smn_data_s3(const char *element_path, get_smn_data *smn
 static obs_status malloc_smn_data_obs(const char *element_path, get_smn_data *smn_data)
 {
     int nTopicConfIdx = smn_data->notification_conf.topic_conf_num;
+	errno_t err = EOK;
     
     if(!strcmp(element_path, "NotificationConfiguration/TopicConfiguration/Filter/Object/FilterRule"))
     {
@@ -5685,11 +5759,18 @@ static obs_status malloc_smn_data_obs(const char *element_path, get_smn_data *sm
         }
 
         memset_s(tmpFilter, alloc_size, 0, alloc_size);
-        memcpy_s(tmpFilter, alloc_size, smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule,
+        err = memcpy_s(tmpFilter, alloc_size, smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule,
                 sizeof(obs_smn_filter_rule) * 
                 smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule_num);
+		
         free(smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule);
         smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule = tmpFilter;
+		
+		if (err != EOK)
+		{
+			COMMLOG(OBS_LOGWARN, "Malloc_smn_data_obs: memcpy_s failed!\n");
+			return OBS_STATUS_OutOfMemory;
+		}	
     }
     else if (!strcmp(element_path, "NotificationConfiguration/TopicConfiguration"))
     {
@@ -5726,10 +5807,17 @@ static obs_status malloc_smn_data_obs(const char *element_path, get_smn_data *sm
         }
         memset_s((tmpTopicConf+nTmpIdx)->event, sizeof(obs_smn_event_enum), 0, sizeof(obs_smn_event_enum));
 
-        memcpy_s(tmpTopicConf, alloc_topic_size, smn_data->notification_conf.topic_conf,
+        err = memcpy_s(tmpTopicConf, alloc_topic_size, smn_data->notification_conf.topic_conf,
             sizeof(obs_smn_topic_configuration) * nTmpIdx);
-        free(smn_data->notification_conf.topic_conf);
+
+		free(smn_data->notification_conf.topic_conf);
         smn_data->notification_conf.topic_conf = tmpTopicConf;
+		
+		if (err != EOK)
+		{
+			COMMLOG(OBS_LOGWARN, "Malloc_smn_data_obs: memcpy_s failed!\n");
+			return OBS_STATUS_OutOfMemory;
+		}
     }
     else if (!strcmp(element_path, "NotificationConfiguration/TopicConfiguration/Event"))
     {
@@ -5743,11 +5831,19 @@ static obs_status malloc_smn_data_obs(const char *element_path, get_smn_data *sm
             return OBS_STATUS_OutOfMemory;
         }
         memset_s(tmpEvent, alloc_event_size, 0, alloc_event_size);
-        memcpy_s(tmpEvent, alloc_event_size,
+        
+		err = memcpy_s(tmpEvent, alloc_event_size,
         smn_data->notification_conf.topic_conf[nTopicConfIdx].event, sizeof(obs_smn_event_enum) * 
         (smn_data->notification_conf.topic_conf[nTopicConfIdx].event_num));
-        free(smn_data->notification_conf.topic_conf[nTopicConfIdx].event);
+		
+		free(smn_data->notification_conf.topic_conf[nTopicConfIdx].event);
         smn_data->notification_conf.topic_conf[nTopicConfIdx].event = tmpEvent;
+		
+		if (err != EOK)
+		{
+			COMMLOG(OBS_LOGWARN, "Malloc_smn_data_obs: memcpy_s failed!\n");
+			return OBS_STATUS_OutOfMemory;
+		}
     }
 
     return OBS_STATUS_OK;

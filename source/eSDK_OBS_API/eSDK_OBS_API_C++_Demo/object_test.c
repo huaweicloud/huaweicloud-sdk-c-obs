@@ -325,6 +325,11 @@ extern int64_t parseIso8601Time(const char *str);
 #define INIT_CERT_BUFFER_LEN "buffer_len="
 #define INIT_CERT_BUFFER_LEN_LEN (sizeof(INIT_CERT_BUFFER_LEN) - 1)
 
+#define USE_OBS_AUTH "use_obs_auth"
+#define USE_OBS_AUTH_LEN (sizeof(USE_OBS_AUTH) - 1)
+#define USE_S3_AUTH "use_s3_auth"
+#define USE_S3_AUTH_LEN (sizeof(USE_S3_AUTH) - 1)
+
 
 /***********************结构定义*************************************/
 
@@ -448,6 +453,12 @@ static void test_head_object_new(int argc, char **argv, int optindex)
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
 
     obs_head_object(&option,key, &response_handler, &data);
@@ -492,6 +503,12 @@ static void test_head_bucket_new(int argc, char **argv, int optindex)
         {
            option.bucket_options.certificate_info = ca_info;       
            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
     }
 
@@ -578,6 +595,12 @@ static void test_batch_delete_new(int argc, char **argv, int optindex)
         {
            option.bucket_options.certificate_info = ca_info;       
            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
     }
     
@@ -755,6 +778,12 @@ static void test_create_bucket_new(int argc, char **argv, int optindex)
             tempauth.temp_auth_callback = &tempAuthCallBack_getResult;
             option.temp_auth = &tempauth;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
 
     option.bucket_options.host_name = HOST_NAME;
@@ -795,6 +824,19 @@ static void test_delete_bucket_new(int argc, char **argv, int optindex)
     char *bucket_name =  argv[optindex++];
     printf("Bucket's name is: %s, it will be deleted\n", bucket_name);
 
+	
+	
+    while (optindex < argc) {
+        char *param = argv[optindex++];
+		if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+    }
+	
+	
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
@@ -1066,6 +1108,12 @@ static void test_append_object_new(int argc, char **argv, int optindex)
         else if (!strncmp(param, OBJECT_POSITION, OBJECT_POSITION_LEN)) {
             position = &(param[OBJECT_POSITION_LEN]);
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -1231,6 +1279,12 @@ static void test_put_object_new(int argc, char **argv, int optindex)
             tempauth.expires = auth_expire;
             tempauth.temp_auth_callback = &tempAuthCallBack_getResult;
             option.temp_auth = &tempauth;
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -1433,6 +1487,12 @@ void test_get_object_new(int argc, char **argv, int optindex)
             tempauth.temp_auth_callback = &tempAuthCallBack_getResult;
             option.temp_auth = &tempauth;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -1495,6 +1555,12 @@ static void test_delete_object_new(int argc, char **argv, int optindex)
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) { 
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;            
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -1561,6 +1627,12 @@ static void test_list_bucket_object_new(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = &(param[CERTIFICATE_INFO_PREFIX_LEN]);
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -1643,7 +1715,7 @@ void test_list_bucket_new_obs(int argc, char **argv, int optindex)
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-    option.bucket_options.uri_style = OBS_URI_STYLE_PATH;
+    option.bucket_options.uri_style = gDefaultURIStyle;
 
     while (optindex < argc) {
         char *param = argv[optindex++];
@@ -1680,10 +1752,70 @@ void test_list_bucket_new_obs(int argc, char **argv, int optindex)
 
 void test_list_bucket_new(int argc, char **argv, int optindex)
 {
-    if(demoUseObsApi == OBS_USE_API_S3) {
-        test_list_bucket_new_s3(argc, argv, optindex);
-    } else {
-        test_list_bucket_new_obs(argc, argv, optindex);
+    //if(demoUseObsApi == OBS_USE_API_S3) {
+    //    test_list_bucket_new_s3(argc, argv, optindex);
+    //} else {
+    //    test_list_bucket_new_obs(argc, argv, optindex);
+    //}
+	
+	obs_options option;
+    init_obs_options(&option); 
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+
+    while (optindex < argc) {
+        char *param = argv[optindex++];
+        if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+            option.bucket_options.protocol = get_protocol_from_argv(param);
+        }
+        else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
+            option.bucket_options.certificate_info = &(param[CERTIFICATE_INFO_PREFIX_LEN]);
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else {
+            fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
+        }
+    }
+	
+    list_service_data data;
+    memset(&data, 0, sizeof(list_service_data));
+	
+	
+	if (option.request_options.auth_switch == OBS_S3_TYPE)
+	{
+		obs_list_service_handler listHandler =
+		{ 
+			{NULL, &list_bucket_complete_callback },
+			&listServiceCallback
+		};
+    
+		list_bucket(&option,&listHandler,&data);
+	}
+	else
+	{
+		obs_list_service_obs_handler listHandler =
+		{ 
+			{NULL, &list_bucket_complete_callback },
+			&listServiceObsCallback
+		};
+		
+		list_bucket_obs(&option,&listHandler,&data);
+	}
+	
+	if (data.ret_status == OBS_STATUS_OK) 
+    {
+        printf("list bucket successfully. \n");
+    }
+    else
+    {
+        printf("list bucket failed(%s).\n", obs_get_status_name(data.ret_status));
     }
 }
 
@@ -1744,6 +1876,12 @@ static void test_init_upload_part_new(int argc, char **argv, int optindex)
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = &(param[CERTIFICATE_INFO_PREFIX_LEN]);
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -1800,6 +1938,12 @@ static void test_list_versions_new(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = &(param[CERTIFICATE_INFO_PREFIX_LEN]);
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -1883,6 +2027,12 @@ void test_set_bucket_policy(int argc, char **argv, int optindex)
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = ca_info;       
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -1926,6 +2076,12 @@ void test_get_bucket_policy(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = ca_info;       
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -1972,6 +2128,12 @@ void test_delete_bucket_policy(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = ca_info;       
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -2175,6 +2337,19 @@ static void test_set_bucket_lifecycle_new(int argc, char **argv, int optindex)
     };
 
     
+	while (optindex < argc) {
+        char *param = argv[optindex++];
+		if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else {
+            fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
+        }
+    }
+	
     set_bucket_lifecycle_configuration(&option, bucket_lifecycle_conf, rule_number, 
         &response_handler, &ret_status);
     if (OBS_STATUS_OK == ret_status) {
@@ -2225,6 +2400,12 @@ static void test_get_lifecycle_config_new(int argc, char **argv, int optindex)
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
     // 设置回调函数
     obs_lifecycle_handler lifeCycleHandlerEx =
@@ -2269,6 +2450,12 @@ static void test_delete_lifecycle_config_new(int argc, char **argv, int optindex
         {
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
     }
     obs_response_handler response_handler =
@@ -2319,6 +2506,12 @@ static void test_set_bucket_version_new(int argc, char **argv, int optindex)
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
     
     set_bucket_version_configuration(&option, status, 
@@ -2347,6 +2540,18 @@ void test_get_bucket_version_new(int argc, char **argv, int optindex)
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
 
+	
+    while (optindex < argc) 
+    {
+        char *param = argv[optindex ++];
+		if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+    }
+	
     obs_response_handler response_handler =
     { 
         &response_properties_callback,
@@ -2400,6 +2605,12 @@ void test_get_bucket_storage_info_new(int argc, char **argv, int optindex)
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
     
     get_bucket_storage_info(&option, OBS_COMMON_LEN_256, capacity, OBS_COMMON_LEN_256, obj_num, 
@@ -2452,6 +2663,12 @@ void test_set_bucket_acl_byhead_new(int argc, char **argv, int optindex)
         {
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
     }
     set_bucket_acl_by_head(&option, canned_acl, &response_handler, &ret_status);
@@ -2526,6 +2743,12 @@ void test_get_bucket_acl_new(int argc, char **argv, int optindex)
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
     get_bucket_acl(&option, aclinfo, &response_handler, &ret_status);
     if (OBS_STATUS_OK == ret_status)
@@ -2593,6 +2816,12 @@ void test_set_object_acl_byhead_new(int argc, char **argv, int optindex)
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
     set_object_acl_by_head(&option, &object_info, canned_acl, &response_handler, &ret_status);
     if (ret_status == OBS_STATUS_OK) {
@@ -2649,6 +2878,12 @@ void test_get_object_acl_new(int argc, char **argv, int optindex)
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
     get_object_acl(&option, aclinfo, &response_handler, &ret_status);
     if (OBS_STATUS_OK == ret_status)
@@ -2694,8 +2929,8 @@ void init_acl_info(manager_acl_info *aclinfo)
     memset_s(aclinfo->owner_id,sizeof(aclinfo->owner_id),0,sizeof(aclinfo->owner_id));
     aclinfo->owner_display_name = (char *)malloc(sizeof(char)*100);
     memset_s(aclinfo->owner_display_name,sizeof(aclinfo->owner_display_name),0,sizeof(aclinfo->owner_display_name));
-    strcpy(aclinfo->owner_id, "domainiddomainiddomainiddo000400");   
-    strcpy(aclinfo->owner_display_name, "displayname");
+    strcpy(aclinfo->owner_id, "domainiddomainiddomainiddo006000");   
+    strcpy(aclinfo->owner_display_name, "domainnamedom006000");
 
     memset(&aclinfo->object_info,0,sizeof(aclinfo->object_info));
 }
@@ -2790,6 +3025,12 @@ obs_acl_group* set_grant_acl(int argc, char **argv, int optindex, obs_options* o
         {
             option->bucket_options.certificate_info = ca_info;       
             option->bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option->request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option->request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -2915,6 +3156,12 @@ void test_set_object_acl_new(int argc, char **argv, int optindex)
         {
             aclinfo.object_delivered = convertInt(&(param[delivered_length]), "delivered");
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
     set_object_acl(&option, &aclinfo, &response_handler, &ret_status);
     
@@ -2974,6 +3221,12 @@ static void test_set_bucket_tagging_new(int argc, char **argv, int optindex)
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
     
     
@@ -3002,6 +3255,18 @@ void test_get_bucket_tagging_new(int argc, char **argv, int optindex)
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
 
+	
+	while (optindex < argc) 
+    {
+        char *param = argv[optindex ++];
+		if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+    }
+	
      obs_get_bucket_tagging_handler response_handler = 
     {
          {&response_properties_callback, &get_tagging_complete_callback}, 
@@ -3038,6 +3303,17 @@ void test_delete_bucket_tagging_new(int argc, char **argv, int optindex)
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
+	
+	while (optindex < argc) 
+    {
+        char *param = argv[optindex ++];
+		if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+    }
 
     obs_response_handler response_handler =
     { 
@@ -3091,6 +3367,12 @@ static void test_set_bucket_quota_new(int argc, char **argv, int optindex)
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
     
     set_bucket_quota(&option, bucketquota, &response_handler, &ret_status);
@@ -3130,6 +3412,12 @@ static void test_get_bucket_quota_new(int argc, char **argv, int optindex)
         {
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
     }
     
@@ -3260,6 +3548,12 @@ void test_object_option(int argc, char **argv, int optindex)
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = ca_info;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -3332,6 +3626,12 @@ void test_bucket_option(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = ca_info;
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -3427,7 +3727,13 @@ void test_set_bucket_cors(int argc, char **argv, int optindex)
         }       
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = ca_info;       
-        }       
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -3490,6 +3796,19 @@ void test_get_cors_config(int argc, char **argv, int optindex)
     option.bucket_options.access_key    = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style     = gDefaultURIStyle;
+	
+	
+	while (optindex < argc) 
+    {
+        char *param = argv[optindex ++];
+		if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+    }
+	
     // 设置回调函数
     obs_cors_handler cors_handler_info =
     {
@@ -3519,6 +3838,18 @@ static void test_delete_cors_config(int argc, char **argv, int optindex)
     option.bucket_options.access_key    = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style     = gDefaultURIStyle;
+	
+	while (optindex < argc) 
+    {
+        char *param = argv[optindex ++];
+		if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+    }
+	
     // 设置回调函数
     obs_response_handler response_handler =
     { 
@@ -3625,10 +3956,60 @@ static void test_set_bucket_logging_with_grant_new_obs(int argc, char **argv, in
 
 static void test_set_bucket_logging_with_grant_new(int argc, char **argv, int optindex)
 {
-    if(demoUseObsApi == OBS_USE_API_S3) {
-        test_set_bucket_logging_with_grant_new_s3(argc, argv, optindex);
-    } else {
-        test_set_bucket_logging_with_grant_new_obs(argc, argv, optindex);
+    //if(demoUseObsApi == OBS_USE_API_S3) {
+    //    test_set_bucket_logging_with_grant_new_s3(argc, argv, optindex);
+    //} else {
+    //    test_set_bucket_logging_with_grant_new_obs(argc, argv, optindex);
+    //}
+	
+	char *bucket_name = argv[optindex++];
+    obs_acl_group *g;
+    obs_status ret_status = OBS_STATUS_BUTT;
+    char *target_bucket = argv[optindex++];
+    char *target_prefix = argv[optindex++];
+    
+    obs_options option;
+    init_obs_options(&option);
+    printf("Bucket's name is == %s. \n", bucket_name);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;  
+	
+    obs_response_handler response_handler =
+    { 
+        0,  &response_complete_callback
+    };
+
+    g = set_grant_acl(argc, argv, optindex, &option);
+        
+    if(option.request_options.auth_switch == OBS_S3_TYPE)
+	{
+		set_bucket_logging_configuration(&option, target_bucket, target_prefix, 
+            g, &response_handler, &ret_status);
+	}
+	else
+	{
+		set_bucket_logging_configuration_obs(&option, target_bucket, target_prefix, "agency_test",
+            g, &response_handler, &ret_status);
+	}
+
+	
+	if (ret_status == OBS_STATUS_OK) {
+        printf("set bucket(%s) logging successfully. \n", bucket_name);
+    }
+    else
+    {
+        printf("set bucket logging failed(%s).\n",obs_get_status_name(ret_status));
+    }
+    if(g)
+    {
+        if (g->acl_grants)
+        {
+            free(g->acl_grants);
+        }
+        free(g);
     }
 }
 
@@ -3658,6 +4039,12 @@ void test_get_bucket_logging_new(int argc, char **argv, int optindex)
         {
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
     }
     
@@ -3724,6 +4111,12 @@ void test_set_bucket_storage_class_new(int argc, char **argv, int optindex)
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
    
     obs_response_handler response_handler =
@@ -3768,6 +4161,12 @@ static void test_get_bucket_storage_class_new(int argc, char **argv, int optinde
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
     }
 
     obs_get_bucket_storage_class_handler getBucketStorageResponse = 
@@ -3810,6 +4209,17 @@ static void test_set_bucket_website_all_new(int argc, char **argv, int optindex)
     set_bucket_redirect_all.host_name = redirect_host_name;
     set_bucket_redirect_all.protocol = redirect_protocol;
 
+	while (optindex < argc) 
+    {
+        char *param = argv[optindex ++];
+		if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+    }
+	
     obs_response_handler response_handler =
     { 
         0,
@@ -3841,6 +4251,17 @@ void test_get_bucket_website_new(int argc, char **argv, int optindex)
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
     
+	while (optindex < argc) 
+    {
+        char *param = argv[optindex ++];
+		if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+    }
+	
      obs_get_bucket_websiteconf_handler response_handler = 
     {
          {&response_properties_callback, &response_complete_callback}, 
@@ -3870,6 +4291,18 @@ void test_delete_bucket_website_new(int argc, char **argv, int optindex)
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
 
+	
+	while (optindex < argc) 
+    {
+        char *param = argv[optindex ++];
+		if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+    }
+	
     obs_response_handler response_handler =
     { 
         &response_properties_callback,
@@ -4017,6 +4450,12 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -4148,6 +4587,12 @@ static void test_concurrent_copy_part(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, START_BYTE_PREFIX, START_BYTE_PREFIX_LEN)) {
             start_byte = convertInt(&(param[START_BYTE_PREFIX_LEN]), "start_byte");
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -4287,6 +4732,12 @@ static void test_upload_file(int argc, char **argv, int optindex)
         else if (!strncmp(param, CHECK_POINT, CHECK_POINT_LEN)) {
             check_point = convertInt(&(param[CHECK_POINT_LEN]), "check_point");
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -4360,6 +4811,12 @@ static void test_download_file(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, CHECK_POINT, CHECK_POINT_LEN)) {
             check_point = convertInt(&(param[CHECK_POINT_LEN]), "check_point");
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -4498,6 +4955,12 @@ static void test_set_bucket_website_conf_new(int argc, char **argv, int optindex
                p=strtok(NULL,delim);
            }
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
         else {
            fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -4563,6 +5026,12 @@ void test_restore_object(int argc, char **argv, int optindex)
         else if (!strncmp(param, TIER_PREFIX, TIER_PREFIX_LEN)) {
             tier = (obs_tier)convertInt(&(param[TIER_PREFIX_LEN]), "tier");
 
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
     }
 
@@ -4638,6 +5107,12 @@ void test_copy_object(int argc, char **argv, int optindex)
         else if (!strncmp(param, IS_COPY_PREFIX, IS_COPY_PREFIX_LEN)) {
             is_copy = convertInt(&(param[IS_COPY_PREFIX_LEN]), "is_copy");
 
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
     }
 
@@ -4719,6 +5194,12 @@ static void test_put_object_with_encrypt(int argc, char **argv, int optindex)
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = ca_info;       
             option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -4877,6 +5358,12 @@ void test_get_object_with_encrypt(int argc, char **argv, int optindex)
             tempauth.expires = auth_expire;
             tempauth.temp_auth_callback = &tempAuthCallBack_getResult;
             option.temp_auth = &tempauth;
+        }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -5038,6 +5525,12 @@ static void test_set_notification_configuration_new(int argc, char **argv, int o
                 topic_conf[i].filter_rule_num = filter_rule_num;
             }
         }
+		else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -5071,6 +5564,17 @@ static void test_get_notification_configuration_new(int argc, char **argv, int o
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style     = gDefaultURIStyle;
     
+	while (optindex < argc) 
+    {
+        char *param = argv[optindex ++];
+		if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+    }
+	
     obs_smn_handler notification_handler_info =
     {
         {&response_properties_callback, &response_complete_callback},

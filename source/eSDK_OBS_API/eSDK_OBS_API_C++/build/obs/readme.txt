@@ -50,3 +50,7 @@ V2.1.15
 2、升级开源库，libxml2从libxml2-2.9.5升级到libxml2-2.9.7
 3、User-Agent头域修改为obs-sdk-c/x.x.x
 
+V3.19.5
+1. 添加的auth_switch字段,用于选择S3或者OBS协议访问（用户可访问字段，但文档不给出，默认采用协商）
+2. 删除demo中uri_style的手动赋值（默认初始化为virtual_host）
+

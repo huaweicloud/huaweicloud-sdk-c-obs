@@ -149,7 +149,7 @@ goto:EOF
    )
    
    echo copy 3rd files...
-   set "L_TMP_3rd_LIB_PATH=%G_OBS_3rd_depend_DIR%third_party_groupware\eSDK_Storage_Plugins\"   
+   set "L_TMP_3rd_LIB_PATH=%G_OBS_3rd_depend_DIR%third_party_groupware\eSDK_Storage_Plugins\build\"   
    if not exist "%L_TMP_3rd_LIB_PATH%" (
        echo %L_TMP_3rd_LIB_PATH% not exist.
        set /a %~2=1
@@ -158,19 +158,19 @@ goto:EOF
    
    pushd %L_TMP_3rd_LIB_PATH%
      
-   xcopy /c /Y curl-7.64.0\bin\%G_3rd_PLATFORM%\*.dll %L_TMP_PACKAGE_DIR%bin
-   xcopy /c /Y curl-7.64.0\bin\%G_3rd_PLATFORM%\*.exe %L_TMP_PACKAGE_DIR%bin
-   xcopy /c /Y curl-7.64.0\bin\%G_3rd_PLATFORM%\*.manifest %L_TMP_PACKAGE_DIR%bin
+   xcopy /c /Y curl-7.64.1\win32_x86_msvc\bin\*.dll %L_TMP_PACKAGE_DIR%bin
+   xcopy /c /Y curl-7.64.1\win32_x86_msvc\bin\*.exe %L_TMP_PACKAGE_DIR%bin
+   xcopy /c /Y curl-7.64.1\win32_x86_msvc\bin\*.manifest %L_TMP_PACKAGE_DIR%bin
 
    
-   xcopy /c /Y openssl-1.0.2n\bin\%G_3rd_PLATFORM%\*.dll %L_TMP_PACKAGE_DIR%bin
-   xcopy /c /Y openssl-1.0.2n\bin\%G_3rd_PLATFORM%\*.exe %L_TMP_PACKAGE_DIR%bin
-   xcopy /c /Y openssl-1.0.2n\bin\%G_3rd_PLATFORM%\*.manifest %L_TMP_PACKAGE_DIR%bin 
+   xcopy /c /Y openssl-1.0.2r\bin\win32_x86_msvc\*.dll %L_TMP_PACKAGE_DIR%bin
+   xcopy /c /Y openssl-1.0.2r\bin\win32_x86_msvc\*.exe %L_TMP_PACKAGE_DIR%bin
+   xcopy /c /Y openssl-1.0.2r\bin\win32_x86_msvc\*.manifest %L_TMP_PACKAGE_DIR%bin 
 
    
-   xcopy /c /Y pcre-8.39\bin\%G_3rd_PLATFORM%\*.dll %L_TMP_PACKAGE_DIR%bin
-   xcopy /c /Y pcre-8.39\bin\%G_3rd_PLATFORM%\*.exe %L_TMP_PACKAGE_DIR%bin
-   xcopy /c /Y pcre-8.39\bin\%G_3rd_PLATFORM%\*.manifest %L_TMP_PACKAGE_DIR%bin
+   xcopy /c /Y pcre-8.39\win32_x86_msvc\bin\*.dll %L_TMP_PACKAGE_DIR%bin
+   xcopy /c /Y pcre-8.39\win32_x86_msvc\bin\*.exe %L_TMP_PACKAGE_DIR%bin
+   xcopy /c /Y pcre-8.39\win32_x86_msvc\bin\*.manifest %L_TMP_PACKAGE_DIR%bin
     
    popd
    

@@ -33,9 +33,9 @@ if [ "debug" == "$2" ];then
 	export DEBUG=debug
 fi
 
-export openssl_version=openssl-1.0.2n
-export curl_version=curl-7.64.0
-export libxml2_version=libxml2-2.9.7
+export openssl_version=openssl-1.0.2r
+export curl_version=curl-7.64.1
+export libxml2_version=libxml2-2.9.9
 export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #
 # Function Name: ifFailExitAndPrint
@@ -97,7 +97,7 @@ compileThirty()
 }
 
 #----------±‡“Îthird_party_groupware------------
-compileThirty L_THIRTY_DIR
+#compileThirty L_THIRTY_DIR
 
 #cd ${G_BUILD_DIR}
 
@@ -137,12 +137,12 @@ cp -f ./../../../platform/huaweisecurec/include/* include
 cp -f ./../../../platform/huaweisecurec/lib/libsecurec.so lib
 cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/C/linux_64/libeSDKLogAPI.so lib
 #cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/log4cpp/lib/* lib 
-cp -f ./../../../build/script/Provider/build/${curl_version}/lib/* lib
-cp -f ./../../../build/script/Provider/build/${libxml2_version}/lib/* lib
-cp -f ./../../../build/script/Provider/build/${openssl_version}/lib/* lib 
-cp -f ./../../../build/script/Provider/build/pcre-8.39/lib/* lib 
-cp -f ./../../../build/script/Provider/build/iconv-1.15/lib/* lib 
-cp -f ./../../../build/script/Provider/build/${nghttp2_version}/lib/* lib 
+cp -f ./../../../build/script/Provider/build/linux/${curl_version}/lib/* lib
+cp -f ./../../../build/script/Provider/build/linux/${libxml2_version}/lib/* lib
+cp -f ./../../../build/script/Provider/build/linux/${openssl_version}/lib/* lib 
+cp -f ./../../../build/script/Provider/build/linux/pcre-8.39/lib/* lib 
+cp -f ./../../../build/script/Provider/build/linux/iconv-1.15/lib/* lib 
+cp -f ./../../../build/script/Provider/build/linux/${nghttp2_version}/lib/* lib 
 cp -f Makefile_obs demo/Makefile
 cp -f OBS.ini lib
 cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/object_test.c" demo/object_test.c
@@ -153,27 +153,27 @@ cp -f cert/client.pem demo/client.pem
 cp -f cert/client.pem lib/client.pem
 tar zcvf ${L_PACKAGE_NAME}.tgz demo include lib readme.txt
 
-cp -f ${g_PATH}/include/* include_static
-cp -f ${g_PATH}/lib/*.a lib_static
-cp -f ./../../../platform/huaweisecurec/include/* include_static
-cp -f ./../../../platform/huaweisecurec/src/libsecurec.a lib_static
-cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/eSDKLogAPI/libeSDKLogAPI.a lib_static
-cp -f /usr/local/log4cpp/lib/*.a lib_static
-cp -f ./../../../build/script/Provider/build/${curl_version}/static_package/lib/* lib_static
-cp -f ./../../../build/script/Provider/build/${libxml2_version}/static_package/lib/* lib_static
-cp -f ./../../../build/script/Provider/build/${openssl_version}/static_package/lib/* lib_static
-cp -f ./../../../build/script/Provider/build/pcre-8.39/static_package/lib/* lib_static 
-cp -f ./../../../build/script/Provider/build/iconv-1.15/static_package/lib/* lib_static 
-cp -f ./../../../build/script/Provider/build/${nghttp2_version}/static_package/lib/* lib_static 
-cp -f Makefile_static demo_static/Makefile
-cp -f OBS.ini lib_static
-cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/object_test.c" demo_static/object_test.c
-cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/demo.c" demo_static/demo.c
-cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/demo_common.c" demo_static/demo_common.c
-cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/demo_common.h" demo_static/demo_common.h
-cp -f cert/client.pem demo_static/client.pem
-cp -f cert/client.pem lib_static/client.pem
-tar zcvf ${L_PACKAGE_NAME}_STATIC.tgz demo_static include_static lib_static readme.txt
+#cp -f ${g_PATH}/include/* include_static
+#cp -f ${g_PATH}/lib/*.a lib_static
+#cp -f ./../../../platform/huaweisecurec/include/* include_static
+#cp -f ./../../../platform/huaweisecurec/src/libsecurec.a lib_static
+#cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/eSDKLogAPI/libeSDKLogAPI.a lib_static
+#cp -f /usr/local/log4cpp/lib/*.a lib_static
+#cp -f ./../../../build/script/Provider/build/linux/${curl_version}/static_package/lib/* lib_static
+#cp -f ./../../../build/script/Provider/build/linux/${libxml2_version}/static_package/lib/* lib_static
+#cp -f ./../../../build/script/Provider/build/linux/${openssl_version}/static_package/lib/* lib_static
+#cp -f ./../../../build/script/Provider/build/linux/pcre-8.39/static_package/lib/* lib_static 
+#cp -f ./../../../build/script/Provider/build/linux/iconv-1.15/static_package/lib/* lib_static 
+#cp -f ./../../../build/script/Provider/build/linux/${nghttp2_version}/static_package/lib/* lib_static 
+#cp -f Makefile_static demo_static/Makefile
+#cp -f OBS.ini lib_static
+#cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/object_test.c" demo_static/object_test.c
+#cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/demo.c" demo_static/demo.c
+#cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/demo_common.c" demo_static/demo_common.c
+#cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/demo_common.h" demo_static/demo_common.h
+#cp -f cert/client.pem demo_static/client.pem
+#cp -f cert/client.pem lib_static/client.pem
+#tar zcvf ${L_PACKAGE_NAME}_STATIC.tgz demo_static include_static lib_static readme.txt
 
 rm -rf {demo,include,lib,"Log Collection Statement.txt"}
 rm -rf {demo_static,include_static,lib_static,"Log Collection Statement.txt"}

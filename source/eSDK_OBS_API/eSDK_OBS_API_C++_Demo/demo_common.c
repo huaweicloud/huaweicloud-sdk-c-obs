@@ -50,7 +50,7 @@ int  demoUseObsApi = OBS_USE_API_S3;
 char UPLOAD_ETAG[2][256]={{0},{0}};
 char OBJECT_VER[2][256]={0};
 char UPLOAD_ID[2048]={0};
-obs_uri_style gDefaultURIStyle = OBS_URI_STYLE_PATH;
+obs_uri_style gDefaultURIStyle = OBS_URI_STYLE_VIRTUALHOST;
 
 int get_certificate_info(char *buffer, int buffer_length)
 {
@@ -1003,7 +1003,9 @@ int test_upload_file_data_callback(int buffer_size, char *buffer,
                     (unsigned) buffer_size : data->part_size);
     ret = fread(buffer, 1, toRead, data->infile);
 
-    return ret;
+    data->start_byte += toRead;
+	
+	return ret;
 }
 
 int test_concurrent_upload_part_data_callback(int buffer_size, char *buffer,

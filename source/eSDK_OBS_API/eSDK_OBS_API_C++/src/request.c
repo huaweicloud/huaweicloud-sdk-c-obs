@@ -54,7 +54,7 @@ void init_request_most_count(uint32_t online_request_max)
     return ;
 }
 
-static int sockopt_callback(void *clientp, curl_socket_t curlfd, curlsocktype purpose)
+static int sockopt_callback(const void *clientp, curl_socket_t curlfd, curlsocktype purpose)
 {
     (void)purpose;
     int val = *(int*)clientp;
@@ -431,10 +431,12 @@ static obs_status setup_curl(http_request *request,
         curl_easy_setopt_safe( CURLOPT_SOCKOPTFUNCTION, sockopt_callback );
         curl_easy_setopt_safe( CURLOPT_SOCKOPTDATA, &recvbuffersize);
     }
-    if( params->request_option.http2_switch == OBS_HTTP2_OPEN )
+    /*if( params->request_option.http2_switch == OBS_HTTP2_OPEN )
     {
         curl_easy_setopt_safe(CURLOPT_HTTP_VERSION ,CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE);
-    }
+    }*/
+
+    curl_easy_setopt_safe(CURLOPT_HTTP_VERSION ,CURL_HTTP_VERSION_1_1);
     return set_curl_easy_setopt_safe(request, params);
 }
 
@@ -585,6 +587,12 @@ static void set_query_params(const request_params *params, char *signbuf,
         {
             strncpy_sec(tmp, sizeof(tmp),params->queryParams,len2);
             decodedStr = (char*)malloc(len2+1);
+			
+			if (decodedStr == NULL)
+			{
+				COMMLOG(OBS_LOGWARN, "set_query_params: malloc failed!\n");
+			}
+			
             memset_s(decodedStr,len2+1,0,len2+1);
             urlDecode(decodedStr,tmp,len2+1);
             strncpy_sec(tmp, 1024, decodedStr, strlen(decodedStr)+1);
@@ -653,8 +661,11 @@ static void request_release(http_request *request)
     WaitForSingleObject(hmutex, INFINITE);
 #endif
 
-    if (requestStackCountG == REQUEST_STACK_SIZE) {
-        current_request_cnt--;
+    if (requestStackCountG == REQUEST_STACK_SIZE || request->status != OBS_STATUS_OK) {
+        if (current_request_cnt > 0)
+        {
+			current_request_cnt--;
+        }
 #if defined __GNUC__ || defined LINUX
         pthread_mutex_unlock(&requestStackMutexG);
 #else
@@ -664,7 +675,10 @@ static void request_release(http_request *request)
     }
     else {
         requestStackG[requestStackCountG++] = request;
-        current_request_cnt--;
+		if (current_request_cnt > 0)
+		{
+			current_request_cnt--;
+		}
 #if defined __GNUC__ || defined LINUX
         pthread_mutex_unlock(&requestStackMutexG);
 #else
@@ -710,6 +724,7 @@ void request_finish(http_request *request)
         request->status, request->httpResponseCode);
     COMMLOG(logLevel, "Message: %s", request->errorParser.obsErrorDetails.message);
     COMMLOG(logLevel, "Request Id: %s", request->responseHeadersHandler.responseProperties.request_id);
+	COMMLOG(logLevel, "Reserved Indicator: %s", request->responseHeadersHandler.responseProperties.reserved_indicator);
     if(request->errorParser.codeLen) {
         COMMLOG(logLevel, "Code: %s", request->errorParser.code);
     }
@@ -790,7 +805,7 @@ void request_perform(const request_params *params)
     {   
         accessmode="Path";
     }
-    COMMLOG(OBS_LOGWARN, "%s OBS SDK Version= v3.1.3.1; Endpoint = http://%s; Access Mode = %s", __FUNCTION__,
+    COMMLOG(OBS_LOGWARN, "%s OBS SDK Version= v3.1.3; Endpoint = http://%s; Access Mode = %s", __FUNCTION__,
         params->bucketContext.host_name,accessmode); 
     COMMLOG(OBS_LOGINFO, "%s start curl_easy_perform now", __FUNCTION__);
     CURLcode code = curl_easy_perform(request->curl);
@@ -804,8 +819,8 @@ void request_perform(const request_params *params)
 }
 
 static obs_status compose_api_version_uri(char *buffer, int buffer_size,
-                                          char *bucket_name, char *host_name, 
-                                          char *subResource, obs_protocol protocol)
+                                          const char *bucket_name, const char *host_name, 
+                                          const char *subResource, obs_protocol protocol)
 {
     int len = 0;
     uri_append("http%s://", (protocol == OBS_PROTOCOL_HTTP) ? "" : "s");
@@ -891,17 +906,19 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
         return OBS_STATUS_InternalError;
     }
     
-    COMMLOG(OBS_LOGINFO, "curl_easy_setopt curl fialed code= %d",httpResponseCode);
+    COMMLOG(OBS_LOGINFO, "curl_easy_setopt curl failed code= %d",httpResponseCode);
     if(status == OBS_STATUS_OK && httpResponseCode == 200)
     {
+		curl_easy_cleanup(curl); 
         return OBS_STATUS_OK;
     }
     else {
+		curl_easy_cleanup(curl); 
         return status;
     }
 }
 
-static int sort_bucket_name(char *bucket_name, char *host_name)
+static int sort_bucket_name(const char *bucket_name, const char *host_name)
 {   
     int index = -1;
     for( int i=0; i<(use_api_index+1); i++)
@@ -932,6 +949,19 @@ void set_use_api_switch( obs_options *options, obs_use_api *use_api_temp)
     {
         return ;
     }
+	
+	if (options->request_options.auth_switch == OBS_OBS_TYPE)
+	{
+		*use_api_temp = OBS_USE_API_OBS;
+		return;
+	}
+	
+	if (options->request_options.auth_switch == OBS_S3_TYPE)
+	{
+		*use_api_temp = OBS_USE_API_S3;
+		return;
+	}
+	
     int index = -1;
 #if defined __GNUC__ || defined LINUX
 		pthread_mutex_lock(&use_api_mutex);

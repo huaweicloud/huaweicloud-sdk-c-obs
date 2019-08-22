@@ -1,7 +1,7 @@
 @echo off
 
 rem 设置变量
-set curl_version=curl-7.64.0
+set curl_version=curl-7.64.1
 SET LIBCURL_PATH=%cd%\..\..\..\third_party_groupware\eSDK_Storage_Plugins\%curl_version%
 ::SET SOLUTION="%LIBCURL_PATH%\projects\Windows\VC10\curl-all.sln"
 ::SET SOLUTION_CURL="%LIBCURL_PATH%\projects\Windows\VC10\src\curl.sln"
