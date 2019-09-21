@@ -1,5 +1,5 @@
 1. 第三方依赖：
-    openssl(1.0.2n) zlib(1.2.11.0) libiconv(1.15) pcre(8.39) libssh2(1.7.0) libcurl(7.64.0.0) libxml2(2.9.7) 
+    openssl(1.0.2r) zlib(1.2.11.0) libiconv(1.15) pcre(8.39) libssh2(1.9.0) libcurl(7.64.1) libxml2(2.9.9)  
 
 2. 编译前准备：
     拷贝对应的第三方库源码至esdk_obs_c\third_party_groupware\eSDK_Storage_Plugins目录下，编译对应的第三方库
