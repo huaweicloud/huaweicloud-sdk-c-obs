@@ -45,6 +45,7 @@
 #define MAX_CORS_RULE 100
 #define BASE64_MD5_LEN 64
 #define MD5_LEN 16
+#define POSIX_BUCKET_MIN_QUOTA 1099511627776
 
 #define else_if else if
 
@@ -101,6 +102,7 @@ typedef struct xml_obs_callback_data
     string_buffer(bucket_name, 256);
     string_buffer(creationDate, 128);
     string_buffer(location, 256);
+    string_buffer(bucketType, 64);
 } xml_obs_callback_data;
 
 typedef struct one_object_content

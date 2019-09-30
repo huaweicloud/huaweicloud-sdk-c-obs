@@ -180,6 +180,13 @@ static obs_status compose_obs_headers(const request_params *params,
              return status;
         }
     }
+
+    if ((status = headers_append_list_bucket_type(params->bucketContext.bucket_list_type, 
+                            values, &len)) != OBS_STATUS_OK)
+    {
+        return status;
+    }
+    
     if(encryption_params){
         if ((status = request_compose_encrypt_params(values,params,&len)) != OBS_STATUS_OK) {
              return status;
@@ -265,8 +272,31 @@ static void canonicalize_resource(const request_params *params,
     }
 
     if (subResource && subResource[0]) {
-        append_request("?");
-        append_request(subResource);
+        if (strcmp(subResource, "truncate") == 0)
+        {
+            if(params->queryParams && strstr(params->queryParams,"length") != NULL) 
+            {   
+                append_request("?");
+                append_request(params->queryParams);
+                append_request("&");
+                append_request(subResource);
+            }
+        }
+        else if (strcmp(subResource, "rename") == 0)
+        {
+            if(params->queryParams && strstr(params->queryParams,"name") != NULL) 
+            {   
+                append_request("?");
+                append_request(params->queryParams);
+                append_request("&");
+                append_request(subResource);
+            }
+        }
+        else
+        {
+            append_request("?");
+            append_request(subResource);
+        }
     }
 }
 
@@ -418,6 +448,7 @@ static obs_status setup_curl(http_request *request,
     append_standard_header(ifNoneMatchHeader);
     append_standard_header(rangeHeader);
     append_standard_header(authorizationHeader);
+    append_standard_header(userAgent);
     append_standard_header(websiteredirectlocationHeader);
     int i;
     for (i = 0; i < values->amzHeadersCount; i++) {
@@ -440,6 +471,23 @@ static obs_status setup_curl(http_request *request,
     return set_curl_easy_setopt_safe(request, params);
 }
 
+static void release_token()
+{
+#if defined __GNUC__ || defined LINUX
+    pthread_mutex_lock(&requestStackMutexG);
+#else
+    WaitForSingleObject(hmutex, INFINITE);
+#endif
+    if (current_request_cnt > 0)
+    {
+        current_request_cnt--;
+    }
+#if defined __GNUC__ || defined LINUX
+        pthread_mutex_unlock(&requestStackMutexG);
+#else
+        ReleaseMutex(hmutex);
+#endif
+}
 
 static obs_status request_get(const request_params *params,
                             const request_computed_values *values,
@@ -483,12 +531,14 @@ static obs_status request_get(const request_params *params,
     }
     else {
         if ((request = (http_request *) malloc(sizeof(http_request))) == NULL) {
+            release_token();
             return OBS_STATUS_OutOfMemory;
         }
         memset_s(request,sizeof(http_request), 0, sizeof(http_request));
         if ((request->curl = curl_easy_init()) == NULL) {
             free(request);  
             request = NULL; 
+            release_token();
             return OBS_STATUS_FailedToIInitializeRequest;
         }
     }
@@ -504,12 +554,14 @@ static obs_status request_get(const request_params *params,
         curl_easy_cleanup(request->curl);
         free(request); 
         request = NULL;
+        release_token();
         return status;
     }
     if ((status = setup_curl(request, params, values)) != OBS_STATUS_OK) {
         curl_easy_cleanup(request->curl);
         free(request); 
         request = NULL;
+        release_token();
         return status;
     }
     request->properties_callback = params->properties_callback;
@@ -633,6 +685,8 @@ static obs_status compose_auth_header(const request_params *params,
     char b64[((20 + 1) * 4) / 3] = {0};
     int b64Len = base64Encode(hmac, 20, b64);
 
+    COMMLOG(OBS_LOGWARN, "%s request_perform : StringToSign:  %.*s", __FUNCTION__, buf_len, signbuf);
+
     if(params->use_api == OBS_USE_API_S3)
     {
         snprintf_sec(values->authorizationHeader, sizeof(values->authorizationHeader),_TRUNCATE,
@@ -647,6 +701,11 @@ static obs_status compose_auth_header(const request_params *params,
                  b64Len, b64);
         COMMLOG(OBS_LOGINFO, "%s request_perform : Authorization: OBS %s:%.*s", __FUNCTION__,params->bucketContext.access_key,b64Len, b64);	
     }
+
+    char * userAgent = USER_AGENT_VALUE;
+    int strLen = (int)(strlen(userAgent));
+    snprintf_sec(values->userAgent, sizeof(values->userAgent),_TRUNCATE,"User-Agent: %.*s", strLen, userAgent);
+
 
     return OBS_STATUS_OK;
 }
@@ -805,7 +864,7 @@ void request_perform(const request_params *params)
     {   
         accessmode="Path";
     }
-    COMMLOG(OBS_LOGWARN, "%s OBS SDK Version= v3.1.3; Endpoint = http://%s; Access Mode = %s", __FUNCTION__,
+    COMMLOG(OBS_LOGINFO, "%s OBS SDK Version= %s; Endpoint = http://%s; Access Mode = %s", __FUNCTION__, OBS_SDK_VERSION, 
         params->bucketContext.host_name,accessmode); 
     COMMLOG(OBS_LOGINFO, "%s start curl_easy_perform now", __FUNCTION__);
     CURLcode code = curl_easy_perform(request->curl);
@@ -906,7 +965,7 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
         return OBS_STATUS_InternalError;
     }
     
-    COMMLOG(OBS_LOGINFO, "curl_easy_setopt curl failed code= %d",httpResponseCode);
+    COMMLOG(OBS_LOGINFO, "curl_easy_setopt curl with httpResponseCode = %d",httpResponseCode);
     if(status == OBS_STATUS_OK && httpResponseCode == 200)
     {
 		curl_easy_cleanup(curl); 

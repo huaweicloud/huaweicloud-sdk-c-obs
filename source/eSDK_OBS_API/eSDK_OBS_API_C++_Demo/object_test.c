@@ -330,6 +330,14 @@ extern int64_t parseIso8601Time(const char *str);
 #define USE_S3_AUTH "use_s3_auth"
 #define USE_S3_AUTH_LEN (sizeof(USE_S3_AUTH) - 1)
 
+// posix add 
+#define BUCKET_QUOTA "quota="
+#define BUCKET_QUOTA_LEN (sizeof(BUCKET_QUOTA) - 1)
+
+#define BUCKET_LIST_TYPE "list_type="
+#define BUCKET_LIST_TYPE_LEN (sizeof(BUCKET_LIST_TYPE) - 1)
+
+
 
 /***********************结构定义*************************************/
 
@@ -809,6 +817,113 @@ static void test_create_bucket_new(int argc, char **argv, int optindex)
 }
 
 
+static void test_create_posix_bucket_new(int argc, char **argv, int optindex)
+{
+    obs_options option;
+    char *location = NULL;
+    obs_status ret_status = OBS_STATUS_OK;
+    obs_canned_acl bucket_acl = OBS_CANNED_ACL_PRIVATE;
+    temp_auth_configure tempauth;
+    tempAuthResult  ptrResult;
+    memset(&ptrResult,0,sizeof(tempAuthResult));
+    obs_status status = OBS_STATUS_OK;
+    uint64_t quota_length = 0;
+    
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+    
+    char *bucket_name = argv[optindex++];
+    printf("Bucket's name is == %s \n", bucket_name);
+
+    if(optindex < argc)
+    {
+        char *cert_info = argv[optindex];
+        if (!strncmp(cert_info, INIT_CERT, INIT_CERT_LEN))
+        {   
+            if (!strcmp(&cert_info[INIT_CERT_LEN],"0"))
+            {
+                status = init_certificate_by_path(OBS_PROTOCOL_HTTP, OBS_NO_CERTIFICATE, NULL, 0);
+            }
+            else if (!strcmp(&cert_info[INIT_CERT_LEN],"1"))
+            {
+                status = init_certificate_by_path(OBS_PROTOCOL_HTTPS, OBS_DEFAULT_CERTIFICATE, NULL, 0);
+            }
+            else
+            {
+                status = init_certificate_by_path(OBS_PROTOCOL_HTTPS, OBS_DEFINED_CERTIFICATE, &cert_info[INIT_CERT_LEN], 
+                    strlen(&cert_info[INIT_CERT_LEN]));
+            }
+            
+        }
+        if (!strncmp(cert_info, INIT_CERT_BYBUFFER, INIT_CERT_BYBUFFER_LEN))
+        {
+            char *buffer_len = argv[optindex+1];
+            if (!strncmp(buffer_len, INIT_CERT_BUFFER_LEN, INIT_CERT_BUFFER_LEN_LEN))
+            {
+                status = init_certificate_by_buffer(&cert_info[INIT_CERT_BYBUFFER_LEN], atoi(&buffer_len[INIT_CERT_BUFFER_LEN_LEN]));
+            }
+        }
+
+        if (status != OBS_STATUS_OK)
+        {
+            printf("init certificate failed\n");
+            return;
+        }
+    }
+
+    init_obs_options(&option);
+
+    while (optindex < argc) {
+        char *param = argv[optindex++];
+        if (!strncmp(param, LOCATION_PREFIX, LOCATION_PREFIX_LEN)) {
+            location = &(param[LOCATION_PREFIX_LEN]);
+            printf("locationconstrint is: %s\n", location);
+        }
+        else if (!strncmp(param, CANNED_ACL_PREFIX, CANNED_ACL_PREFIX_LEN)) {
+            bucket_acl = get_acl_from_argv(param);
+        }
+        else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+            option.bucket_options.protocol = get_protocol_from_argv(param);
+        }
+        else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
+            option.bucket_options.certificate_info = &(param[CERTIFICATE_INFO_PREFIX_LEN]);
+        }
+        else if(!strncmp(param, BUCKET_QUOTA, BUCKET_QUOTA_LEN))
+        {
+            quota_length = convertInt(&(param[BUCKET_QUOTA_LEN]), "quota_length");
+        }
+        //tmp auth
+        else if (!strncmp(param, TMP_AUTH_EXPIRES_PREFIX,TMP_AUTH_EXPIRES_PREFIX_LEN)){
+            tempauth.callback_data = (void *)(&ptrResult);
+            int auth_expire = atoi(&param[TMP_AUTH_EXPIRES_PREFIX_LEN]);
+            tempauth.expires = auth_expire;
+            tempauth.temp_auth_callback = &tempAuthCallBack_getResult;
+            option.temp_auth = &tempauth;
+        }
+    }
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    { 
+        0, &response_complete_callback
+    };
+
+    create_posix_bucket(&option, bucket_acl, location, quota_length, &response_handler, &ret_status);
+
+    if (OBS_STATUS_OK == ret_status) {
+        printf("create Bucket [%s] successfully. \n", bucket_name);
+    }
+    else
+    {
+        printf("create Bucket [%s] failed,ret(%d).\n", bucket_name,ret_status);
+    }
+}
+
 
 // delete bucket ---------------------------------------------------------------
 static void test_delete_bucket_new(int argc, char **argv, int optindex)
@@ -913,7 +1028,7 @@ static void growbuffer_read(growbuffer **gb, int amt, int *amtReturn,
 
     *amtReturn = (buf->size > amt) ? amt : buf->size;
 
-    memcpy_s(buffer, strlen(buffer), &(buf->data[buf->start]), *amtReturn);
+    memcpy_s(buffer + strlen(buffer), *amtReturn, &(buf->data[buf->start]), *amtReturn);
     
     buf->start += *amtReturn, buf->size -= *amtReturn;
 
@@ -1666,6 +1781,22 @@ static void test_list_bucket_object_new(int argc, char **argv, int optindex)
 
 
 /*******************test_list_bucket***********************************************/
+static obs_bucket_list_type get_list_type_from_argv(char *param)
+{
+    obs_bucket_list_type ret_list_type = OBS_BUCKET_LIST_ALL;
+    char *val = param;
+    printf("list_type is: %s\n", val);
+    if (!strcmp(val, "object")) {
+        ret_list_type = OBS_BUCKET_LIST_OBJECT;
+    }else if (!strcmp(val, "posix")) {
+        ret_list_type = OBS_BUCKET_LIST_POSIX;
+    }else {
+        fprintf(stderr, "ERROR: Unknown list_type: %s.\n", val);
+    }
+
+    return ret_list_type;
+}
+
 void test_list_bucket_new_s3(int argc, char **argv, int optindex)
 {
     obs_options option;
@@ -1682,6 +1813,9 @@ void test_list_bucket_new_s3(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = &(param[CERTIFICATE_INFO_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, BUCKET_LIST_TYPE, BUCKET_LIST_TYPE_LEN)) {
+            option.bucket_options.bucket_list_type = get_list_type_from_argv(&(param[BUCKET_LIST_TYPE_LEN]));
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -1724,6 +1858,9 @@ void test_list_bucket_new_obs(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = &(param[CERTIFICATE_INFO_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, BUCKET_LIST_TYPE, BUCKET_LIST_TYPE_LEN)) {
+            option.bucket_options.bucket_list_type = get_list_type_from_argv(&(param[BUCKET_LIST_TYPE_LEN]));
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -1778,6 +1915,9 @@ void test_list_bucket_new(int argc, char **argv, int optindex)
         }
 		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
 			option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (!strncmp(param, BUCKET_LIST_TYPE, BUCKET_LIST_TYPE_LEN)) {
+            option.bucket_options.bucket_list_type = get_list_type_from_argv(&(param[BUCKET_LIST_TYPE_LEN]));
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -5591,6 +5731,242 @@ static void test_get_notification_configuration_new(int argc, char **argv, int o
     }
 }
 
+/* posix add new func */
+static void test_modify_object_new(int argc, char **argv, int optindex)
+{
+    char *file_name = 0;
+    uint64_t content_length = 0;
+    obs_options option;
+    char *bucket_name = argv[optindex++];
+    char *key = argv[optindex++];
+    char *body = 0;
+    uint64_t position = 0;
+    
+    printf("Bucket's name is == %s, object's name is == %s. \n", bucket_name, key);
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+
+    obs_put_properties put_properties;
+    init_put_properties(&put_properties);
+
+
+    //check parameters
+    while (optindex < argc) {
+        char *param = argv[optindex ++];
+        if (!strncmp(param, FILENAME_PREFIX, FILENAME_PREFIX_LEN)) {
+            file_name = &(param[FILENAME_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, CONTENT_LENGTH_PREFIX, CONTENT_LENGTH_PREFIX_LEN)) {
+            content_length = convertInt(&(param[CONTENT_LENGTH_PREFIX_LEN]), "content_length");
+        }
+        else if (!strncmp(param, BODY_PREFIX, BODY_PREFIX_LEN)) {
+            body = &(param[BODY_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, CACHE_CONTROL_PREFIX, CACHE_CONTROL_PREFIX_LEN)) {
+            put_properties.cache_control = &(param[CACHE_CONTROL_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, CONTENT_TYPE_PREFIX, CONTENT_TYPE_PREFIX_LEN)) {
+            put_properties.content_type = &(param[CONTENT_TYPE_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, MD5_PREFIX, MD5_PREFIX_LEN)) {
+            put_properties.md5 = &(param[MD5_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, CONTENT_DISPOSITION_FILENAME_PREFIX, CONTENT_DISPOSITION_FILENAME_PREFIX_LEN)) {
+            put_properties.md5 = &(param[CONTENT_DISPOSITION_FILENAME_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, CONTENT_ENCODING_PREFIX, CONTENT_ENCODING_PREFIX_LEN)) {
+            put_properties.content_encoding = &(param[CONTENT_ENCODING_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, EXPIRES_PREFIX, EXPIRES_PREFIX_LEN)) {
+            put_properties.expires = parseIso8601Time(&(param[EXPIRES_PREFIX_LEN]));
+        }
+        else if (!strncmp(param, START_BYTE_PREFIX, START_BYTE_PREFIX_LEN)) {
+            put_properties.start_byte = convertInt(&(param[START_BYTE_PREFIX_LEN]), "start_byte");
+        }
+        else if (!strncmp(param, X_AMZ_META_PREFIX, X_AMZ_META_PREFIX_LEN)) {
+            char *name = param;
+            char *value = name;
+            
+             while (*value && (*value != '=')) {
+                value ++;
+             }
+            *value = 0;
+            value++;
+            if (!put_properties.meta_data)
+            {
+                put_properties.meta_data = (obs_name_value *) malloc(sizeof(obs_name_value)*50);
+                memset(put_properties.meta_data, 0, sizeof(obs_name_value)*50);
+            }
+            put_properties.meta_data[put_properties.meta_data_count].name = name;
+            put_properties.meta_data[put_properties.meta_data_count++].value = value;
+        }
+        else if (!strncmp(param, CANNED_ACL_PREFIX, CANNED_ACL_PREFIX_LEN)) {
+            put_properties.canned_acl = get_acl_from_argv(param);
+        }
+        else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+            option.bucket_options.protocol = get_protocol_from_argv(param);
+        }
+        else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {      
+            option.bucket_options.certificate_info = ca_info;       
+            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+        else if (!strncmp(param, OBJECT_POSITION, OBJECT_POSITION_LEN)) {
+            position = convertInt(&(param[OBJECT_POSITION_LEN]), "modify_position");;
+        }
+        else {
+            fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
+        }
+    }
+
+    //read from local file to buffer
+    put_object_callback_data data;
+    memset(&data, 0, sizeof(put_object_callback_data));
+
+    data.infile = 0;
+    data.gb = 0;
+    data.noStatus = 1;
+
+    if (file_name) {
+        if (!content_length) {
+            content_length =  read_bytes_from_file(file_name, &data);
+        }
+        //Open the file
+        if (!(data.infile = fopen(file_name, "rb" FOPEN_EXTRA_FLAGS))) {
+            fprintf(stderr, "\nERROR: Failed to open input file %s: ", file_name);
+            return;
+        }
+    }
+    else 
+    {
+        if (!content_length) {
+            while (1) {
+                int amtRead = strlen(body);
+                if (amtRead == 0) {
+                    break;
+                }
+                growbuffer_append(&(data.gb), body, amtRead);
+                content_length += amtRead;
+                if (amtRead <= (int) (strlen(body))) {
+                    break;
+                }
+            }
+        }
+        else {
+            growbuffer_append(&(data.gb), body, content_length);
+        }
+    }
+
+    data.content_length = data.originalContentLength = content_length;
+    
+    obs_modify_object_handler putobjectHandler =
+    { 
+        { &responsePropertiesCallback,
+          &put_object_complete_callback},
+          &put_object_data_callback
+    };
+    
+    modify_object(&option,key,content_length,position,&put_properties, 0, &putobjectHandler,&data);
+
+    if (OBS_STATUS_OK == data.put_status) {
+        printf("modify object [%s,%s] successfully. \n", bucket_name,key);
+    }
+    else
+    {
+        printf("modify object [%s,%s] faied(%s).\n", bucket_name,key,
+            obs_get_status_name(data.put_status));
+    }
+
+    if (put_properties.meta_data)
+    {
+        free(put_properties.meta_data);
+    }
+}
+
+void test_rename_object_new(int argc, char **argv, int optindex)
+{
+    char *bucket_name = argv[optindex++];
+    char *source_key  = argv[optindex++];
+    char *target_key  = argv[optindex++];
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+    while (optindex < argc) 
+    {
+        char *param = argv[optindex ++];
+        if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) 
+        {
+            option.bucket_options.protocol = get_protocol_from_argv(param);
+        }
+        else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) 
+        {
+            option.bucket_options.certificate_info = ca_info;       
+        }
+    }
+    obs_response_handler responseHandler =
+    { 
+        &response_properties_callback,
+        &response_complete_callback 
+    };
+    rename_object(&option, source_key, target_key, &responseHandler, &ret_status);
+    if (OBS_STATUS_OK == ret_status) {
+        printf("test_rename_object  successfully. \n");
+    }
+    else
+    {
+        printf("test_rename_object failed(%s).\n", obs_get_status_name(ret_status));
+    }
+    return;
+}
+void test_truncate_object_new(int argc, char **argv, int optindex)
+{
+    char *bucket_name = argv[optindex++];
+    char *key  = argv[optindex++];
+    uint64_t object_length = convertInt(argv[optindex++], "object_length");
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+    while (optindex < argc) 
+    {
+        char *param = argv[optindex ++];
+        if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) 
+        {
+            option.bucket_options.protocol = get_protocol_from_argv(param);
+        }
+        else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) 
+        {
+            option.bucket_options.certificate_info = ca_info;       
+        }
+    }
+    obs_response_handler responseHandler =
+    { 
+        &response_properties_callback,
+        &response_complete_callback 
+    };
+    truncate_object(&option, key, object_length, &responseHandler, &ret_status); 
+    if (OBS_STATUS_OK == ret_status) {
+        printf("truncate_object %s for length %lu successfully.\n", key, object_length);
+    }
+    else {
+        printf("truncate_object %s for length %lu failed(%s).\n", key, object_length,
+            obs_get_status_name(ret_status));
+    }
+    return;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -5647,6 +6023,10 @@ int main(int argc, char **argv)
     // bucket test
     if (!strcmp(command, "create_bucket")) {
          test_create_bucket_new(argc, argv, optind);
+    }
+     // posix add func with create posix bucket.
+    else if (!strcmp(command, "create_posix_bucket")) {
+         test_create_posix_bucket_new(argc, argv, optind);
     }
     else if (!strcmp(command, "list_bucket")) {
         test_list_bucket_new(argc, argv, optind);
@@ -5814,6 +6194,20 @@ int main(int argc, char **argv)
     else if (!strcmp(command, "get_object_with_encrypt")) {
         test_get_object_with_encrypt(argc, argv, optind);
     }
+    /* posix add func */
+    else if (!strcmp(command, "modify_object")) {
+        test_modify_object_new(argc, argv, optind);
+    }
+    /* posix add func */
+    else if (!strcmp(command, "rename_object")) {
+        test_rename_object_new(argc, argv, optind);
+    }
+    /* posix add func */
+    else if (!strcmp(command, "truncate_object")) {
+        test_truncate_object_new(argc, argv, optind);
+    }
+
+    
     deinitialize_break_point_lock();
     obs_deinitialize();
 }

@@ -24,8 +24,8 @@
 
 
 #ifdef WIN32
-#define LIBOBS_VER_MAJOR "3.1"
-#define LIBOBS_VER_MINOR "3"
+#define LIBOBS_VER_MAJOR "3.19"
+#define LIBOBS_VER_MINOR "7"
 #endif
 
 #if defined __GNUC__ || defined LINUX
@@ -36,6 +36,9 @@
 #define HEAD_AUTH_LEN 1028
 #define BUCKET_LEN 65
 #define DOMAIN_LEN 254
+
+#define OBS_SDK_VERSION "3.19.7"
+#define USER_AGENT_VALUE  "obs-sdk-c-3.19.7" ;
 
 
 #define signbuf_append(format, ...)                             \
@@ -210,6 +213,8 @@ typedef struct request_computed_values
     char authorizationHeader[HEAD_AUTH_LEN];
 
     char tokenHeader[HEAD_AUTH_LEN];
+
+    char userAgent[HEAD_NORMAL_LEN];
 
 } request_computed_values;
 

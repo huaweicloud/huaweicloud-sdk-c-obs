@@ -29,6 +29,8 @@ static obs_status errorXmlCallback(const char *elementPath, const char *data,
 
     int fit;
 
+    COMMLOG(OBS_LOGWARN, "%s errorXml : %s : %.*s", __FUNCTION__,elementPath, dataLen, data);
+
     if (!strcmp(elementPath, "Error")) {
     }
     else if (!strcmp(elementPath, "Error/Code")) {

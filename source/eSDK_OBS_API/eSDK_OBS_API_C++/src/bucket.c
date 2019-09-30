@@ -166,6 +166,94 @@ void create_bucket(obs_options *options, obs_canned_acl canned_acl,
     COMMLOG(OBS_LOGINFO, "create bucket finish!");
 }
 
+void response_posix_complete_callback(obs_status status,
+                                     const obs_error_details *error, 
+                                     void *callback_data)
+{
+    if (callback_data)
+    {
+        obs_status *ret_status = (obs_status *)callback_data;
+        *ret_status = status;
+    }
+    if (error && error->message) {
+        COMMLOG(OBS_LOGERROR, "create bucket message return: %s.",error->message);
+    }
+    return;
+}
+void create_posix_bucket_step1(obs_options *options, obs_canned_acl canned_acl,
+        const char *location_constraint, obs_response_handler *handler,
+        void *callback_data)
+{
+    request_params      params;
+    obs_use_api use_api = OBS_USE_API_S3;
+    set_use_api_switch(options, &use_api);
+    obs_put_properties  properties;
+    update_bucket_common_data    *bucket_data = NULL;
+    COMMLOG(OBS_LOGINFO, "create posix bucket step1 start!");
+    bucket_data = init_create_bucket_cbdata(location_constraint, use_api);
+    if (!bucket_data) 
+    {
+        COMMLOG(OBS_LOGERROR, "Malloc update_bucket_common_data failed!");
+        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
+        return;
+    }
+    bucket_data->complete_callback = handler->complete_callback;
+    bucket_data->callback_data = callback_data;
+    bucket_data->properties_callback = handler->properties_callback;
+    memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
+    memset_s(&properties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
+    properties.canned_acl = canned_acl;
+    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+        sizeof(obs_bucket_context));
+    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+        sizeof(obs_http_request_option));
+    params.bucketContext.bucket_type = OBS_BUCKET_POSIX;
+    params.put_properties         = &properties;
+    params.httpRequestType        = http_request_type_put;
+    params.properties_callback    = &update_bucket_common_properties_callback;
+    params.toObsCallback          = &update_bucket_common_data_callback;
+    params.toObsCallbackTotalSize = bucket_data->docLen;
+    params.complete_callback      = &update_bucket_common_complete_callback;
+    params.callback_data          = bucket_data;
+    params.isCheckCA              = options->bucket_options.certificate_info ? 1 : 0;
+    params.storageClassFormat     = default_storage_class;
+    params.temp_auth              = options->temp_auth; 
+    params.use_api =use_api;
+    request_perform(&params);
+    COMMLOG(OBS_LOGINFO, "create posix bucket step1 finish!");
+}
+void create_posix_bucket(obs_options *options, obs_canned_acl canned_acl,
+        const char *location_constraint, uint64_t storage_quota, obs_response_handler *handler,
+        void *callback_data)
+{
+    obs_status ret_status = OBS_STATUS_OK;
+    obs_response_handler response_handler =
+        { 
+            0, &response_posix_complete_callback
+        };
+    COMMLOG(OBS_LOGINFO, "create bucket start!");
+
+    if (storage_quota < POSIX_BUCKET_MIN_QUOTA)
+    {
+        COMMLOG(OBS_LOGERROR, "posix bucket quote Quota should greater than the minimum allowed: %d!"
+            , POSIX_BUCKET_MIN_QUOTA);
+        (void)(*(handler->complete_callback))(OBS_STATUS_QuotaTooSmall, 0, callback_data);
+    }
+    
+    create_posix_bucket_step1(options, canned_acl, location_constraint, 
+            &response_handler, &ret_status);
+    if (ret_status != OBS_STATUS_OK)
+    {
+        COMMLOG(OBS_LOGERROR, "create posix bucket failed,return %d!", ret_status);
+        (void)(*(handler->complete_callback))(ret_status, 0, callback_data);
+        return;
+    }
+
+    set_bucket_quota(options, storage_quota, handler, callback_data);
+
+    COMMLOG(OBS_LOGINFO, "create bucket finish!");
+    return;
+}
 static obs_status xml_callback(const char *element_path, const char *data,
                             int data_len, void *callback_data)
 {
@@ -234,6 +322,10 @@ static obs_status xml_obs_callback(const char *element_path, const char *data,
                   "ListAllMyBucketsResult/Buckets/Bucket/Location")) {
             string_buffer_append(cbData->location, data, data_len, fit);
         }
+        else if (!strcmp(element_path,
+                  "ListAllMyBucketsResult/Buckets/Bucket/BucketType")) {
+            string_buffer_append(cbData->bucketType, data, data_len, fit);
+        }
     }
     else {
         if (!strcmp(element_path, "ListAllMyBucketsResult/Buckets/Bucket")) {
@@ -248,7 +340,7 @@ static obs_status xml_obs_callback(const char *element_path, const char *data,
             string_buffer_initialize(cbData->bucket_name);
             string_buffer_initialize(cbData->creationDate);
             string_buffer_initialize(cbData->location);
-
+            string_buffer_initialize(cbData->bucketType);
             return status;
         }
     }

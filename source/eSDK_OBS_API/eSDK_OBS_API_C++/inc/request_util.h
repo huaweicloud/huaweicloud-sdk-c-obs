@@ -102,6 +102,8 @@ obs_storage_class get_storage_class_enum(const char * str_storage_class,obs_use_
 obs_status compose_temp_header(const request_params* params,
                                request_computed_values* values,
                                temp_auth_info *stTempAuthInfo);
+obs_status headers_append_list_bucket_type(obs_bucket_list_type bucket_list_type,
+            request_computed_values *values, int *len);
 
 #endif /* REQUEST_UTIL_H */
 

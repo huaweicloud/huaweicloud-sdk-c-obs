@@ -876,9 +876,92 @@ obs_status get_properties_callback(const obs_response_properties *properties, vo
         printf("append position: %s \n", properties->obs_next_append_position);
 }
 
+int token_bucket = 0;
+time_t produce_time = 0;
+
+uint64_t LIMIT_FLOW_MAX_SPEED = 0;
+pthread_mutex_t g_mutexThreadGetToken;
+
+obs_status set_online_request_max_rate(uint64_t online_request_rate)
+{
+    if (online_request_rate <= 0)
+    {
+        return OBS_STATUS_InvalidParameter;
+    }
+    
+	LIMIT_FLOW_MAX_SPEED = online_request_rate;
+	
+    return OBS_STATUS_OK;
+}
+
+void initialize_get_token_lock()
+{
+	pthread_mutex_init(&g_mutexThreadGetToken,NULL);
+}
+
+void deinitialize_get_token_lock()
+{
+    pthread_mutex_destroy(&g_mutexThreadGetToken); 
+}
+
+void preduce_token()
+{
+    if(token_bucket == LIMIT_FLOW_MAX_SPEED)
+    {
+        return;
+    }
+
+    int times = 0; //
+
+    if(produce_time == 0)
+    {
+        produce_time = time(0);
+        times = 1;
+    }
+    else
+    {
+        time_t cur_time = time(0);
+        times = (cur_time - produce_time);
+        if(times > 0)
+        {
+            produce_time = cur_time;
+        }
+    }
+
+    if(times > 0)
+    {
+        token_bucket = LIMIT_FLOW_MAX_SPEED;
+    }
+}
+
+int get_token(int buffer_size)
+{
+	if(0 == LIMIT_FLOW_MAX_SPEED)
+	{
+		return 1;
+	}
+    preduce_token();
+
+    if(token_bucket < buffer_size)
+    {
+        printf("has token %d  need token %d.\n", token_bucket, buffer_size);
+        return 0;
+    }
+
+    token_bucket -= buffer_size;
+    return 1;
+}
+
 obs_status get_object_data_callback(int buffer_size, const char *buffer,
                                       void *callback_data)
 {
+	//获取令牌，开始写入数据到本地文件
+	pthread_mutex_lock(&g_mutexThreadGetToken);
+	while(0 == get_token(buffer_size)){
+        sleep(1);
+    }
+	pthread_mutex_unlock(&g_mutexThreadGetToken);
+	
     get_object_callback_data *data = (get_object_callback_data *) callback_data;
     size_t wrote = fwrite(buffer, 1, buffer_size, data->outfile);
     return ((wrote < (size_t) buffer_size) ? 

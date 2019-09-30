@@ -33,9 +33,9 @@ if [ "debug" == "$2" ];then
 	export DEBUG=debug
 fi
 
-export openssl_version=openssl-1.0.2n
-export curl_version=curl-7.64.0
-export libxml2_version=libxml2-2.9.7
+export openssl_version=openssl-1.0.2r
+export curl_version=curl-7.64.1
+export libxml2_version=libxml2-2.9.9
 export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #
 # Function Name: ifFailExitAndPrint

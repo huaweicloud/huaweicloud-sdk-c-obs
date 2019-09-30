@@ -186,6 +186,11 @@ typedef enum
     OBS_STATUS_HttpErrorNotFound,
     OBS_STATUS_HttpErrorConflict,
     OBS_STATUS_HttpErrorUnknown,
+
+    /*
+    * posix new add errors
+    */
+     OBS_STATUS_QuotaTooSmall,
     OBS_STATUS_BUTT
 } obs_status;
 
@@ -343,6 +348,19 @@ typedef enum
     BUCKET_DELIVERED_TRUE              = 1
 }obs_bucket_delivered;
 
+
+typedef enum
+{
+    OBS_BUCKET_OBJECT          = 0,   //object bucket
+    OBS_BUCKET_POSIX           = 1    //posix bucket
+}obs_bucket_type;
+
+typedef enum
+{
+    OBS_BUCKET_LIST_ALL             = 0,   //list all type bucket
+    OBS_BUCKET_LIST_OBJECT          = 1,   //list object bucket
+    OBS_BUCKET_LIST_POSIX           = 2    //list posix bucket
+}obs_bucket_list_type;
 
 #define OBS_COMMON_LEN_256 256
 
@@ -752,6 +770,8 @@ typedef int (obs_put_object_data_callback)(int buffer_size, char *buffer,
     
 typedef int (obs_append_object_data_callback)(int buffer_size, char *buffer,
                                               void *callback_data);
+typedef int (obs_modify_object_data_callback)(int buffer_size, char *buffer,
+                                              void *callback_data);
 
 typedef obs_status (obs_get_object_data_callback)(int buffer_size, const char *buffer,
                                            void *callback_data);
@@ -858,6 +878,13 @@ typedef struct obs_append_object_handler
     obs_append_object_data_callback *append_object_data_callback;
 } obs_append_object_handler;
 
+typedef struct obs_modify_object_handler
+{
+    obs_response_handler response_handler;
+    obs_modify_object_data_callback *modify_object_data_callback;
+} obs_modify_object_handler;
+
+
 typedef struct obs_get_object_handler
 {
     obs_response_handler response_handler;
@@ -938,6 +965,8 @@ typedef struct obs_bucket_context
     obs_storage_class storage_class;
     char * token; 
     char * epid;
+    obs_bucket_type bucket_type;
+    obs_bucket_list_type bucket_list_type;
 } obs_bucket_context;
 
 typedef enum
@@ -1125,6 +1154,10 @@ eSDK_OBS_API obs_status init_certificate_by_buffer(const char *buffer, int buffe
 
 eSDK_OBS_API void create_bucket(obs_options *options, obs_canned_acl canned_acl,
             const char *location_constraint, obs_response_handler *handler, void *callback_data);
+
+eSDK_OBS_API void create_posix_bucket(obs_options *options, obs_canned_acl canned_acl,
+                const char *location_constraint, uint64_t storage_quota, obs_response_handler *handler,
+                void *callback_data);
 
 eSDK_OBS_API void list_bucket(obs_options *options, obs_list_service_handler *handler, 
                    void *callback_data);
@@ -1359,10 +1392,20 @@ eSDK_OBS_API void set_object_acl(obs_options *options, manager_acl_info *aclinfo
 
 eSDK_OBS_API void set_object_acl_by_head(obs_options *options, obs_object_info *object_info, obs_canned_acl canned_acl, 
                                          obs_response_handler *handler, void *callback_data);
-
+// only object bucket can use Modify_object
 eSDK_OBS_API void append_object(obs_options *options, char *key, uint64_t content_length, const char * position,
                    obs_put_properties *put_properties,server_side_encryption_params *encryption_params,
                    obs_append_object_handler *handler, void *callback_data);
+// only posix bucket can use Modify_object
+eSDK_OBS_API void modify_object(obs_options *options, char *key, uint64_t content_length, uint64_t position,
+                   obs_put_properties *put_properties,server_side_encryption_params *encryption_params,
+                   obs_modify_object_handler *handler, void *callback_data);
+// only posix bucket can use truncate_object
+eSDK_OBS_API void truncate_object(obs_options *options, char *key, uint64_t object_length,
+                   obs_response_handler *handler, void *callback_data);
+// only posix bucket can use rename_object
+eSDK_OBS_API void rename_object(obs_options *options, char *key, char *new_object_name,
+                   obs_response_handler *handler, void *callback_data);
 
 eSDK_OBS_API void compute_md5(const char *buffer, int64_t buffer_size, char *outbuffer);
 

@@ -174,6 +174,7 @@ const char *obs_get_status_name(obs_status status)
         handlecase(NoSuchTagSet);
         handlecase(OpenFileFailed);
         handlecase(EmptyFile);
+        handlecase(QuotaTooSmall);
         handlecase(BUTT);
     }
 
@@ -191,6 +192,7 @@ obs_status obs_initialize(int win32_flags)
     
     LOG_INIT();
     xmlInitParser();
+    COMMLOG(OBS_LOGWARN, "%s OBS SDK Version= %s", __FUNCTION__, OBS_SDK_VERSION);
     retCode = curl_global_init(CURL_GLOBAL_ALL);
     if (retCode != CURLE_OK)
     {

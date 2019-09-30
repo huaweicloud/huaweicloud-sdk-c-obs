@@ -300,6 +300,137 @@ void append_object(obs_options *options, char *key, uint64_t content_length, con
     COMMLOG(OBS_LOGINFO, "Leave append_object successfully !");
 }
 
+// only posix bucke use
+void modify_object(obs_options *options, char *key, uint64_t content_length, uint64_t position,
+                   obs_put_properties *put_properties,server_side_encryption_params *encryption_params,
+                   obs_modify_object_handler *handler, void *callback_data)
+{   
+    request_params params;
+    obs_use_api use_api = OBS_USE_API_S3;
+    set_use_api_switch(options, &use_api);
+    string_buffer(queryParams, QUERY_STRING_LEN);
+    string_buffer_initialize(queryParams);
+    int amp = 0;
+    char strToAppend[128] = {0};
+    COMMLOG(OBS_LOGINFO, "Enter modify_object successfully !");
+    if(!options->bucket_options.bucket_name){
+        COMMLOG(OBS_LOGERROR, "bucket_name is NULL!");
+        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
+        return;
+    }
+    snprintf_sec(strToAppend, sizeof(strToAppend),_TRUNCATE, "%lu", position);   
+    safe_append("position", strToAppend, handler->response_handler.complete_callback);
+    memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
+    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+        sizeof(obs_bucket_context));
+    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+        sizeof(obs_http_request_option));
+    params.temp_auth = options->temp_auth;
+    params.httpRequestType = http_request_type_put;
+    params.queryParams = queryParams[0] ? queryParams : 0;
+    params.subResource = "modify";
+    params.key = key;
+    params.put_properties = put_properties;
+    params.encryption_params = encryption_params;
+    params.toObsCallback = handler->modify_object_data_callback;
+    params.toObsCallbackTotalSize = content_length;
+    params.properties_callback = handler->response_handler.properties_callback;
+    params.complete_callback = handler->response_handler.complete_callback;
+    params.callback_data = callback_data;
+    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.storageClassFormat   = storage_class;
+    params.use_api = use_api;
+    request_perform(&params);
+    COMMLOG(OBS_LOGINFO, "Leave modify_object successfully !");
+}
+
+// only posix bucke use
+void truncate_object(obs_options *options, char *key, uint64_t object_length,
+                   obs_response_handler *handler, void *callback_data)
+{   
+    request_params params;
+    obs_use_api use_api = OBS_USE_API_S3;
+    set_use_api_switch(options, &use_api);
+    string_buffer(queryParams, QUERY_STRING_LEN);
+    string_buffer_initialize(queryParams);
+    int amp = 0;
+    char strToAppend[128] = {0};
+
+    COMMLOG(OBS_LOGINFO, "Enter truncate_object successfully !");
+
+    if(!options->bucket_options.bucket_name){
+        COMMLOG(OBS_LOGERROR, "bucket_name is NULL!");
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
+        return;
+    }
+
+    snprintf_sec(strToAppend,sizeof(strToAppend),_TRUNCATE,"%lu",object_length);   
+    safe_append("length", strToAppend, handler->complete_callback);
+        
+    memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
+    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+        sizeof(obs_bucket_context));
+    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+        sizeof(obs_http_request_option));
+
+    params.temp_auth = options->temp_auth;
+    params.httpRequestType = http_request_type_put;
+    params.queryParams = queryParams[0] ? queryParams : 0;
+    params.subResource = "truncate";
+    params.key = key;
+    params.properties_callback = handler->properties_callback;
+    params.complete_callback = handler->complete_callback;
+    params.callback_data = callback_data;
+    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.storageClassFormat   = no_need_storage_class;
+    params.use_api = use_api;
+    
+    request_perform(&params);
+    COMMLOG(OBS_LOGINFO, "Leave truncate_object successfully !");
+}
+
+// only posix bucke use
+void rename_object(obs_options *options, char *key, char *new_object_name,
+                   obs_response_handler *handler, void *callback_data)
+{   
+    request_params params;
+    obs_use_api use_api = OBS_USE_API_S3;
+    set_use_api_switch(options, &use_api);
+    string_buffer(queryParams, QUERY_STRING_LEN);
+    string_buffer_initialize(queryParams);
+    int amp = 0;
+    
+    COMMLOG(OBS_LOGINFO, "Enter truncate_object successfully !");
+
+    if(!options->bucket_options.bucket_name){
+        COMMLOG(OBS_LOGERROR, "bucket_name is NULL!");
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
+        return;
+    }
+  
+    safe_append("name", new_object_name, handler->complete_callback);
+        
+    memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
+    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+        sizeof(obs_bucket_context));
+    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+        sizeof(obs_http_request_option));
+
+    params.temp_auth = options->temp_auth;
+    params.httpRequestType = http_request_type_post;
+    params.queryParams = queryParams[0] ? queryParams : 0;
+    params.subResource = "rename";
+    params.key = key;
+    params.properties_callback = handler->properties_callback;
+    params.complete_callback = handler->complete_callback;
+    params.callback_data = callback_data;
+    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.storageClassFormat   = storage_class;
+    params.use_api = use_api;
+    request_perform(&params);
+    COMMLOG(OBS_LOGINFO, "Leave truncate_object successfully !");
+}
+
 
 void get_object(obs_options *options, obs_object_info *object_info,
                 obs_get_conditions *get_conditions, 
@@ -3067,14 +3198,13 @@ int check_file_is_valid(char *file_name)
 #endif
     if(ret_stat == -1)
     {
-        printf("%s file[%s] is not exist","readCheckpointFile",file_name);
         COMMLOG(OBS_LOGERROR, "%s file[%s] is not exist","readCheckpointFile",file_name);
         return -1;
     }
    
     if(statbuf.st_size == 0)
     {
-        COMMLOG(OBS_LOGERROR, "%s checkpoint file size is 0 !","readCheckpointFile");
+        COMMLOG(OBS_LOGERROR, "%s checkpoint file[%s] size is 0 !","readCheckpointFile",file_name);
         return -1;
     }
     
@@ -4357,7 +4487,7 @@ int completeUploadFileParts(upload_file_part_info * pstUploadInfoList,int partCo
 }
 
 int set_isFirstTime(obs_options *options, char *key, obs_upload_file_configuration *upload_file_config, 
-            upload_file_part_info *pstUploadPartList, int *partCount,
+            upload_file_part_info **pstUploadPartList, int *partCount,
             upload_file_summary *pstUploadFileSum)
 {
     int isFirtTime = 1;
@@ -4384,6 +4514,10 @@ int set_isFirstTime(obs_options *options, char *key, obs_upload_file_configurati
     }
     
     retVal = setCheckPointFile(upload_file_config->upload_file,checkpointFilename,&isFirtTime,UPLOAD_FILE_INFO);
+    if (!upload_file_config->check_point_file)
+    {
+        upload_file_config->check_point_file = checkpointFilename;
+    }
     if(retVal == -1)
     {
         //no need to return here, we can continue but treat enable_check_point as false
@@ -4391,7 +4525,7 @@ int set_isFirstTime(obs_options *options, char *key, obs_upload_file_configurati
         return isFirtTime;
     }
 
-    readCheckPointResult = readCheckpointFile(&stUploadFileSummaryOld,&pstUploadPartList,partCount,checkpointFilename);             
+    readCheckPointResult = readCheckpointFile(&stUploadFileSummaryOld,pstUploadPartList,partCount,checkpointFilename);             
     if(readCheckPointResult == 0)//read success
     {
         uploadfileChanged=isUploadFileChanged(pstUploadFileSum,&stUploadFileSummaryOld);
@@ -4402,7 +4536,7 @@ int set_isFirstTime(obs_options *options, char *key, obs_upload_file_configurati
             abortMultipartUploadAndFree(options,key,stUploadFileSummaryOld.upload_id,checkpointFilename,CLEAN_FILE);
             if(pstUploadPartList)
             {
-                 cleanUploadList(pstUploadPartList);
+                 cleanUploadList(*pstUploadPartList);
                  pstUploadPartList = NULL;
                  *partCount = 0;
             } 
@@ -4413,7 +4547,7 @@ int set_isFirstTime(obs_options *options, char *key, obs_upload_file_configurati
             memcpy_s(pstUploadFileSum,sizeof(upload_file_summary),&stUploadFileSummaryOld,sizeof(upload_file_summary));
         }
     }      
-    
+
     return isFirtTime;
 }
 
@@ -4421,8 +4555,11 @@ int get_uploadId_for_uploadFile(obs_options *options, char *key,
             obs_upload_file_configuration *upload_file_config, 
             char *upload_id, upload_params *pstUploadParams, upload_file_part_info * pstUploadPartList,
             int set_partlist_retVal,
-            obs_response_handler *commonHandler, const char *checkpointFilename, int isFirtTime)
+            obs_response_handler *commonHandler, char *checkpointFilename, int isFirtTime)
 {
+    if(!strcmp(upload_file_config->check_point_file, checkpointFilename)){
+        upload_file_config->check_point_file = checkpointFilename;
+    }
     if(set_partlist_retVal  == -1)
     {
         COMMLOG(OBS_LOGINFO, "set_partlist_retVal = %d", set_partlist_retVal);
@@ -4439,9 +4576,13 @@ int get_uploadId_for_uploadFile(obs_options *options, char *key,
         return -1;
     }
      // init upload task   
-    if((isFirtTime == 1)||(strlen(pstUploadParams->upload_id)==0))
+    if((isFirtTime == 1)||(NULL == pstUploadParams->upload_id)||(strlen(pstUploadParams->upload_id)==0))
     {
         initiate_multi_part_upload(options,key,MAX_SIZE_UPLOADID, upload_id, 0, 0,commonHandler, 0);
+         if (!upload_file_config->check_point_file)
+         {
+             upload_file_config->check_point_file = checkpointFilename;
+         }
         if(strlen(upload_id)==0) //failed to init multiPart task
         {
             if(upload_file_config->enable_check_point)
@@ -4464,7 +4605,9 @@ int get_uploadId_for_uploadFile(obs_options *options, char *key,
             strcpy_s(upload_id,MAX_SIZE_UPLOADID,pstUploadParams->upload_id);
         }
     }
-    
+    if(!strcmp(upload_file_config->check_point_file, checkpointFilename)){
+        upload_file_config->check_point_file = checkpointFilename;
+    }
     return 0;
 }
 
@@ -4552,12 +4695,37 @@ void upload_complete_handle(obs_options *options, char *key, obs_upload_file_res
         abortMultipartUploadAndFree(options,key, upload_id, NULL, DO_NOTHING);
     }
 
+    obs_upload_file_part_info * pstPartInfoRet;
+    resultInfo = (obs_upload_file_part_info*)malloc(sizeof(obs_upload_file_part_info)*partCount);
+    if(resultInfo==NULL)
+    {
+        COMMLOG(OBS_LOGERROR, "malloc resultInfo failed\n");
+        return ;
+    }
+    memset_s(resultInfo, sizeof(obs_upload_file_part_info)*partCount, 0 , 
+        sizeof(obs_upload_file_part_info)*partCount);
+    pstPartInfoRet = resultInfo;
+
     while(printNode)
     {
         COMMLOG(OBS_LOGERROR,"part_num[%d], status[%s]\n",printNode->part_num,
                 g_uploadStatus[printNode->uploadStatus]);
+
+        pstPartInfoRet->part_num = printNode->part_num + 1;
+        pstPartInfoRet->part_size = printNode->part_size;
+        pstPartInfoRet->start_byte = printNode->start_byte;
+        pstPartInfoRet->status_return = printNode->uploadStatus;
         printNode = printNode->next;
+        pstPartInfoRet ++;
     }
+
+    if(handler->upload_file_callback)
+    {
+        handler->upload_file_callback(OBS_STATUS_InternalError,
+            "some part success, some parts failed!\n",partCount,resultInfo,callback_data);
+    }
+    free(resultInfo);
+    resultInfo = NULL;    
 
     return ;
 }
@@ -4598,7 +4766,13 @@ void upload_file(obs_options *options, char *key, server_side_encryption_params 
     
     //set the check point file
     isFirtTime = set_isFirstTime(options, key, upload_file_config, 
-                                   pstUploadPartList, &partCount, &stUploadFileSum);
+                                   &pstUploadPartList, &partCount, &stUploadFileSum);
+
+    if(upload_file_config->check_point_file)
+    {
+        memcpy_s(checkpointFilename,1024,upload_file_config->check_point_file,
+            strlen(upload_file_config->check_point_file)+1);
+    }
     is_ture = ((upload_file_config->part_size == 0)
                             ||(upload_file_config->part_size > MAX_PART_SIZE));
     uploadPartSize = is_ture ? MAX_PART_SIZE : upload_file_config->part_size;  
@@ -4606,6 +4780,8 @@ void upload_file(obs_options *options, char *key, server_side_encryption_params 
 
     //set the part list to upload
     retVal = setPartList(&stUploadFileSum, uploadPartSize,&pstUploadPartList,&partCount,isFirtTime);
+    stUploadParams.upload_id = stUploadFileSum.upload_id;
+
     retVal = get_uploadId_for_uploadFile(options,key, upload_file_config, upload_id, &stUploadParams, 
                  pstUploadPartList, retVal, &(handler->response_handler), checkpointFilename, isFirtTime);
     if(-1 == retVal)
@@ -4620,7 +4796,6 @@ void upload_file(obs_options *options, char *key, server_side_encryption_params 
     {
         writeCheckpointFile(&stUploadFileSum,pstUploadPartList,partCount,checkpointFilename);
     }
-    
     stUploadParams.fileNameCheckpoint = checkpointFilename;
     stUploadParams.enable_check_point = upload_file_config->enable_check_point;
     stUploadParams.callBackData = callback_data;
@@ -4629,7 +4804,8 @@ void upload_file(obs_options *options, char *key, server_side_encryption_params 
     stUploadParams.options = options;
     stUploadParams.pstServerSideEncryptionParams = encryption_params;
     stUploadParams.response_handler = &(handler->response_handler);
-    stUploadParams.upload_id = upload_id; 
+    stUploadParams.upload_id = upload_id;
+
     (void)DividUploadPartList(pstUploadPartList,&pstUploadPartListDone,&pstUploadPartListNotDone);
 
     //start upload part threads now
@@ -4638,12 +4814,13 @@ void upload_file(obs_options *options, char *key, server_side_encryption_params 
     while(pstUploadPartListNotDone)
     {
 #if defined (WIN32)
-        Sleep(1);
+        Sleep(1000);
 #else
         sleep(1);
 #endif
          (void)GetUploadPartListToProcess(&pstUploadPartListDone,&pstUploadPartListNotDone,
             partCountToProc,&partCountToProc,upload_file_config->task_num);
+
          startUploadThreads(&stUploadParams,pstUploadPartListNotDone,partCountToProc,callback_data);
     }
     pstUploadPartList = pstUploadPartListDone;
@@ -5495,7 +5672,7 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
 
     if(fd == -1)
     {
-        printf("open upload file failed, partnum[%d]\n",part_num);
+        COMMLOG(OBS_LOGWARN, "DownloadThreadProc_win32 open upload file failed, partnum[%d]\n",part_num);
     }
     else
     {
@@ -5714,13 +5891,13 @@ void startDownloadThreads(download_params * pstDownloadParams,
         err = pthread_create(&arrThread[i], NULL,DownloadThreadProc_linux,(void *)&downloadFileProcDataList[i]);
         if(err != 0)
         {
-            printf("create thread failed i[%d]\n",i);
+            COMMLOG(OBS_LOGWARN, "startDownloadThreads create thread failed i[%d]\n",i);
         }
         
         err = pthread_join(arrThread[i], NULL);
         if(err != 0)
         {
-            printf("join thread failed i[%d]\n",i);
+            COMMLOG(OBS_LOGWARN, "startDownloadThreads join thread failed i[%d]\n",i);
         }
     } 
 

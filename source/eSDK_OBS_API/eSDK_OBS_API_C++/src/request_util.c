@@ -610,6 +610,29 @@ obs_status headers_append_storage_class(obs_storage_class input_storage_class,
 
     return OBS_STATUS_OK;
 }
+
+
+obs_status headers_append_bucket_type(obs_bucket_type bucket_type,
+            request_computed_values *values, int *len)
+{
+    if(bucket_type == OBS_BUCKET_POSIX) {
+        return headers_append(len, values, 1, "x-obs-fs-file-interface: %s", "Enabled", NULL);
+    }
+    return OBS_STATUS_OK;
+}
+obs_status headers_append_list_bucket_type(obs_bucket_list_type bucket_list_type,
+            request_computed_values *values, int *len)
+{
+    if (bucket_list_type == OBS_BUCKET_LIST_OBJECT)
+    {  
+        return headers_append(len, values, 1, "x-obs-bucket-type: %s", "OBJECT", NULL);
+    }
+    else if (bucket_list_type == OBS_BUCKET_LIST_POSIX)
+    {
+        return headers_append(len, values, 1, "x-obs-bucket-type: %s", "POSIX", NULL);
+    }
+    return OBS_STATUS_OK;
+}
 obs_status headers_append_epid(const char *epid, request_computed_values *values, const request_params *params, int *len) 
 {
     if (params->use_api == OBS_USE_API_S3) {
@@ -664,9 +687,17 @@ obs_status request_compose_properties(request_computed_values *values, const req
 			return ret_status;
 		}
 	}
-	            
+
+    ret_status = headers_append_bucket_type(params->bucketContext.bucket_type, 
+                            values,len);
     ret_status = headers_append_storage_class(params->bucketContext.storage_class, 
                             values, params, len);
+	if (OBS_STATUS_OK != ret_status) 
+    {
+        COMMLOG(OBS_LOGERROR, "compose_properties err,return %d.\n",ret_status);
+        return ret_status;
+    }
+	
     if (params->bucketContext.epid != NULL) {
         ret_status = headers_append_epid(params->bucketContext.epid, values, params, len);
     }

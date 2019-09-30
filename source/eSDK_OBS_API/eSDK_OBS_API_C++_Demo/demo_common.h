@@ -249,6 +249,11 @@ void put_buffer_complete_callback(obs_status status, const obs_error_details *er
 int put_file_data_callback(int buffer_size, char *buffer, void *callback_data);
 int put_buffer_data_callback(int buffer_size, char *buffer, void *callback_data);
 obs_status get_properties_callback(const obs_response_properties *properties, void *callback_data);
+obs_status set_online_request_max_rate(uint64_t online_request_rate);
+void initialize_get_token_lock();
+void deinitialize_get_token_lock();
+void preduce_token();
+int get_token(int buffer_size);
 obs_status get_object_data_callback(int buffer_size, const char *buffer,
                                       void *callback_data);
 void get_object_complete_callback(obs_status status, const obs_error_details *error, 

@@ -3439,13 +3439,65 @@ typedef struct get_object_callback_data
     obs_status ret_status;
 }get_object_callback_data;
 
+int token_bucket = 0;
+time_t produce_time = 0;
+
+#define LIMIT_FLOW_MAX_SPEED 100 * 16 * 1024
+void preduce_token()
+{
+    if(token_bucket == LIMIT_FLOW_MAX_SPEED)
+    {
+        return;
+    }
+
+    int times = 0; //
+
+    if(produce_time == 0)
+    {
+        produce_time = time(0);
+        times = 1;
+    }
+    else
+    {
+        time_t cur_time = time(0);
+        times = (cur_time - produce_time);
+        if(times > 0)
+        {
+            produce_time = cur_time;
+        }
+    }
+
+    if(times > 0)
+    {
+        token_bucket = LIMIT_FLOW_MAX_SPEED;
+    }
+}
+
+int get_token(int buffer_size)
+{
+    preduce_token();
+
+    if(token_bucket < buffer_size)
+    {
+        printf("has token %d  need token %d.\n", token_bucket, buffer_size);
+        return 0;
+    }
+
+    token_bucket -= buffer_size;
+    return 1;
+}
+
 static obs_status get_object_data_callback(int buffer_size, const char *buffer,
                                       void *callback_data)
 {
+    while(0 == get_token(buffer_size)){
+        printf("get_object_data_callback limited.\n");
+        Sleep(1000);
+    }
     get_object_callback_data *data = (get_object_callback_data *) callback_data;
     size_t wrote = fwrite(buffer, 1, buffer_size, data->outfile);
-    return ((wrote < (size_t) buffer_size) ? 
-            OBS_STATUS_AbortedByCallback : OBS_STATUS_OK);
+    printf("get_object_data_callback worte %d byte into file.\n", buffer_size);
+    return ((wrote < (size_t) buffer_size) ? OBS_STATUS_AbortedByCallback : OBS_STATUS_OK);
 }
 
 static void get_object_complete_callback(obs_status status,
@@ -4557,6 +4609,7 @@ void uploadFileResultCallback(obs_status status,
         pstUploadInfoList->status_return);
         pstUploadInfoList++;
     }
+    statusG = status;
 }
 
 

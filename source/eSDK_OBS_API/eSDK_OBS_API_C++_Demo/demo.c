@@ -127,6 +127,65 @@ static void test_create_bucket(obs_canned_acl canned_acl, char *bucket_name)
 
 }
 
+// create posix bucket ---------------------------------------------------------------
+static void test_create_posix_bucket(obs_canned_acl canned_acl, char *bucket_name)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+
+    obs_response_handler response_handler =
+    { 
+        0, &response_complete_callback
+    };
+
+    create_posix_bucket(&option, canned_acl, NULL,10995116277760, &response_handler, &ret_status);
+    if (ret_status == OBS_STATUS_OK) {
+        printf("create posix bucket %s successfully.\n", bucket_name);
+    }
+    else
+    {
+        printf("create posix bucket %s failed(%s).\n", bucket_name, obs_get_status_name(ret_status));
+    }
+
+}
+
+// create posix bucket ---------------------------------------------------------------
+static void test_create_posix_bucket_with_option(obs_canned_acl canned_acl, char *bucket_name,
+            char *bucket_region)
+{
+    obs_options option;
+    obs_status ret_status = OBS_STATUS_BUTT;
+    init_obs_options(&option);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+
+    obs_response_handler response_handler =
+    { 
+        0,
+        &response_complete_callback
+    };
+
+    create_posix_bucket(&option, canned_acl, bucket_region, 10995116277760, &response_handler, &ret_status);
+    if (ret_status == OBS_STATUS_OK) {
+        printf("create bucket %s with option successfully.\n", bucket_name);
+    }
+    else
+    {
+        printf("create bucket %s with option failed(%s).\n", bucket_name, obs_get_status_name(ret_status));
+    }
+
+}
+
 // create bucket ---------------------------------------------------------------
 static void test_create_bucket_with_option(obs_canned_acl canned_acl, char *bucket_name,
                                    obs_storage_class storage_class_value, char *bucket_region)
@@ -197,7 +256,7 @@ static void test_set_bucket_quota( char *bucket_name)
 {
     obs_status ret_status = OBS_STATUS_BUTT;
     obs_options option;   
-    uint64_t bucketquota = 104857600;
+    uint64_t bucketquota = 10485760045345345;
 
     init_obs_options(&option);
     option.bucket_options.host_name = HOST_NAME;
@@ -2338,7 +2397,7 @@ static void test_restore_object(char *key, char *versionid, char *days, char *bu
 
 
 // list bucket ---------------------------------------------------------------
-static void test_list_bucket_s3()
+static void test_list_bucket_s3(obs_bucket_list_type list_type)
 {
     obs_options option;
     init_obs_options(&option);
@@ -2347,6 +2406,7 @@ static void test_list_bucket_s3()
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     
+    option.bucket_options.bucket_list_type = list_type;
     
     list_service_data data;
     memset(&data, 0, sizeof(list_service_data));
@@ -2369,7 +2429,7 @@ static void test_list_bucket_s3()
     }
 }
 
-static void test_list_bucket_obs()
+static void test_list_bucket_obs(obs_bucket_list_type list_type)
 {
     obs_options option;
     init_obs_options(&option);
@@ -2378,6 +2438,7 @@ static void test_list_bucket_obs()
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     
+    option.bucket_options.bucket_list_type = list_type;
     
     list_service_data data;
     memset(&data, 0, sizeof(list_service_data));
@@ -2400,12 +2461,12 @@ static void test_list_bucket_obs()
     }
 }
 
-static void test_list_bucket()
+static void test_list_bucket(obs_bucket_list_type list_type)
 {
     if(demoUseObsApi == OBS_USE_API_S3) {
-        test_list_bucket_s3();
+        test_list_bucket_s3(list_type);
     } else {
-        test_list_bucket_obs();
+        test_list_bucket_obs(list_type);
     }
 }
 
@@ -3400,6 +3461,258 @@ static void test_list_multipart_uploads(char *bucket_name)
     
 }
 
+// posix test modify object.
+static void test_modify_object_from_buffer(char *bucket_name, char *key, char *buffer, int buffer_size,uint64_t position)
+{
+    uint64_t content_length = 0;
+    printf("modify buffer_size = %d\n",buffer_size);
+
+    obs_options option;
+    init_obs_options(&option);
+    
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+
+    obs_put_properties put_properties;
+    init_put_properties(&put_properties);
+    //3?¨º??¡¥¡ä?¡ä¡é¨¦?¡ä?¨ºy?Y¦Ì??¨¢11¨¬?
+    put_buffer_object_callback_data data;
+    memset(&data, 0, sizeof(put_buffer_object_callback_data));
+    // ¡ã?buffer?3?¦Ì¦Ì?¨¦?¡ä?¨ºy?Y?¨¢11?D
+    data.put_buffer = buffer;
+    // ¨¦¨¨??buffersize
+    data.buffer_size = buffer_size;
+
+    obs_modify_object_handler putobjectHandler =
+    { 
+        { &response_properties_callback, &put_buffer_complete_callback },
+          &put_buffer_data_callback
+    };
+    
+    modify_object(&option,key,buffer_size,position,&put_properties,0,&putobjectHandler,&data);
+
+    if (OBS_STATUS_OK == data.ret_status) {
+        printf("modify object %s from buffer successfully.\n", key);
+    }
+    else
+    {
+        printf("modify object %s from buffer failed(%s).\n",
+            key, obs_get_status_name(data.ret_status));
+    }
+}
+
+//posix test truncate object.
+void test_truncate_object(char *bucket_name, char *object_name, uint64_t object_length)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+    init_obs_options(&option);
+    
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+    
+    obs_response_handler response_handler =
+    { 
+        0, &response_complete_callback
+    };
+
+    truncate_object(&option, object_name, object_length, &response_handler, &ret_status); 
+    if (OBS_STATUS_OK == ret_status) {
+        printf("truncate_object %s for length %lu successfully.\n", object_name, object_length);
+    }
+    else {
+        printf("truncate_object %s for length %lu failed(%s).\n", object_name, object_length,
+            obs_get_status_name(ret_status));
+    }
+}
+
+
+//posix test rename object.
+void test_rename_object(char *bucket_name, char *object_name, char *new_object_name)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+    init_obs_options(&option);
+    
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+    
+    obs_response_handler response_handler =
+    { 
+        0, &response_complete_callback
+    };
+
+    rename_object(&option, object_name, new_object_name, &response_handler, &ret_status);
+    if (OBS_STATUS_OK == ret_status) {
+        printf("rename_object %s for new name %s successfully.\n", object_name, new_object_name);
+    }
+    else {
+        printf("rename_object %s for new name %s failed(%s).\n", object_name, new_object_name,
+            obs_get_status_name(ret_status));
+    }
+}
+
+
+
+
+int test_posix()
+{
+    obs_canned_acl canned_acl = OBS_CANNED_ACL_BUCKET_OWNER_FULL_CONTROL;
+    char bucket_src[]="bucket-src-posix";
+    char bucket_target[]="bucket-target-posix";
+    char bucket_obj_acl[]="bucket-obj-acl-posix";
+
+    strcpy(BUCKET_NAME,"esdk-c-test-posix");
+
+    /*------ bucket test------*/
+    test_create_posix_bucket(canned_acl, BUCKET_NAME);
+    test_create_posix_bucket(canned_acl, bucket_src);
+    test_create_posix_bucket(canned_acl, bucket_target);
+    test_create_posix_bucket(canned_acl, bucket_obj_acl);
+    test_get_bucket_storage_class(BUCKET_NAME);
+
+    //head bucket
+    test_head_bucket(BUCKET_NAME);
+    // list bucket
+    test_list_bucket(OBS_BUCKET_LIST_OBJECT);
+    test_list_bucket(OBS_BUCKET_LIST_POSIX);
+    test_list_bucket(OBS_BUCKET_LIST_ALL);
+    // quota
+    test_get_bucket_quota(bucket_src);
+    test_set_bucket_quota(bucket_src);
+    test_get_bucket_quota(bucket_src);
+    //policy
+    test_set_bucket_policy(bucket_src);
+    test_get_bucket_policy(bucket_src);
+    test_delete_bucket_policy(bucket_src);
+    // storage class
+    test_set_bucket_storage_class(bucket_src, OBS_STORAGE_CLASS_GLACIER);
+    test_get_bucket_storage_class(bucket_src);
+
+    //tagging
+    test_set_bucket_tagging(bucket_src);
+    test_get_bucket_tagging(bucket_src);
+    test_delete_bucket_tagging(bucket_src); 
+    test_get_bucket_tagging(bucket_src);
+    // test bucket logging
+    test_set_bucket_logging_without_grant(bucket_src, bucket_target);
+    test_get_bucket_logging(bucket_src);
+    test_set_bucket_logging_with_grant(bucket_target, bucket_src);
+    test_get_bucket_logging(bucket_target);
+    test_close_bucket_logging(bucket_src);
+    test_get_bucket_logging(bucket_src);
+    //acl
+    test_set_bucket_acl(bucket_src);
+    test_get_bucket_acl(bucket_src);
+    test_set_bucket_acl_byhead(bucket_src);
+    test_get_bucket_acl(bucket_src);
+    //notification
+    test_set_notification_configuration(bucket_src);   
+    test_get_notification_config(bucket_src);
+    test_close_notification_configuration(bucket_src);
+    test_get_notification_config(bucket_src);
+    //delete bucket
+    test_delete_bucket(bucket_src);
+    test_delete_bucket(bucket_target);
+    // get storage info
+    test_get_bucket_storage_info(BUCKET_NAME);
+    // lifecycle
+    test_set_bucket_lifecycle_configuration(BUCKET_NAME); 
+    test_get_lifecycle_config(BUCKET_NAME);
+    test_set_bucket_lifecycle_configuration2(BUCKET_NAME);
+    test_get_lifecycle_config(BUCKET_NAME);
+    test_delete_lifecycle_config(BUCKET_NAME);
+    //option rely on cors configuration
+    test_bucket_option(BUCKET_NAME);
+    test_object_option(BUCKET_NAME, "key");
+
+     /*------ object test------*/
+    create_and_write_file("./put_file_test.txt", 8*1024);
+    create_and_write_file("./test.txt", 8*1024);
+    // put object
+    test_put_object_from_file(BUCKET_NAME, "put_file_test", "./put_file_test.txt");
+    test_put_object_from_buffer(BUCKET_NAME, "put_buffer_test");
+    // get object
+    test_get_object(BUCKET_NAME, "put_buffer_test");
+    // head object
+    test_head_object("put_buffer_test",BUCKET_NAME);
+    //list objects
+    test_list_bucket_objects(BUCKET_NAME);
+
+
+    // copy part
+    test_init_upload_part(BUCKET_NAME, "test516");
+    test_copy_part(BUCKET_NAME, "put_file_test", "test516");
+    test_list_parts(BUCKET_NAME, "test516");
+    test_list_multipart_uploads(BUCKET_NAME);
+    test_abort_multi_part_upload(UPLOAD_ID, BUCKET_NAME, "test516");
+    // mulit part
+    create_and_write_file("./test1.txt", 8*1024*1024);
+    test_init_upload_part(BUCKET_NAME, "test517");
+    test_upload_part("./test1.txt", BUCKET_NAME, "test517");
+    test_list_parts(BUCKET_NAME, "test517");
+    test_list_multipart_uploads(BUCKET_NAME);
+    test_complete_upload(UPLOAD_ID, UPLOAD_ETAG, BUCKET_NAME, "test517");
+    // upload file
+    test_upload_file(BUCKET_NAME, "./test1.txt", "test54");
+    // download file
+    test_download_file(BUCKET_NAME, "./test518", "test54");
+    // Concurrent partial upload
+    test_concurrent_upload_part(BUCKET_NAME, "./test1.txt", "test551", 5L * 1024 * 1024);
+    // get object metadata
+    test_get_object_metadata("put_file_test", NULL);
+    // test object acl
+    test_put_object_by_strorageclass("batch_delete1", "./put_file_test.txt", bucket_obj_acl, OBS_STORAGE_CLASS_STANDARD);
+    test_set_object_acl_byhead("batch_delete1", 0, bucket_obj_acl);
+    test_set_object_acl("batch_delete1", 0, bucket_obj_acl);
+    test_get_object_acl("batch_delete1", 0, bucket_obj_acl);
+    // test batch delete
+    test_put_object_by_strorageclass("batch_delete2","./put_file_test.txt", bucket_obj_acl, OBS_STORAGE_CLASS_STANDARD);
+    test_list_bucket_objects(bucket_obj_acl);
+    test_batch_delete_objects(bucket_obj_acl, "batch_delete1", "batch_delete2");
+    //test copy object
+    test_put_object_by_strorageclass("copy_test1", "./put_file_test.txt", bucket_obj_acl, OBS_STORAGE_CLASS_STANDARD);
+    test_copy_object("copy_test1", OBJECT_VER[0], bucket_obj_acl, BUCKET_NAME, "objn");
+    test_list_bucket_objects(bucket_obj_acl);
+    test_delete_object("copy_test1", OBJECT_VER[0], bucket_obj_acl);
+
+    // modify object
+    test_put_object_from_buffer(BUCKET_NAME, "obj525");
+    char *buffer = "hello.";
+    test_modify_object_from_buffer(BUCKET_NAME, "obj525", buffer, strlen(buffer), 0);
+    test_modify_object_from_buffer(BUCKET_NAME, "obj525", buffer, strlen(buffer), 10);
+    test_get_object(BUCKET_NAME, "obj525");
+    // test_truncate_object
+    test_truncate_object(BUCKET_NAME, "obj525", 100);
+    test_head_object("obj525", BUCKET_NAME);
+    //test rename
+    test_rename_object(BUCKET_NAME, "obj525", "obj526");
+    test_head_object("obj525", BUCKET_NAME);
+    test_head_object("obj526", BUCKET_NAME);
+
+    test_delete_object("put_file_test", NULL, BUCKET_NAME);
+    test_delete_object("put_buffer_test", NULL, BUCKET_NAME);
+    test_delete_object("put_buffer_kms", NULL, BUCKET_NAME);
+    test_delete_object("put_buffer_aes", NULL, BUCKET_NAME);
+    test_delete_object("test517", NULL, BUCKET_NAME);
+    test_delete_object("test54", NULL, BUCKET_NAME);
+    test_delete_object("test551", NULL, BUCKET_NAME);
+    test_delete_object("objn", NULL, BUCKET_NAME);
+    test_delete_object("obj524", NULL, BUCKET_NAME);
+    test_delete_object("obj526", NULL, BUCKET_NAME);
+    test_delete_bucket(BUCKET_NAME);
+    test_delete_bucket(bucket_obj_acl); 
+}
+
 int main(int argc, char **argv)
 {
     strcpy(ACCESS_KEY_ID,"UDSIAMSTUBTEST000400");
@@ -3427,7 +3740,7 @@ int main(int argc, char **argv)
     //head bucket
     test_head_bucket(BUCKET_NAME);
     // list bucket
-    test_list_bucket();
+    test_list_bucket(OBS_BUCKET_LIST_ALL);
     // quota
     test_set_bucket_quota(bucket_src);
     test_get_bucket_quota(bucket_src);
@@ -3581,6 +3894,10 @@ int main(int argc, char **argv)
     test_delete_bucket(bucket_version);
     test_delete_bucket(bucket_obj_acl);
 
+     /*-----------------test posix---------------------*/
+    test_posix();
+
+    
     char *bucket_cert = "bucket-cert";
     test_create_bucket_with_cert(OBS_CANNED_ACL_PUBLIC_READ, bucket_cert, 0, NULL, 0);
     test_delete_bucket(bucket_cert);
