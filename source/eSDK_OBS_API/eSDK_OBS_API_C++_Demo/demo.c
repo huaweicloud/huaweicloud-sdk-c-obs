@@ -3717,8 +3717,8 @@ int main(int argc, char **argv)
 {
     strcpy(ACCESS_KEY_ID,"your access key");
     strcpy(SECRET_ACCESS_KEY,"your secret key");
-    strcpy(HOST_NAME,"10.178.221.235");
-    strcpy(BUCKET_NAME,"esdk-c-test");
+    strcpy(HOST_NAME,"endpoint");
+    strcpy(BUCKET_NAME,"your bucket name");
      
     obs_canned_acl canned_acl = OBS_CANNED_ACL_BUCKET_OWNER_FULL_CONTROL;
     char bucket_src[]="bucket-src";
