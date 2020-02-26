@@ -3478,12 +3478,12 @@ static void test_modify_object_from_buffer(char *bucket_name, char *key, char *b
 
     obs_put_properties put_properties;
     init_put_properties(&put_properties);
-    //3?¨º??¡¥¡ä?¡ä¡é¨¦?¡ä?¨ºy?Y¦Ì??¨¢11¨¬?
+    //3?Â¨Âº??Â¡Â¥Â¡Ã¤?Â¡Ã¤Â¡Ã©Â¨Â¦?Â¡Ã¤?Â¨Âºy?YÂ¦ÃŒ??Â¨Â¢11Â¨Â¬?
     put_buffer_object_callback_data data;
     memset(&data, 0, sizeof(put_buffer_object_callback_data));
-    // ¡ã?buffer?3?¦Ì¦Ì?¨¦?¡ä?¨ºy?Y?¨¢11?D
+    // Â¡Ã£?buffer?3?Â¦ÃŒÂ¦ÃŒ?Â¨Â¦?Â¡Ã¤?Â¨Âºy?Y?Â¨Â¢11?D
     data.put_buffer = buffer;
-    // ¨¦¨¨??buffersize
+    // Â¨Â¦Â¨Â¨??buffersize
     data.buffer_size = buffer_size;
 
     obs_modify_object_handler putobjectHandler =
@@ -3715,8 +3715,8 @@ int test_posix()
 
 int main(int argc, char **argv)
 {
-    strcpy(ACCESS_KEY_ID,"UDSIAMSTUBTEST000400");
-    strcpy(SECRET_ACCESS_KEY,"Udsiamstubtest000000UDSIAMSTUBTEST000400");
+    strcpy(ACCESS_KEY_ID,"your access key");
+    strcpy(SECRET_ACCESS_KEY,"your secret key");
     strcpy(HOST_NAME,"10.178.221.235");
     strcpy(BUCKET_NAME,"esdk-c-test");
      
