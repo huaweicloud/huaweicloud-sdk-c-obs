@@ -75,15 +75,15 @@ else
 endif
 
 ifndef openssl_version
-   openssl_version := openssl-1.0.2r
+   openssl_version := openssl-1.1.1d
 endif
 
 ifndef curl_version
-   curl_version := curl-7.64.1
+   curl_version := curl-7.66.0
 endif
 
 ifndef nghttp2_version
-   nghttp2_version := nghttp2-1.32.0
+#   nghttp2_version := nghttp2-1.32.0
 endif
 
 ifndef libxml2_version
@@ -94,11 +94,11 @@ endif
 export LD_LIBRARY_PATH=./../../../build/script/Provider/build/${includePath}/${openssl_version}/lib
 
 ifndef NGHTTP2_LIBS
-    NGHTTP2_LIBS := -L./../../../build/script/Provider/build/${includePath}/${nghttp2_version}/lib -lnghttp2
+#    NGHTTP2_LIBS := -L./../../../build/script/Provider/build/${includePath}/${nghttp2_version}/lib -lnghttp2
 endif
 
 ifndef NGHTTP2_CFLAGS
-    NGHTTP2_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/${nghttp2_version}/include
+#    NGHTTP2_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/${nghttp2_version}/include
 endif
 
 ifndef CURL_LIBS

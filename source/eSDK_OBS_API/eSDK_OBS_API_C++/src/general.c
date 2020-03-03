@@ -32,7 +32,7 @@
 #define PATH_LENGTH 1024
 
 char g_ca_info[CERTIFICATE_SIZE] = {0};
-obs_protocol g_protocol = OBS_PROTOCOL_HTTP;
+obs_protocol g_protocol = OBS_PROTOCOL_HTTPS;
 
 const char *obs_get_status_name(obs_status status)
 {
@@ -175,6 +175,7 @@ const char *obs_get_status_name(obs_status status)
         handlecase(OpenFileFailed);
         handlecase(EmptyFile);
         handlecase(QuotaTooSmall);
+        handlecase(MetadataNameDuplicate);
         handlecase(BUTT);
     }
 
@@ -211,16 +212,17 @@ obs_status obs_initialize(int win32_flags)
 
 void init_obs_options(obs_options *options)
 {
-    options->request_options.speed_time = 300;
-    options->request_options.max_connected_time = 0;
-    options->request_options.connect_time = 60000;
-    options->request_options.speed_limit = 1;
+    options->request_options.speed_time = DEFAULT_LOW_SPEED_TIME_S;
+    options->request_options.max_connected_time = DEFAULT_TIMEOUT_S;
+    options->request_options.connect_time = DEFAULT_CONNECTTIMEOUT_MS;
+    options->request_options.speed_limit = DEFAULT_LOW_SPEED_LIMIT;
     options->request_options.proxy_auth = NULL;
     options->request_options.proxy_host = NULL;
     options->request_options.ssl_cipher_list = NULL;
     options->request_options.http2_switch = OBS_HTTP2_CLOSE;
     options->request_options.bbr_switch = OBS_BBR_CLOSE;
 	options->request_options.auth_switch = OBS_NEGOTIATION_TYPE;
+    options->request_options.buffer_size = 16 * 1024L;
         
     options->bucket_options.access_key = NULL;
     options->bucket_options.secret_access_key =NULL;

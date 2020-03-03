@@ -157,6 +157,10 @@ obs_status request_api_initialize(unsigned int flags)
 
 #endif
     api_switch = (obs_s3_switch *)malloc(sizeof(obs_s3_switch)*API_STACK_SIZE);
+    if (NULL == api_switch)
+    {
+        return OBS_STATUS_OutOfMemory;
+    }
     use_api_index = -1;
     snprintf_sec(userAgentG, sizeof(userAgentG),_TRUNCATE,
     "%s%s%s.%s",PRODUCT, "/",LIBOBS_VER_MAJOR, LIBOBS_VER_MINOR);
@@ -335,11 +339,13 @@ static obs_status compose_uri(char *buffer, int buffer_size,
     if (subResource && subResource[0]) 
     {
         uri_append("?%s", subResource);
+        appendBeforeTempSignature = Mark_And;
     }
 
     if (queryParams) {
         uri_append("%s%s", (subResource && subResource[0]) ? "&" : "?",
                    queryParams);
+        appendBeforeTempSignature = Mark_And;
     }
     if (temp_auth_flag == 1) {
         uri_append("%s%s", (appendBeforeTempSignature == Mark_And)? "&" : "?",
@@ -418,8 +424,9 @@ static obs_status setup_curl(http_request *request,
     curl_easy_setopt_safe(CURLOPT_USERAGENT, userAgentG);
     curl_easy_setopt_safe(CURLOPT_LOW_SPEED_LIMIT, params->request_option.speed_limit);
     curl_easy_setopt_safe(CURLOPT_LOW_SPEED_TIME, params->request_option.speed_time);
-    curl_easy_setopt_safe(CURLOPT_CONNECTTIMEOUT, params->request_option.connect_time);
+    curl_easy_setopt_safe(CURLOPT_CONNECTTIMEOUT_MS, params->request_option.connect_time);
     curl_easy_setopt_safe(CURLOPT_TIMEOUT, params->request_option.max_connected_time);
+    curl_easy_setopt_safe(CURLOPT_BUFFERSIZE, params->request_option.buffer_size);
 
     if ((params->httpRequestType == http_request_type_put) || (params->httpRequestType == http_request_type_post)) {
         char header[256] = {0};
@@ -685,6 +692,23 @@ static obs_status compose_auth_header(const request_params *params,
     char b64[((20 + 1) * 4) / 3] = {0};
     int b64Len = base64Encode(hmac, 20, b64);
 
+    char *sts_marker;
+    if(params->use_api == OBS_USE_API_S3) {
+        sts_marker = "x-amz-security-token:";
+    }
+    else {
+        sts_marker = "x-obs-security-token:";
+    }
+    char *secutiry_token = strstr(signbuf, sts_marker);
+    if (NULL != secutiry_token) {
+        char *secutiry_token_begin = secutiry_token + strlen(sts_marker);
+        char *secutiry_token_end = strchr(secutiry_token_begin, '\n');
+        if (NULL != secutiry_token_end) {
+            for (int i = 0; i < secutiry_token_end - secutiry_token_begin; i++) {
+                secutiry_token_begin[i] = '*';
+            }
+        }
+    }
     COMMLOG(OBS_LOGWARN, "%s request_perform : StringToSign:  %.*s", __FUNCTION__, buf_len, signbuf);
 
     if(params->use_api == OBS_USE_API_S3)
@@ -692,14 +716,14 @@ static obs_status compose_auth_header(const request_params *params,
         snprintf_sec(values->authorizationHeader, sizeof(values->authorizationHeader),_TRUNCATE,
                  "Authorization: AWS %s:%.*s", params->bucketContext.access_key,
                  b64Len, b64);
-        COMMLOG(OBS_LOGINFO, "%s request_perform : Authorization: AWS %s:%.*s", __FUNCTION__,params->bucketContext.access_key,b64Len, b64);	
+        COMMLOG(OBS_LOGINFO, "%s request_perform : Authorization: AWS %s:*****************", __FUNCTION__,params->bucketContext.access_key);
     }
     else
     {
         snprintf_sec(values->authorizationHeader, sizeof(values->authorizationHeader),_TRUNCATE,
                  "Authorization: OBS %s:%.*s", params->bucketContext.access_key,
                  b64Len, b64);
-        COMMLOG(OBS_LOGINFO, "%s request_perform : Authorization: OBS %s:%.*s", __FUNCTION__,params->bucketContext.access_key,b64Len, b64);	
+        COMMLOG(OBS_LOGINFO, "%s request_perform : Authorization: OBS %s:*****************", __FUNCTION__,params->bucketContext.access_key);
     }
 
     char * userAgent = USER_AGENT_VALUE;
@@ -764,14 +788,32 @@ void request_finish(http_request *request)
             if (0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key:", 42)) {
                 COMMLOG(logLevel, "x-amz-server-side-encryption-customer-key:***********");
             }
+            else if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key:", 42)) {
+                COMMLOG(logLevel, "x-obs-server-side-encryption-customer-key:***********");
+            }
             else if (0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key-md5:", 46)) {
                 COMMLOG(logLevel, "x-amz-server-side-encryption-customer-key-md5:**********");
+            }
+            else if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key-md5:", 46)) {
+                COMMLOG(logLevel, "x-obs-server-side-encryption-customer-key-md5:**********");
             }
             else if (0 == strncmp(tmp->data, "x-amz-copy-source-server-side-encryption-customer-key:", 54)) {
                 COMMLOG(logLevel, "x-amz-copy-source-server-side-encryption-customer-key:**********");
             }
+            else if (0 == strncmp(tmp->data, "x-obs-copy-source-server-side-encryption-customer-key:", 54)) {
+                COMMLOG(logLevel, "x-obs-copy-source-server-side-encryption-customer-key:**********");
+            }
             else if (0 == strncmp(tmp->data, "x-amz-copy-source-server-side-encryption-customer-key-md5:", 58)) {
                 COMMLOG(logLevel, "x-amz-copy-source-server-side-encryption-customer-key-md5:************");
+            }
+            else if (0 == strncmp(tmp->data, "x-obs-copy-source-server-side-encryption-customer-key-md5:", 58)) {
+                COMMLOG(logLevel, "x-obs-copy-source-server-side-encryption-customer-key-md5:************");
+            }
+            else if (0 == strncmp(tmp->data, "x-amz-security-token:", strlen("x-amz-security-token:"))) {
+                COMMLOG(logLevel, "x-amz-security-token:************");
+            }
+            else if (0 == strncmp(tmp->data, "x-obs-security-token:", strlen("x-obs-security-token:"))) {
+                COMMLOG(logLevel, "x-obs-security-token:************");
             }
             else {
             COMMLOG(logLevel, tmp->data);
@@ -871,6 +913,10 @@ void request_perform(const request_params *params)
     is_true = ((code != CURLE_OK) && (request->status == OBS_STATUS_OK));
     if (is_true ) {
         request->status = request_curl_code_to_status(code);
+        char *proxyBuf = strstr(errorBuffer, "proxy:");
+        if (NULL != proxyBuf) {
+            strcpy_s(proxyBuf, CURL_ERROR_SIZE - (proxyBuf - errorBuffer), "proxy: *****");
+        }
         COMMLOG(OBS_LOGWARN, "%s curl_easy_perform code = %d,status = %d,errorBuffer = %s", __FUNCTION__,code,
         request->status,errorBuffer);
     }
@@ -945,6 +991,11 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
     easy_setopt_safe(CURLOPT_URL, uri);
     easy_setopt_safe(CURLOPT_NOBODY, 1);
 
+    curl_easy_setopt_safe(CURLOPT_LOW_SPEED_LIMIT, DEFAULT_LOW_SPEED_LIMIT);
+    curl_easy_setopt_safe(CURLOPT_LOW_SPEED_TIME, DEFAULT_LOW_SPEED_TIME_S);
+    curl_easy_setopt_safe(CURLOPT_CONNECTTIMEOUT_MS, DEFAULT_CONNECTTIMEOUT_MS);
+    curl_easy_setopt_safe(CURLOPT_TIMEOUT, DEFAULT_TIMEOUT_S);
+
     CURLcode setoptResult =  curl_easy_setopt(curl,CURLOPT_ERRORBUFFER,errorBuffer);
     COMMLOG(OBS_LOGWARN, "curl_easy_setopt curl path= %s",uri);
     if (setoptResult != CURLE_OK){
@@ -1002,7 +1053,7 @@ static int sort_bucket_name(const char *bucket_name, const char *host_name)
     return index;
 }
 
-void set_use_api_switch( obs_options *options, obs_use_api *use_api_temp)
+void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
 {
     if (options->bucket_options.uri_style == OBS_URI_STYLE_PATH)
     {

@@ -11,12 +11,12 @@ chmod 777 configure
 
 if [ $# = 0 ]; then 
 	if [ -z $BUILD_FOR_ARM ]; then
-	./configure --prefix=/usr/local/libiconv --enable-static
+	CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/libiconv --enable-static
 	elif [ $BUILD_FOR_ARM = "true" ]; then
-	./configure --prefix=/usr/local/libiconv --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
+	CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/libiconv --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
 	fi
 elif [ $1 = "BUILD_FOR_ARM" ]; then
-    ./configure --prefix=/usr/local/libiconv --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
+    CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/libiconv --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
 fi
 
 make clean 

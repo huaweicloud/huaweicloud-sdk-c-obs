@@ -315,7 +315,7 @@ extern "C"
 	**/
 	eSDK_LOG_API void _STD_CALL_ Log_Run_Error(const char* sdkname, const char* param);//运行类日志接口
 
-// 移动端ISV初始化接口 modify by cwx298983 2015.12.16 Start
+// 移动端ISV初始化接口
 #if defined(ANDROID) || defined(TARGET_MAC_OS) || defined(TARGET_OS_IPHONE)
 
 	/**
@@ -332,7 +332,7 @@ extern "C"
 	eSDK_LOG_API int _STD_CALL_ setLogPropertyEx(const char* sdkname, unsigned int logSize[LOG_CATEGORY], unsigned int logNum[LOG_CATEGORY]);
 
 #endif
-// 移动端ISV初始化接口 modify by cwx298983 2015.12.16 End
+// 移动端ISV初始化接口
 
 #ifdef __cplusplus
 }

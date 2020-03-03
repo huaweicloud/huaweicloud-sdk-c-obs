@@ -33,10 +33,15 @@ if [ "debug" == "$2" ];then
 	export DEBUG=debug
 fi
 
+if [ "openssl-oldversion" == "$3" ];then
 export openssl_version=openssl-1.0.2r
 export curl_version=curl-7.64.1
+else
+export openssl_version=openssl-1.1.1d
+export curl_version=curl-7.66.0
+fi
 export libxml2_version=libxml2-2.9.9
-export nghttp2_version=nghttp2-1.32.0
+#export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #
 # Function Name: ifFailExitAndPrint
 # Description: 
@@ -133,13 +138,13 @@ cp -f ${g_PATH}/lib/*.so lib
 cp -f ./../../../platform/huaweisecurec/include/* include
 cp -f ./../../../platform/huaweisecurec/lib/libsecurec.so lib
 cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/C/aarch64/libeSDKLogAPI.so lib
-cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/log4cpp/lib/* lib 
-cp -f ./../../../build/script/Provider/build/arm/${curl_version}/lib/* lib
-cp -f ./../../../build/script/Provider/build/arm/${libxml2_version}/lib/* lib
-cp -f ./../../../build/script/Provider/build/arm/${openssl_version}/lib/* lib 
-cp -f ./../../../build/script/Provider/build/arm/pcre-8.39/lib/* lib 
-cp -f ./../../../build/script/Provider/build/arm/iconv-1.15/lib/* lib 
-cp -f ./../../../build/script/Provider/build/arm/${nghttp2_version}/lib/* lib 
+cp -af ./../../../platform/eSDK_LogAPI_V2.1.10/C/aarch64/liblog4cpp* lib 
+cp -af ./../../../build/script/Provider/build/arm/${curl_version}/lib/* lib
+cp -af ./../../../build/script/Provider/build/arm/${libxml2_version}/lib/* lib
+cp -af ./../../../build/script/Provider/build/arm/${openssl_version}/lib/* lib 
+cp -af ./../../../build/script/Provider/build/arm/pcre-8.39/lib/* lib 
+cp -af ./../../../build/script/Provider/build/arm/iconv-1.15/lib/* lib 
+#cp -f ./../../../build/script/Provider/build/arm/${nghttp2_version}/lib/* lib 
 echo "BUILD_FOR_ARM=true" >  demo/Makefile
 cat Makefile_obs >> demo/Makefile
 cp -f OBS.ini lib

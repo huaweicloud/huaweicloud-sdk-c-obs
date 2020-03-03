@@ -128,7 +128,7 @@ static void test_create_bucket(obs_canned_acl canned_acl, char *bucket_name)
 }
 
 // create posix bucket ---------------------------------------------------------------
-static void test_create_posix_bucket(obs_canned_acl canned_acl, char *bucket_name)
+static void test_create_pfs_bucket(obs_canned_acl canned_acl, char *bucket_name)
 {
     obs_status ret_status = OBS_STATUS_BUTT;
     obs_options option;
@@ -144,19 +144,19 @@ static void test_create_posix_bucket(obs_canned_acl canned_acl, char *bucket_nam
         0, &response_complete_callback
     };
 
-    create_posix_bucket(&option, canned_acl, NULL,10995116277760, &response_handler, &ret_status);
+    create_pfs_bucket(&option, canned_acl, NULL, &response_handler, &ret_status);
     if (ret_status == OBS_STATUS_OK) {
-        printf("create posix bucket %s successfully.\n", bucket_name);
+        printf("create pfs bucket %s successfully.\n", bucket_name);
     }
     else
     {
-        printf("create posix bucket %s failed(%s).\n", bucket_name, obs_get_status_name(ret_status));
+        printf("create pfs bucket %s failed(%s).\n", bucket_name, obs_get_status_name(ret_status));
     }
 
 }
 
 // create posix bucket ---------------------------------------------------------------
-static void test_create_posix_bucket_with_option(obs_canned_acl canned_acl, char *bucket_name,
+static void test_create_pfs_bucket_with_option(obs_canned_acl canned_acl, char *bucket_name,
             char *bucket_region)
 {
     obs_options option;
@@ -175,7 +175,7 @@ static void test_create_posix_bucket_with_option(obs_canned_acl canned_acl, char
         &response_complete_callback
     };
 
-    create_posix_bucket(&option, canned_acl, bucket_region, 10995116277760, &response_handler, &ret_status);
+    create_pfs_bucket(&option, canned_acl, bucket_region, &response_handler, &ret_status);
     if (ret_status == OBS_STATUS_OK) {
         printf("create bucket %s with option successfully.\n", bucket_name);
     }
@@ -3478,12 +3478,12 @@ static void test_modify_object_from_buffer(char *bucket_name, char *key, char *b
 
     obs_put_properties put_properties;
     init_put_properties(&put_properties);
-    //3?Â¨Âº??Â¡Â¥Â¡Ã¤?Â¡Ã¤Â¡Ã©Â¨Â¦?Â¡Ã¤?Â¨Âºy?YÂ¦ÃŒ??Â¨Â¢11Â¨Â¬?
+    //3?¨º??¡¥¡ä?¡ä¡é¨¦?¡ä?¨ºy?Y¦Ì??¨¢11¨¬?
     put_buffer_object_callback_data data;
     memset(&data, 0, sizeof(put_buffer_object_callback_data));
-    // Â¡Ã£?buffer?3?Â¦ÃŒÂ¦ÃŒ?Â¨Â¦?Â¡Ã¤?Â¨Âºy?Y?Â¨Â¢11?D
+    // ¡ã?buffer?3?¦Ì¦Ì?¨¦?¡ä?¨ºy?Y?¨¢11?D
     data.put_buffer = buffer;
-    // Â¨Â¦Â¨Â¨??buffersize
+    // ¨¦¨¨??buffersize
     data.buffer_size = buffer_size;
 
     obs_modify_object_handler putobjectHandler =
@@ -3564,27 +3564,27 @@ void test_rename_object(char *bucket_name, char *object_name, char *new_object_n
 
 
 
-int test_posix()
+int test_pfs()
 {
     obs_canned_acl canned_acl = OBS_CANNED_ACL_BUCKET_OWNER_FULL_CONTROL;
-    char bucket_src[]="bucket-src-posix";
-    char bucket_target[]="bucket-target-posix";
-    char bucket_obj_acl[]="bucket-obj-acl-posix";
+    char bucket_src[]="bucket-src-pfs";
+    char bucket_target[]="bucket-target-pfs";
+    char bucket_obj_acl[]="bucket-obj-acl-pfs";
 
-    strcpy(BUCKET_NAME,"esdk-c-test-posix");
+    strcpy(BUCKET_NAME,"esdk-c-test-pfs");
 
     /*------ bucket test------*/
-    test_create_posix_bucket(canned_acl, BUCKET_NAME);
-    test_create_posix_bucket(canned_acl, bucket_src);
-    test_create_posix_bucket(canned_acl, bucket_target);
-    test_create_posix_bucket(canned_acl, bucket_obj_acl);
+    test_create_pfs_bucket(canned_acl, BUCKET_NAME);
+    test_create_pfs_bucket(canned_acl, bucket_src);
+    test_create_pfs_bucket(canned_acl, bucket_target);
+    test_create_pfs_bucket(canned_acl, bucket_obj_acl);
     test_get_bucket_storage_class(BUCKET_NAME);
 
     //head bucket
     test_head_bucket(BUCKET_NAME);
     // list bucket
     test_list_bucket(OBS_BUCKET_LIST_OBJECT);
-    test_list_bucket(OBS_BUCKET_LIST_POSIX);
+    test_list_bucket(OBS_BUCKET_LIST_PFS);
     test_list_bucket(OBS_BUCKET_LIST_ALL);
     // quota
     test_get_bucket_quota(bucket_src);
@@ -3715,10 +3715,10 @@ int test_posix()
 
 int main(int argc, char **argv)
 {
-    strcpy(ACCESS_KEY_ID,"your access key");
-    strcpy(SECRET_ACCESS_KEY,"your secret key");
-    strcpy(HOST_NAME,"endpoint");
-    strcpy(BUCKET_NAME,"your bucket name");
+    strcpy(ACCESS_KEY_ID,"xxxxxxxxxxxxxxxxxxxx");
+    strcpy(SECRET_ACCESS_KEY,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    strcpy(HOST_NAME,"xx.xx.xx.xx");
+    strcpy(BUCKET_NAME,"esdk-c-test");
      
     obs_canned_acl canned_acl = OBS_CANNED_ACL_BUCKET_OWNER_FULL_CONTROL;
     char bucket_src[]="bucket-src";
@@ -3895,7 +3895,7 @@ int main(int argc, char **argv)
     test_delete_bucket(bucket_obj_acl);
 
      /*-----------------test posix---------------------*/
-    test_posix();
+    test_pfs();
 
     
     char *bucket_cert = "bucket-cert";

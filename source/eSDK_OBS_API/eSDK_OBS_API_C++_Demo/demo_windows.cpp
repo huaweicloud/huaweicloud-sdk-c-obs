@@ -2958,7 +2958,7 @@ static void test_set_notification_configuration(char *bucket_name)
     // Set the id of the notification configuration, which is uniquely labeled
     topic_conf.id    = "Id001"; 
     // Set the URN of the event notification topic
-    topic_conf.topic = "urn:smn:southchina:ea79855fbe0642718cb4df1551c3cb4e:test_cwx298983";
+    topic_conf.topic = "urn:smn:southchina:ea79855fbe0642718cb4df1551c3cb4e:test_xxxxxx";
     // Set notification action
     topic_conf.event = topic1_event; 
     topic_conf.event[0] = SMN_EVENT_OBJECT_CREATED_ALL; 
@@ -5269,9 +5269,9 @@ static void test_gen_signed_url_get_object(char *key, char *versionid)
 int main(int argc, char **argv)
 {
     int optind =1;
-    strcpy(ACCESS_KEY_ID,"UDSIAMSTUBTEST000400");  
-    strcpy(SECRET_ACCESS_KEY,"Udsiamstubtest000000UDSIAMSTUBTEST000400");   
-    strcpy(HOST_NAME,"10.183.181.161");  
+    strcpy(ACCESS_KEY_ID,"xxxxxxxxxxxxxxxxx");  
+    strcpy(SECRET_ACCESS_KEY,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");   
+    strcpy(HOST_NAME,"xx.xx.xx.xx");  
  
     /*--------------check argv-------------*/
     if (optind == argc) {

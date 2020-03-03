@@ -9,9 +9,9 @@ log4cpplib_dir=$log4cpp_dir/lib
 cd $log4cpp_dir
 chmod 777 configure
 aclocal -I m4
-autoreconf
+autoreconf -ivf
 automake -a -c
-./configure --prefix=/usr/local/log4cpp --with-pthreads --enable-static
+CXXFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -O2" ./configure --prefix=/usr/local/log4cpp --with-pthreads --enable-static
 
 make clean 
 make
@@ -20,7 +20,7 @@ make install
 cd $open_src_path
 
 mkdir -p $log4cpplib_dir
-cp /usr/local/log4cpp/lib/liblog4cpp* $log4cpplib_dir
+cp /usr/local/log4cpp/lib/liblog4cpp*.so* $log4cpplib_dir
 
 echo =========build the libeSDKLogAPI.so=========
 cd $logAPI_dir

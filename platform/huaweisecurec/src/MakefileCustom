@@ -9,7 +9,7 @@ TESTOBJS = $(ALL_OBJS) test.o
 
 CC = gcc
 
-FLAGS = -I ../include  -Wall -DNDEBUG -s -O2
+FLAGS = -I ../include  -Wall -DNDEBUG -s -O2 -fstack-protector-all -Wl,-z,relro,-z,now
 #FLAGS = -Wall -W -I ../include -I. -g -D_DEBUG
 
 ARCH:=$(shell getconf LONG_BIT)

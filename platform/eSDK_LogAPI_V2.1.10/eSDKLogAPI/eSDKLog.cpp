@@ -87,7 +87,7 @@ bool eSDKLog::InitLog4cpp(const std::string& product, unsigned int logLevel[LOG_
 
 	// 初始化日志路径
 	std::string strInterfacePath = GetLog4cppPath(logPath, LOG_INTERFACE_FILE);
-	// 判断路径是否为空，如果为空，则返回false modify by cwx298983 2016.02.29
+	// 判断路径是否为空，如果为空，则返回false
 	D_IF_PATH_EMPTY(strInterfacePath);
 
 	std::string strOperationPath = GetLog4cppPath(logPath, LOG_OPERATE_FILE);

@@ -37,17 +37,17 @@ using namespace eSDK;
 #endif
 
 #ifndef WIN64
-// 导出接口预处理 modify by cwx298983 2015.12.03 Start
+// 导出接口预处理
 #pragma comment(linker, "/EXPORT:LogFini=_LogFini@4")
 #pragma comment(linker, "/EXPORT:LogInit=_LogInit@16")
 #pragma comment(linker, "/EXPORT:Log_Run_Debug=_Log_Run_Debug@8")
 #pragma comment(linker, "/EXPORT:Log_Run_Error=_Log_Run_Error@8")
 #pragma comment(linker, "/EXPORT:Log_Run_Info=_Log_Run_Info@8")
 #pragma comment(linker, "/EXPORT:Log_Run_Warn=_Log_Run_Warn@8")
-// 导出接口预处理 modify by cwx298983 2015.12.03 End
+// 导出接口预处理
 #endif
 
-// 安卓读取无法读取ini文件，故直接传送ini文件内容 modify by cwx298983 2015.12.22 Start
+// 安卓读取无法读取ini文件，故直接传送ini文件内容
 #if defined ANDROID
 int _STD_CALL_ LogInitForAndroid(const char* product, const char* iniInfo, unsigned int logLevel[LOG_CATEGORY], const char* logPath)
 {
@@ -62,7 +62,7 @@ int _STD_CALL_ LogInitForAndroid(const char* product, const char* iniInfo, unsig
 
 	return RET_SUCCESS;
 }
-// 安卓读取无法读取ini文件，故直接传送ini文件内容 modify by cwx298983 2015.12.22 End
+// 安卓读取无法读取ini文件，故直接传送ini文件内容
 #else
 
 int _STD_CALL_ LogInit(const char* product, const char* iniFile, unsigned int logLevel[LOG_CATEGORY], const char* logPath)
@@ -400,7 +400,7 @@ void _STD_CALL_ Log_Run_Error(const char* product, const char* param)
 	(void)LOGMGRINSTANE().printRunlog(product,ERROR_LEVEL,strErrorContent);
 }
 
-// 移动端ISV初始化接口 modify by cwx298983 2015.12.16 Start
+// 移动端ISV初始化接口
 #if defined(ANDROID) || defined(TARGET_MAC_OS) || defined(TARGET_OS_IPHONE)
 
 eSDK_LOG_API int _STD_CALL_ setLogPropertyEx(const char* product, unsigned int logSize[LOG_CATEGORY], unsigned int logNum[LOG_CATEGORY])
@@ -413,5 +413,5 @@ eSDK_LOG_API int _STD_CALL_ setLogPropertyEx(const char* product, unsigned int l
 }
 
 #endif
-// 移动端ISV初始化接口 modify by cwx298983 2015.12.16 End
+// 移动端ISV初始化接口
 

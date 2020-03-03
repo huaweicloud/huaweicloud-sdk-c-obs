@@ -70,7 +70,7 @@ void deinitialize_break_point_lock()
 
 }
 
-void obs_head_object(obs_options *options, char *key, obs_response_handler *handler, void *callback_data)
+void obs_head_object(const obs_options *options, char *key, obs_response_handler *handler, void *callback_data)
 {
     request_params params;
     
@@ -101,7 +101,7 @@ void obs_head_object(obs_options *options, char *key, obs_response_handler *hand
     COMMLOG(OBS_LOGINFO, "Leave obs_head_object Successfully!");
 }
 
-void get_object_metadata(obs_options *options, obs_object_info *object_info, 
+void get_object_metadata(const obs_options *options, obs_object_info *object_info, 
                          server_side_encryption_params *encryption_params,
                          obs_response_handler *handler, void *callback_data)
 {
@@ -149,7 +149,7 @@ void get_object_metadata(obs_options *options, obs_object_info *object_info,
     COMMLOG(OBS_LOGINFO, "Leave get_object_metadata successfully !");
 }
 
-void set_object_metadata(obs_options *options, obs_object_info *object_info, 
+void set_object_metadata(const obs_options *options, obs_object_info *object_info, 
 						 obs_put_properties *put_properties,
 						 server_side_encryption_params *encryption_params,
 						 obs_response_handler *handler, void *callback_data)
@@ -209,7 +209,7 @@ void set_object_metadata(obs_options *options, obs_object_info *object_info,
 	COMMLOG(OBS_LOGINFO, "Leave set_object_metadata successfully !");
 }
 
-void put_object(obs_options *options, char *key, uint64_t content_length,
+void put_object(const obs_options *options, char *key, uint64_t content_length,
                 obs_put_properties *put_properties,
                 server_side_encryption_params *encryption_params,
                 obs_put_object_handler *handler, void *callback_data)
@@ -250,7 +250,7 @@ void put_object(obs_options *options, char *key, uint64_t content_length,
     COMMLOG(OBS_LOGINFO, "Leave put_object successfully !");
 }
 
-void append_object(obs_options *options, char *key, uint64_t content_length, const char *position,
+void append_object(const obs_options *options, char *key, uint64_t content_length, const char *position,
                    obs_put_properties *put_properties,server_side_encryption_params *encryption_params,
                    obs_append_object_handler *handler, void *callback_data)
 {   
@@ -301,7 +301,7 @@ void append_object(obs_options *options, char *key, uint64_t content_length, con
 }
 
 // only posix bucke use
-void modify_object(obs_options *options, char *key, uint64_t content_length, uint64_t position,
+void modify_object(const obs_options *options, char *key, uint64_t content_length, uint64_t position,
                    obs_put_properties *put_properties,server_side_encryption_params *encryption_params,
                    obs_modify_object_handler *handler, void *callback_data)
 {   
@@ -345,7 +345,7 @@ void modify_object(obs_options *options, char *key, uint64_t content_length, uin
 }
 
 // only posix bucke use
-void truncate_object(obs_options *options, char *key, uint64_t object_length,
+void truncate_object(const obs_options *options, char *key, uint64_t object_length,
                    obs_response_handler *handler, void *callback_data)
 {   
     request_params params;
@@ -390,7 +390,7 @@ void truncate_object(obs_options *options, char *key, uint64_t object_length,
 }
 
 // only posix bucke use
-void rename_object(obs_options *options, char *key, char *new_object_name,
+void rename_object(const obs_options *options, char *key, char *new_object_name,
                    obs_response_handler *handler, void *callback_data)
 {   
     request_params params;
@@ -432,7 +432,7 @@ void rename_object(obs_options *options, char *key, char *new_object_name,
 }
 
 
-void get_object(obs_options *options, obs_object_info *object_info,
+void get_object(const obs_options *options, obs_object_info *object_info,
                 obs_get_conditions *get_conditions, 
                 server_side_encryption_params *encryption_params,
                 obs_get_object_handler *handler, void *callback_data)
@@ -510,7 +510,7 @@ void get_object(obs_options *options, obs_object_info *object_info,
     COMMLOG(OBS_LOGINFO, "Leave get_object successfully!");
 }
 
-void delete_object(obs_options *options, obs_object_info *object_info,
+void delete_object(const obs_options *options, obs_object_info *object_info,
                     obs_response_handler *handler, void *callback_data)
 {
 
@@ -764,7 +764,7 @@ obs_status compose_del_xml(obs_object_info *object_info,obs_delete_object_info *
     return OBS_STATUS_OK;
 }
 
-void batch_delete_objects(obs_options *options, obs_object_info *object_info,obs_delete_object_info *delobj,     
+void batch_delete_objects(const obs_options *options, obs_object_info *object_info,obs_delete_object_info *delobj,     
                           obs_put_properties *put_properties, obs_delete_object_handler *handler, void *callback_data)
 {
 
@@ -846,7 +846,7 @@ void batch_delete_objects(obs_options *options, obs_object_info *object_info,obs
 }
 
 
-void upload_part(obs_options *options, char *key, obs_upload_part_info *upload_part_info, 
+void upload_part(const obs_options *options, char *key, obs_upload_part_info *upload_part_info, 
                  uint64_t content_length, obs_put_properties *put_properties,
                  server_side_encryption_params *encryption_params,
                  obs_upload_handler *handler, void *callback_data)
@@ -966,7 +966,7 @@ static void initiate_multi_part_upload_complete_callback(obs_status requestStatu
 }
 
 
-void initiate_multi_part_upload(obs_options *options, char *key,int upload_id_return_size,
+void initiate_multi_part_upload(const obs_options *options, char *key,int upload_id_return_size,
                                 char *upload_id_return, obs_put_properties *put_properties,
                                 server_side_encryption_params *encryption_params,
                                 obs_response_handler *handler, void *callback_data)
@@ -1186,7 +1186,7 @@ static obs_status complete_multi_part_upload_properties_callback
     return OBS_STATUS_OK;
 }
 
-void complete_multi_part_upload(obs_options *options, char *key, const char *upload_id, unsigned int part_number, 
+void complete_multi_part_upload(const obs_options *options, char *key, const char *upload_id, unsigned int part_number, 
                 obs_complete_upload_Info *complete_upload_Info, obs_put_properties *put_properties,
                 obs_complete_multi_part_upload_handler *handler, void *callback_data)
 {
@@ -1464,7 +1464,7 @@ static obs_status ListPartsDataCallback(int buffer_size, const char *buffer,
     return simplexml_add(&(lpData->simpleXml), buffer, buffer_size);
 }
 
-void list_parts (obs_options *options, char *key, list_part_info *listpart,
+void list_parts (const obs_options *options, char *key, list_part_info *listpart,
                  obs_list_parts_handler *handler, void *callback_data)
 {
     request_params params;
@@ -1548,7 +1548,7 @@ void list_parts (obs_options *options, char *key, list_part_info *listpart,
     COMMLOG(OBS_LOGINFO, "Leave list_parts successfully !");
 }
 
-void abort_multi_part_upload(obs_options *options, char *key, const char *upload_id,
+void abort_multi_part_upload(const obs_options *options, char *key, const char *upload_id,
                              obs_response_handler *handler, void *callback_data)
 {
     request_params params;
@@ -1703,7 +1703,7 @@ static obs_status copyObjectDataCallback(int buffer_size, const char *buffer,
     return simplexml_add(&(coData->simpleXml), buffer, buffer_size);
 }
 
-void copy_object(obs_options *options, char *key, const char *version_id, 
+void copy_object(const obs_options *options, char *key, const char *version_id, 
                 obs_copy_destination_object_info *object_info,
                 unsigned int is_copy, obs_put_properties *put_properties, 
                 server_side_encryption_params *encryption_params,
@@ -2119,7 +2119,7 @@ static void getAclCompleteCallback(obs_status requestStatus,
 
 }
 
-void get_object_acl(obs_options *options, manager_acl_info *aclinfo, obs_response_handler *handler, void *callback_data)
+void get_object_acl(const obs_options *options, manager_acl_info *aclinfo, obs_response_handler *handler, void *callback_data)
 {
     request_params params;
     obs_use_api use_api = OBS_USE_API_S3;
@@ -2359,13 +2359,13 @@ static void setAclCompleteCallback(obs_status requestStatus,
 
 }
 
-void set_object_acl(obs_options *options, manager_acl_info *aclinfo, obs_response_handler *handler, void *callback_data)
+void set_object_acl(const obs_options *options, manager_acl_info *aclinfo, obs_response_handler *handler, void *callback_data)
 {
     obs_type_acl type = TYPE_OBJECT_ACL;
     set_common_acl(options, aclinfo, type, handler, callback_data);
 }
 
-void set_common_acl(obs_options *options, manager_acl_info *aclinfo, obs_type_acl type, obs_response_handler *handler, void *callback_data)	
+void set_common_acl(const obs_options *options, manager_acl_info *aclinfo, obs_type_acl type, obs_response_handler *handler, void *callback_data)	
 {
     request_params params;
     obs_use_api use_api = OBS_USE_API_S3;
@@ -2434,7 +2434,7 @@ void set_common_acl(obs_options *options, manager_acl_info *aclinfo, obs_type_ac
     COMMLOG(OBS_LOGINFO, "Leave set_object_acl successfully !");
 }
 
-void set_object_acl_by_head(obs_options *options, obs_object_info *object_info, 
+void set_object_acl_by_head(const obs_options *options, obs_object_info *object_info, 
                      obs_canned_acl canned_acl, obs_response_handler *handler, void *callback_data)
 {
     request_params params;
@@ -2557,7 +2557,7 @@ static void CopyPartCompleteCallback(obs_status requestStatus,
 }
 
 
-void copy_part(obs_options *options, char *key, obs_copy_destination_object_info *object_info,
+void copy_part(const obs_options *options, char *key, obs_copy_destination_object_info *object_info,
                obs_upload_part_info *copypart, obs_put_properties *put_properties, 
                server_side_encryption_params *encryption_params,obs_response_handler *handler, void *callback_data)
 {
@@ -2770,7 +2770,7 @@ void setCompleteCallback(obs_status enRequestStatus,
 }
 
 
-void restore_object(obs_options *options, obs_object_info *object_info, const char *days, 
+void restore_object(const obs_options *options, obs_object_info *object_info, const char *days, 
                 obs_tier tier,const obs_response_handler *handler, void *callback_data)
 {
     request_params params;
@@ -2859,7 +2859,7 @@ void restore_object(obs_options *options, obs_object_info *object_info, const ch
     COMMLOG(OBS_LOGINFO, "Leave restore_object successfully !");
 }
 
-void obs_options_obj_or_bucket(obs_options *options, int is_bucket, char* key, char* origin,
+void obs_options_obj_or_bucket(const obs_options *options, int is_bucket, char* key, char* origin,
                     char (*request_method)[OBS_COMMON_LEN_256], unsigned int method_number, 
                     char (*request_header)[OBS_COMMON_LEN_256], unsigned int header_number, 
                     obs_response_handler *handler, void *callback_data)
@@ -2920,7 +2920,7 @@ void obs_options_obj_or_bucket(obs_options *options, int is_bucket, char* key, c
     COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
 }
 
-void obs_options_object(obs_options *options, char* key, char* origin,
+void obs_options_object(const obs_options *options, char* key, char* origin,
                     char (*request_method)[OBS_COMMON_LEN_256], unsigned int method_number,
                     char (*request_header)[OBS_COMMON_LEN_256], unsigned int header_number,
                     obs_response_handler *handler, void *callback_data)
@@ -3473,7 +3473,7 @@ static void ListPartsCompleteCallback_Intern(obs_status status,
     return;
 }
 
-int checkUploadFileInfo(upload_file_summary * pstUploadInfo, obs_options *options, const char * keyIn)
+int checkUploadFileInfo(upload_file_summary * pstUploadInfo, const obs_options *options, const char * keyIn)
 {
     obs_list_parts_handler listPartsHandler = 
     { 
@@ -3514,7 +3514,7 @@ int checkUploadFileInfo(upload_file_summary * pstUploadInfo, obs_options *option
 }
 
 
-void abortMultipartUploadAndFree(obs_options *options,  char *key,
+void abortMultipartUploadAndFree(const obs_options *options,  char *key,
                                  const char * upload_id, const char *checkpointFilename, EN_FILE_ACTION enAction)
 {
     int fdTemp = -1;
@@ -4438,7 +4438,7 @@ obs_status CompleteMultipartUploadCallback_Intern(const char *location,
 }
 
 int completeUploadFileParts(upload_file_part_info * pstUploadInfoList,int partCount,
-                            obs_options *options,  char * key, 
+                            const obs_options *options,  char * key, 
                             const char * upload_id, obs_response_handler *handler)
 {
     obs_complete_upload_Info * pstUploadInfo;
@@ -4486,7 +4486,7 @@ int completeUploadFileParts(upload_file_part_info * pstUploadInfoList,int partCo
     return 0;
 }
 
-int set_isFirstTime(obs_options *options, char *key, obs_upload_file_configuration *upload_file_config, 
+int set_isFirstTime(const obs_options *options, char *key, obs_upload_file_configuration *upload_file_config, 
             upload_file_part_info **pstUploadPartList, int *partCount,
             upload_file_summary *pstUploadFileSum)
 {
@@ -4551,15 +4551,12 @@ int set_isFirstTime(obs_options *options, char *key, obs_upload_file_configurati
     return isFirtTime;
 }
 
-int get_uploadId_for_uploadFile(obs_options *options, char *key, 
+int get_uploadId_for_uploadFile(const obs_options *options, char *key, 
             obs_upload_file_configuration *upload_file_config, 
             char *upload_id, upload_params *pstUploadParams, upload_file_part_info * pstUploadPartList,
             int set_partlist_retVal,
-            obs_response_handler *commonHandler, char *checkpointFilename, int isFirtTime)
+            obs_response_handler *commonHandler,  char *checkpointFilename, int isFirtTime)
 {
-    if(!strcmp(upload_file_config->check_point_file, checkpointFilename)){
-        upload_file_config->check_point_file = checkpointFilename;
-    }
     if(set_partlist_retVal  == -1)
     {
         COMMLOG(OBS_LOGINFO, "set_partlist_retVal = %d", set_partlist_retVal);
@@ -4575,14 +4572,15 @@ int get_uploadId_for_uploadFile(obs_options *options, char *key,
         } 
         return -1;
     }
+
+    if(!(upload_file_config->check_point_file) || !strcmp(upload_file_config->check_point_file, checkpointFilename)){
+        upload_file_config->check_point_file = checkpointFilename;
+    }
+
      // init upload task   
     if((isFirtTime == 1)||(NULL == pstUploadParams->upload_id)||(strlen(pstUploadParams->upload_id)==0))
     {
         initiate_multi_part_upload(options,key,MAX_SIZE_UPLOADID, upload_id, 0, 0,commonHandler, 0);
-         if (!upload_file_config->check_point_file)
-         {
-             upload_file_config->check_point_file = checkpointFilename;
-         }
         if(strlen(upload_id)==0) //failed to init multiPart task
         {
             if(upload_file_config->enable_check_point)
@@ -4605,14 +4603,12 @@ int get_uploadId_for_uploadFile(obs_options *options, char *key,
             strcpy_s(upload_id,MAX_SIZE_UPLOADID,pstUploadParams->upload_id);
         }
     }
-    if(!strcmp(upload_file_config->check_point_file, checkpointFilename)){
-        upload_file_config->check_point_file = checkpointFilename;
-    }
+
     return 0;
 }
 
 
-void upload_complete_handle(obs_options *options, char *key, obs_upload_file_response_handler *handler,
+void upload_complete_handle(const obs_options *options, char *key, obs_upload_file_response_handler *handler,
     upload_file_part_info * pstUploadPartList, int partCount, const char *upload_id, 
     obs_upload_file_configuration *upload_file_config, const char *checkpointFilename,
     void *callback_data)
@@ -4730,7 +4726,7 @@ void upload_complete_handle(obs_options *options, char *key, obs_upload_file_res
     return ;
 }
 
-void upload_file(obs_options *options, char *key, server_side_encryption_params *encryption_params, 
+void upload_file(const obs_options *options, char *key, server_side_encryption_params *encryption_params, 
                  obs_upload_file_configuration *upload_file_config, obs_upload_file_response_handler *handler, void *callback_data)
 {
     int isFirtTime = 1;
@@ -4776,7 +4772,7 @@ void upload_file(obs_options *options, char *key, server_side_encryption_params 
     is_ture = ((upload_file_config->part_size == 0)
                             ||(upload_file_config->part_size > MAX_PART_SIZE));
     uploadPartSize = is_ture ? MAX_PART_SIZE : upload_file_config->part_size;  
-    uploadPartSize = (uploadPartSize> stUploadFileSum.fileSize)?stUploadFileSum.fileSize:uploadPartSize;
+    uploadPartSize = (uploadPartSize> stUploadFileSum.fileSize) ? stUploadFileSum.fileSize : uploadPartSize;
 
     //set the part list to upload
     retVal = setPartList(&stUploadFileSum, uploadPartSize,&pstUploadPartList,&partCount,isFirtTime);
@@ -4892,7 +4888,7 @@ static void GetObjectMetadataCompleteCallback_Intern(obs_status status,
 }
 
 obs_status getObjectInfo(download_file_summary * downloadFileInfo,
-                  obs_options *options, char *key, char* version_id,
+                  const obs_options *options, char *key, char* version_id,
                   server_side_encryption_params *encryption_params)
 {
     get_object_metadata_callback_data stGetObjectMetadataCallBackData;
@@ -4916,7 +4912,7 @@ obs_status getObjectInfo(download_file_summary * downloadFileInfo,
     return stGetObjectMetadataCallBackData.retStatus;   
 }
 
-obs_status restoreGlacierObject(obs_options *options, char * key, char * version_id)
+obs_status restoreGlacierObject(const obs_options *options, char * key, char * version_id)
 {
     
     obs_tier tier = OBS_TIER_EXPEDITED;
@@ -6347,7 +6343,7 @@ void download_complete_handle(download_file_part_info * pstPartInfoListDone,
     return;
 }
 
-void download_file(obs_options *options, char *key, char* version_id,
+void download_file(const obs_options *options, char *key, char* version_id,
                    obs_get_conditions *get_conditions,
                    server_side_encryption_params *encryption_params,
                    obs_download_file_configuration * download_file_config,

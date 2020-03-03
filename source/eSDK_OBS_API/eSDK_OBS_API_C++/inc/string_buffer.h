@@ -123,7 +123,7 @@
         amp = 1;\
         char encoded[3 * 1024];\
         int isFlag = 0;\
-        if (isFlag == urlEncode(encoded, value, 1024))\
+        if (isFlag == urlEncode(encoded, value, 1024, 0))\
         {\
             (void)(*(complete_callback))(OBS_STATUS_QueryParamsTooLong, 0, callback_data);\
             return;\
@@ -157,7 +157,7 @@
         amp = 1;\
         char encoded[3 * 1024];\
         int isFlag = 0;\
-        if (isFlag == urlEncode(encoded, value, 1024))\
+        if (isFlag == urlEncode(encoded, value, 1024, 0))\
         {\
             (void)(*(complete_callback))(OBS_STATUS_QueryParamsTooLong, 0, callback_data);\
             return;\
@@ -189,7 +189,7 @@
         amp = 1;\
         char encoded[3 * 1024];\
         int isFlag = 0;\
-        if (isFlag == urlEncode(encoded, value, 1024))\
+        if (isFlag == urlEncode(encoded, value, 1024, 0))\
         {\
             return OBS_STATUS_QueryParamsTooLong;\
         }\

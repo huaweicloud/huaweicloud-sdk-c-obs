@@ -25,7 +25,7 @@
 
 #ifdef WIN32
 #define LIBOBS_VER_MAJOR "3.19"
-#define LIBOBS_VER_MINOR "7"
+#define LIBOBS_VER_MINOR "9"
 #endif
 
 #if defined __GNUC__ || defined LINUX
@@ -37,9 +37,13 @@
 #define BUCKET_LEN 65
 #define DOMAIN_LEN 254
 
-#define OBS_SDK_VERSION "3.19.7"
-#define USER_AGENT_VALUE  "obs-sdk-c-3.19.7" ;
+#define OBS_SDK_VERSION "3.19.9.1"
+#define USER_AGENT_VALUE  "obs-sdk-c-3.19.9.1" ;
 
+#define DEFAULT_LOW_SPEED_LIMIT    (1)
+#define DEFAULT_LOW_SPEED_TIME_S   (300)
+#define DEFAULT_CONNECTTIMEOUT_MS  (60000)
+#define DEFAULT_TIMEOUT_S          (0)
 
 #define signbuf_append(format, ...)                             \
     if (snprintf_sec(&(signbuf[len]), buf_len - (len), _TRUNCATE,format, __VA_ARGS__) > 0) \
@@ -246,7 +250,7 @@ void request_api_deinitialize();
 
 void request_perform(const request_params *params);
 
-void set_use_api_switch( obs_options *options ,obs_use_api *use_api_temp);
+void set_use_api_switch(const obs_options *options ,obs_use_api *use_api_temp);
 
 obs_use_api get_api_protocol(char *bucket_name, char *host_name);
 

@@ -1,5 +1,10 @@
+ARCH = $(shell uname -m)
+ifeq ($(ARCH), aarch64)
 CXX = aarch64-linux-gnu-g++
-CXXFLAGS = -fPIC
+else
+CXX = g++
+endif
+CXXFLAGS = -fPIC -fstack-protector-all -Wl,-z,relro,-z,now
 SHARED = -shared
 TARGET = libeSDKLogAPI.so
 INCLUDEDIR = -I ../../../platform/huaweisecurec/include -I ../output/include -I ../ -I ../vos -I../log4cpp
@@ -17,7 +22,11 @@ SECUREC_OBJS = $(patsubst %.c,%.o,$(SECUREC_SOURCES))
 OBJS += $(SECUREC_OBJS)
 
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(SHARED) -DDEBUG -DENV_LINUX $^ -L../log4cpp/lib -llog4cpp -o $(TARGET) -lpthread 
+ifeq ($(ARCH), aarch64)
+	$(CXX) $(CXXFLAGS) $(SHARED) -DDEBUG -DENV_LINUX $^ -L../C/aarch64 -llog4cpp -o $(TARGET) -lpthread
+else
+	$(CXX) $(CXXFLAGS) $(SHARED) -DDEBUG -DENV_LINUX $^ -L../C/linux_64 -llog4cpp -o $(TARGET) -lpthread
+endif
 
 .PHONY: clean
 clean:

@@ -47,7 +47,7 @@ using namespace VPP;
 //默认日志目录
 #define LOG_DIRECTORY				"log"
 
-// 去除最后的|符号 modify by cwx298983 2015.12.10 Start
+// 去除最后的|符号
 //interface日志格式"%d日期 %t线程id %p优先级 %m消息 %n换行符"
 #define LOG_INTERFACE_PATTERN			"%d{%Y-%m-%d %H:%M:%S %l}|%5p|%m%n"
 //operation日志格式"%d日期 %t线程id %p优先级 %m消息 %n换行符"
@@ -56,7 +56,7 @@ using namespace VPP;
 #define LOG_RUN_PATTERN					"%d{%Y-%m-%d %H:%M:%S %l}|%5p|[%t]%m%n"
 //interface备份日志格式"%m信息"
 #define LOG_INTERFACE_BACKUP_PATTERN	"%m"
-// 去除最后的|符号 modify by cwx298983 2015.12.10 End
+// 去除最后的|符号
 
 //日志实例名
 #define LOG_INTERFACE_INSTANCE		"INTERFACE"
@@ -83,12 +83,12 @@ public:
 public:	
 	bool InitLog4cpp(const std::string& product, unsigned int logLevel[LOG_CATEGORY], const std::string& logPath, int mode=00644);
 	
-	// solve the problem that the process ended without call function LogFini. modify by cwx298983 2016.04.26 Start
+	// solve the problem that the process ended without call function LogFini.
     // shut down one log4cpp object.
 	void UninitLog4cpp(void);
     // shut down all log4cpp objects. It is called when the process is end or function LogFini is called.
     void ShutDownLog4cpp(void);
-    // solve the problem that the process ended without call function LogFini. modify by cwx298983 2016.04.26 End
+    // solve the problem that the process ended without call function LogFini.
 
 	void InvokeIntLogRolling(void);//触发interface日志绕接
 	void InvokeOptLogRolling(void);//触发operation日志绕接
@@ -112,7 +112,7 @@ private:
 	VPP::VOS_Mutex* m_IntMutex;//接口类日志锁
 	VPP::VOS_Mutex* m_OptMutex;//操作类日志锁
 	VPP::VOS_Mutex* m_RunMutex;//运行类日志锁
-	VPP::VOS_Mutex* m_IntBackupMutex;//接口类备份日志锁 By cWX298983 2015.07.07
+	VPP::VOS_Mutex* m_IntBackupMutex;//接口类备份日志锁
 
 	std::string m_InstanceInterfaceName;
 	std::string m_InstanceOperationName;

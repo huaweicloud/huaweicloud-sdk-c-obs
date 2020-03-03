@@ -33,10 +33,15 @@ if [ "debug" == "$2" ];then
 	export DEBUG=debug
 fi
 
+if [ "openssl-oldversion" == "$3" ];then
 export openssl_version=openssl-1.0.2r
 export curl_version=curl-7.64.1
+else
+export openssl_version=openssl-1.1.1d
+export curl_version=curl-7.66.0
+fi
 export libxml2_version=libxml2-2.9.9
-export nghttp2_version=nghttp2-1.32.0
+#export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #
 # Function Name: ifFailExitAndPrint
 # Description: 
@@ -86,8 +91,8 @@ compileThirty()
         ifFailExitAndPrint $? "make failed."
 #       read -p "Press any key to continue."
 
-        bash build_nghttp2.sh
-		ifFailExitAndPrint $? "make failed."
+#        bash build_nghttp2.sh
+#		ifFailExitAndPrint $? "make failed."
 
         bash build_curl.sh
         ifFailExitAndPrint $? "make failed."
@@ -135,14 +140,14 @@ cp -f ${g_PATH}/include/* include
 cp -f ${g_PATH}/lib/*.so lib
 cp -f ./../../../platform/huaweisecurec/include/* include
 cp -f ./../../../platform/huaweisecurec/lib/libsecurec.so lib
-cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/C/linux_64/libeSDKLogAPI.so lib
-#cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/log4cpp/lib/* lib 
-cp -f ./../../../build/script/Provider/build/linux/${curl_version}/lib/* lib
-cp -f ./../../../build/script/Provider/build/linux/${libxml2_version}/lib/* lib
-cp -f ./../../../build/script/Provider/build/linux/${openssl_version}/lib/* lib 
-cp -f ./../../../build/script/Provider/build/linux/pcre-8.39/lib/* lib 
-cp -f ./../../../build/script/Provider/build/linux/iconv-1.15/lib/* lib 
-cp -f ./../../../build/script/Provider/build/linux/${nghttp2_version}/lib/* lib 
+cp -af ./../../../platform/eSDK_LogAPI_V2.1.10/C/linux_64/libeSDKLogAPI.so lib
+cp -af ./../../../platform/eSDK_LogAPI_V2.1.10/C/linux_64/liblog4cpp* lib 
+cp -af ./../../../build/script/Provider/build/linux/${curl_version}/lib/* lib
+cp -af ./../../../build/script/Provider/build/linux/${libxml2_version}/lib/* lib
+cp -af ./../../../build/script/Provider/build/linux/${openssl_version}/lib/* lib 
+cp -af ./../../../build/script/Provider/build/linux/pcre-8.39/lib/* lib 
+cp -af ./../../../build/script/Provider/build/linux/iconv-1.15/lib/* lib 
+#cp -f ./../../../build/script/Provider/build/linux/${nghttp2_version}/lib/* lib 
 cp -f Makefile_obs demo/Makefile
 cp -f OBS.ini lib
 cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/object_test.c" demo/object_test.c

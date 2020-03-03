@@ -253,7 +253,7 @@ typedef struct _upload_params
     char * fileNameUpload; 
     char * objectName;
     
-    obs_options *options;
+    const obs_options *options;
     server_side_encryption_params *pstServerSideEncryptionParams;
     obs_response_handler * response_handler;
     void * callBackData;
@@ -309,7 +309,7 @@ typedef struct _download_params
     char * version_id;
     char * fileNameStore;
     
-    obs_options *options;
+    const obs_options *options;
     server_side_encryption_params *pstServerSideEncryptionParams;
     obs_get_conditions *get_conditions;
     obs_response_handler * response_handler;

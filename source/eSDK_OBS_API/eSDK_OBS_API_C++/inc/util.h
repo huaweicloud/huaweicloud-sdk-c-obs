@@ -82,7 +82,7 @@ typedef enum
 
 
 
-int urlEncode(char *dest, const char *src, int maxSrcSize);
+int urlEncode(char *dest, const char *src, int maxSrcSize, char ignoreChar);
     
 int urlDecode(char *dest, const char *src, int maxSrcSize);
 

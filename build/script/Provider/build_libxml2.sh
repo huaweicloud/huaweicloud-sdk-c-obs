@@ -14,12 +14,12 @@ autoreconf -f -i
 
 if [ $# = 0 ]; then 
 	if [ -z $BUILD_FOR_ARM ]; then
-	./configure --prefix=/usr/local/libxml2 --with-threads --with-python=no
+	EXTRA_CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libxml2 --with-threads --with-python=no
 	elif [ $BUILD_FOR_ARM = "true" ]; then
-	./configure --prefix=/usr/local/libxml2 --with-threads --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld --with-python=no
+	EXTRA_CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libxml2 --with-threads --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld --with-python=no
 	fi
 elif [ $1 = "BUILD_FOR_ARM" ]; then
-    ./configure --prefix=/usr/local/libxml2 --with-threads --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld --with-python=no   
+    EXTRA_CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libxml2 --with-threads --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld --with-python=no   
 fi
 
 make clean 

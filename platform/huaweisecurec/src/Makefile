@@ -2,7 +2,7 @@ PROJECT=libsecurec.so
 #if you need a debug version library, use "-g" instead of "-s -DNDEBUG -O2".
 # If you compiler report a warning on "break strict-aliasing rules", there is no problem. If you need to clear all warnings, you can add "-fno-strict-aliasing" option to your compiler, but this will impact the performance a little.
 
-CFLAG= -I ../include -Wall  -s -DNDEBUG -O2 
+CFLAG= -I ../include -Wall  -s -DNDEBUG -O2 -fstack-protector-all -Wl,-z,relro,-z,now
 CXXFLAG= $(CFLAG)
 CC=gcc
 GCC=gcc

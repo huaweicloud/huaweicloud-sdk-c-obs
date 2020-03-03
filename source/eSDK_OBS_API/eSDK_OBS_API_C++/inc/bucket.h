@@ -45,7 +45,7 @@
 #define MAX_CORS_RULE 100
 #define BASE64_MD5_LEN 64
 #define MD5_LEN 16
-#define POSIX_BUCKET_MIN_QUOTA 1099511627776
+#define PFS_BUCKET_MIN_QUOTA 1099511627776
 
 #define else_if else if
 
@@ -493,7 +493,7 @@ typedef struct get_smn_data
     obs_use_api use_api;
 } get_smn_data;
 
-void obs_options_obj_or_bucket(obs_options *options, int isBucket, char* key, char* origin,
+void obs_options_obj_or_bucket(const obs_options *options, int isBucket, char* key, char* origin,
                 char (*requestMethod)[OBS_COMMON_LEN_256], unsigned int rmNumber,
                 char (*requestHeader)[OBS_COMMON_LEN_256], unsigned int rhNumber,
                 obs_response_handler *handler, void *callback_data);

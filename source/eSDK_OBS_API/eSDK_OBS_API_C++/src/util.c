@@ -251,7 +251,7 @@ int getTimeZone()
     return time_zone;
 }
 
-int urlEncode(char *dest, const char *src, int maxSrcSize)
+int urlEncode(char *dest, const char *src, int maxSrcSize, char ignoreChar)
 {
     static const char *hex = "0123456789ABCDEF";
     int len = 0;
@@ -263,7 +263,8 @@ int urlEncode(char *dest, const char *src, int maxSrcSize)
         }
         unsigned char c = *src;
         if (isalnum(c) || (c == '.')  ||(c == '-')
-                     || (c == '_')  ||(c == '~') ) 
+                     || (c == '_')  ||(c == '~')
+                     || (c == ignoreChar) ) 
         {
             *dest++ = c;
         }
@@ -678,12 +679,27 @@ void HMAC_SHA256(unsigned char hmac[32], const unsigned char *key, int key_len,
     memset_s(temp,32, 0, 32);
     unsigned int tempLength = 0;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     HMAC_CTX ctx;
     HMAC_CTX_init(&ctx);
     HMAC_Init_ex(&ctx, key, key_len, engine, NULL);
     HMAC_Update(&ctx, message, message_len);
     HMAC_Final(&ctx, temp, &tempLength);
     HMAC_CTX_cleanup(&ctx);
+#else
+    HMAC_CTX *ctx;
+    ctx = HMAC_CTX_new();
+    if (NULL == ctx)
+    {
+        COMMLOG(OBS_LOGERROR, "HMAC_CTX_new failed!");
+        return;
+    }
+    HMAC_CTX_reset(ctx);
+    HMAC_Init_ex(ctx, key, key_len, engine, NULL);
+    HMAC_Update(ctx, message, message_len);
+    HMAC_Final(ctx, temp, &tempLength);
+    HMAC_CTX_free(ctx);
+#endif
 
     memset_s(hmac, 32, 0, 32);
     unsigned int i;
@@ -697,7 +713,6 @@ void HMAC_SHA256(unsigned char hmac[32], const unsigned char *key, int key_len,
 
 void SHA256Hash(unsigned char sha[32], const unsigned char *message, int message_len)
 {
-    EVP_MD_CTX mdctx;
     const EVP_MD *md = NULL;
     OpenSSL_add_all_digests();
     md = EVP_get_digestbyname("sha256");
@@ -714,11 +729,27 @@ void SHA256Hash(unsigned char sha[32], const unsigned char *message, int message
     memset_s(temp, 32, 0, 32);
     unsigned int tempLength = 0;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    EVP_MD_CTX mdctx;
     EVP_MD_CTX_init(&mdctx);
     EVP_DigestInit_ex(&mdctx, md, NULL);
     EVP_DigestUpdate(&mdctx, message, message_len);
     EVP_DigestFinal_ex(&mdctx, temp, &tempLength);
     EVP_MD_CTX_cleanup(&mdctx);
+#else
+    EVP_MD_CTX *mdctx;
+    mdctx = EVP_MD_CTX_new();
+    if (NULL == mdctx)
+    {
+        COMMLOG(OBS_LOGERROR, "EVP_MD_CTX_new failed!");
+        return;
+    }
+    EVP_MD_CTX_init(mdctx);
+    EVP_DigestInit_ex(mdctx, md, NULL);
+    EVP_DigestUpdate(mdctx, message, message_len);
+    EVP_DigestFinal_ex(mdctx, temp, &tempLength);
+    EVP_MD_CTX_free(mdctx);
+#endif
     memset_s(sha, 32, 0, 32);
     unsigned int i = 0;
     for(i = 0; i < tempLength; i++)

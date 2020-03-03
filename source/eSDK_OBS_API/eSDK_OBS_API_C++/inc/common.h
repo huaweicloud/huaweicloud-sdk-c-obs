@@ -24,7 +24,7 @@ typedef enum
 }obs_type_acl;
 
 
-void set_common_acl(obs_options *options, manager_acl_info *aclinfo, obs_type_acl type, obs_response_handler *handler, void *callback_data);
+void set_common_acl(const obs_options *options, manager_acl_info *aclinfo, obs_type_acl type, obs_response_handler *handler, void *callback_data);
 
 obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protocol);
 

@@ -44,7 +44,7 @@ std::string eSDKTool::GetDllPath()
 	std::string strPath(path);
 	strPath = strPath.substr(0, strPath.rfind("\\")+1);
 	return strPath;
-#elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)//add by w00321336 to support ios log
+#elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)
     // 获取程序Documents目录路径
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES);
     NSString *documentsDirectory = [paths objectAtIndex:0];
@@ -87,7 +87,7 @@ std::string eSDKTool::GetAppPath()
 	std::string strPath(path);
 	strPath = strPath.substr(0, strPath.rfind("\\")+1);
 	return strPath;
-#elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)//add by w00321336 to support ios log
+#elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)
     // 获取程序Documents目录路径
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES);
     NSString *documentsDirectory = [paths objectAtIndex:0];
@@ -105,7 +105,7 @@ bool eSDKTool::IsPathFileExist(const std::string& path)
 		return true;
 	}
     
-#elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)//add by w00321336 to support ios log
+#elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)
     NSFileManager *manager = [NSFileManager defaultManager];
     
     BOOL isDir;
@@ -127,7 +127,7 @@ bool eSDKTool::IsRelativePath(const std::string& path)
 {
 #ifdef WIN32
 	return (PathIsRelative(path.c_str()) ? true : false);
-#elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)//add by w00321336 to support ios log
+#elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)
     NSString* strPath = [[NSString alloc] initWithUTF8String:path.c_str()];
     BOOL bAbsPath = [strPath isAbsolutePath];
     return !bAbsPath;
@@ -199,7 +199,7 @@ bool eSDKTool::CreateMultipleDirectory(const std::string& path)
 			return false;
 		}
 	}
-#elif defined(TARGET_MAC_OS)||defined(TARGET_OS_IPHONE)//Add by w00321336 to support ios
+#elif defined(TARGET_MAC_OS)||defined(TARGET_OS_IPHONE)
     std::string strPath(path);
 	if (strPath.empty())
 	{
@@ -449,14 +449,14 @@ void eSDKTool::GetIniSectionItem(const char* Section, const char* Item, const ch
 						break;
 					}
 
-					// ;作为注释，跳过该行 modify by cwx298983 2015.12.15 Start
+					// ;作为注释，跳过该行
 					if (';' == posChar)
 					{
 						fileStream.unget();
 						fileStream.getline(linebuf, LENGTH);
 						continue;
 					}
-					// ;作为注释，跳过该行 modify by cwx298983 2015.12.15 End
+					// ;作为注释，跳过该行
 					fileStream.unget();
 					fileStream.getline(linebuf, LENGTH);
 					if(strstr(linebuf, Item))
@@ -504,7 +504,7 @@ void eSDKTool::GetIniSectionItem(const char* Section, const char* Item, const ch
 #ifdef WIN32
 	(void)::GetPrivateProfileString(Section, Item, "", tchValue, LENGTH-1, FileName);
 	iniValue = tchValue;
-#elif defined(TARGET_MAC_OS)||defined(TARGET_OS_IPHONE)//Add by w00321336 to support ios, get from plist file
+#elif defined(TARGET_MAC_OS)||defined(TARGET_OS_IPHONE)//to support ios, get from plist file
     NSMutableDictionary* dict =  [ [ NSMutableDictionary alloc ] initWithContentsOfFile:[NSString stringWithUTF8String:FileName]];
     NSString* value = [ dict objectForKey:[NSString stringWithUTF8String:Item]];
     iniValue = [value UTF8String];
@@ -535,14 +535,14 @@ void eSDKTool::GetIniSectionItem(const char* Section, const char* Item, const ch
 			{
 				while((posChar = fgetc(inifp))!='[' && posChar != EOF)
 				{
-					// ;作为注释，跳过该行 modify by cwx298983 2015.12.15 Start
+					// ;作为注释，跳过该行
 					if (';' == posChar)
 					{
 						ungetc(posChar, inifp);
 						fgets(linebuf, LENGTH, inifp);
 						continue;
 					}
-					// ;作为注释，跳过该行 modify by cwx298983 2015.12.15 End
+					// ;作为注释，跳过该行
 					ungetc(posChar, inifp);
 					fgets(linebuf, LENGTH, inifp);
 					if(strstr(linebuf, Item))
@@ -768,7 +768,7 @@ bool eSDKTool::IsDir(const std::string& path)
 	return bRet;
 }
 
-// std::string to Octal(int) add by cwx298983 2016.06.29 Start
+// std::string to Octal(int)
 unsigned int eSDKTool::StringToOCT(const std::string& strNumber)
 {
 	unsigned int nRet = 0;
@@ -785,4 +785,4 @@ unsigned int eSDKTool::StringToOCT(const std::string& strNumber)
 
 	return nRet;
 }
-// std::string to Octal(int) add by cwx298983 2016.06.29 End
+// std::string to Octal(int)

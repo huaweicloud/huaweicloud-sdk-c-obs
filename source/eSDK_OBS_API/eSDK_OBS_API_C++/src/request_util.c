@@ -294,6 +294,7 @@ obs_status header_name_tolower_copy(request_computed_values *values, int *len, c
     return OBS_STATUS_OK;
 }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 static void lock_callback(int mode, int type, const char *file, int line)
 {
     (void)file;
@@ -327,7 +328,7 @@ static unsigned long thread_id(void)
 
     return(ret);
 }
-
+#endif
 
 void init_locks(void)
 {
@@ -422,24 +423,39 @@ const char *http_request_type_to_verb(http_request_type requestType)
     }
 }
 
+/*
+** encode_key 对object_key做encode
+** 目前的特别处理逻辑为：默认不对/字符encode(分享的时候m3u8需要依赖目录结构)，
+** 但是有./的还是需要encode，原因在于./在libcurl去request的时候会被自动去掉，
+** 从而会导致sdk计算的CanonicalizedResource和服务端计算的不一致，最终会签名不匹配
+**/
 obs_status encode_key(const request_params *params,
                     request_computed_values *values)
 {
+    char ingoreChar = '/';
     if (NULL != params->key)
     {
 #ifdef WIN32
         char *pStrKeyUTF8 = string_To_UTF8(params->key);
-        int nRet = urlEncode(values->urlEncodedKey, pStrKeyUTF8, OBS_MAX_KEY_SIZE);
+        if (NULL != strstr(pStrKeyUTF8, "./"))
+        {
+            ingoreChar = 0;
+        }
+        int nRet = urlEncode(values->urlEncodedKey, pStrKeyUTF8, OBS_MAX_KEY_SIZE, ingoreChar);
         CHECK_NULL_FREE(pStrKeyUTF8);
         return (nRet ? OBS_STATUS_OK : OBS_STATUS_UriTooLong);
 #else
-        return (urlEncode(values->urlEncodedKey, params->key, OBS_MAX_KEY_SIZE) ?
+        if (NULL != strstr(params->key, "./"))
+        {
+            ingoreChar = 0;
+        }
+        return (urlEncode(values->urlEncodedKey, params->key, OBS_MAX_KEY_SIZE, ingoreChar) ?
             OBS_STATUS_OK : OBS_STATUS_UriTooLong);
 #endif
     }
     else
     {
-        return (urlEncode(values->urlEncodedKey, params->key, OBS_MAX_KEY_SIZE) ?
+        return (urlEncode(values->urlEncodedKey, params->key, OBS_MAX_KEY_SIZE, ingoreChar) ?
             OBS_STATUS_OK : OBS_STATUS_UriTooLong);
     }
 }
@@ -615,7 +631,7 @@ obs_status headers_append_storage_class(obs_storage_class input_storage_class,
 obs_status headers_append_bucket_type(obs_bucket_type bucket_type,
             request_computed_values *values, int *len)
 {
-    if(bucket_type == OBS_BUCKET_POSIX) {
+    if(bucket_type == OBS_BUCKET_PFS) {
         return headers_append(len, values, 1, "x-obs-fs-file-interface: %s", "Enabled", NULL);
     }
     return OBS_STATUS_OK;
@@ -627,7 +643,7 @@ obs_status headers_append_list_bucket_type(obs_bucket_list_type bucket_list_type
     {  
         return headers_append(len, values, 1, "x-obs-bucket-type: %s", "OBJECT", NULL);
     }
-    else if (bucket_list_type == OBS_BUCKET_LIST_POSIX)
+    else if (bucket_list_type == OBS_BUCKET_LIST_PFS)
     {
         return headers_append(len, values, 1, "x-obs-bucket-type: %s", "POSIX", NULL);
     }
@@ -651,10 +667,23 @@ obs_status request_compose_properties(request_computed_values *values, const req
 {
     const obs_put_properties *properties = params->put_properties;
     int i;
+    int j;
 	obs_status ret_status;
 	
 	if (properties != NULL)
 	{
+		// The name field of the user-defined metadata cannot be duplicated
+		for  (i = 0; i < properties->meta_data_count; i++) 
+		{
+			for (j = i+1; j<  properties->meta_data_count; j++)
+		 	{
+		 		if (!strcmp(properties->meta_data[i].name, properties->meta_data[j].name))
+				{
+					return  OBS_STATUS_MetadataNameDuplicate;
+				}
+		 	}
+		}
+
 		for (i = 0; i < properties->meta_data_count; i++) {
 			const obs_name_value *property = &(properties->meta_data[i]);
 			char headerName[OBS_MAX_METADATA_SIZE - sizeof(": v")];
@@ -1534,7 +1563,7 @@ obs_status compose_temp_header(const request_params* params,
     char b64[((20 + 1) * 4) / 3] = {0};
     (void)base64Encode(hmac, 20, b64);
     char cUrlEncode[512] = {0};
-    (void)urlEncode(cUrlEncode, b64, 28);
+    (void)urlEncode(cUrlEncode, b64, 28, 0);
     snprintf_sec(stTempAuthInfo->tempAuthParams, 1024, _TRUNCATE,
                "AWSAccessKeyId=%s&Expires=%lld&Signature=%s", params->bucketContext.access_key,
                (long long int)local_expires, cUrlEncode);

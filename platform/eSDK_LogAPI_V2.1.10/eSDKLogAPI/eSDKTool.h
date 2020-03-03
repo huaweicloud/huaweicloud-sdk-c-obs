@@ -64,18 +64,18 @@ public:
 #else
 	static void GetIniSectionItem(const char* Section, const char* Item, const char* FileName, std::string& iniValue);
 #endif
-    static bool IsPathFileExist(const std::string& path);//Add by w00321336 to support ios
+    static bool IsPathFileExist(const std::string& path);
 
-	// 判断是否为目录 add by cwx298983 2016.02.29
+	// 判断是否为目录
 	static bool IsDir(const std::string& path);
 
 #if defined(ANDROID) || defined(TARGET_MAC_OS) || defined(TARGET_OS_IPHONE)
 	static int gzcompress(Bytef *data, uLong ndata, Bytef *zdata, uLong *nzdata);
 #endif
 
-	// std::string to Octal(int) add by cwx298983 2016.06.29 Start
+	// std::string to Octal(int)
 	static unsigned int StringToOCT(const std::string& strNumber);
-	// std::string to Octal(int) add by cwx298983 2016.06.29 End
+	// std::string to Octal(int)
 };
 
 //工具方法

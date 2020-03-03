@@ -118,7 +118,7 @@ obs_status update_bucket_common_properties_callback(const obs_response_propertie
     return OBS_STATUS_OK;
 }
 
-void create_bucket(obs_options *options, obs_canned_acl canned_acl,
+void create_bucket(const obs_options *options, obs_canned_acl canned_acl,
         const char *location_constraint, obs_response_handler *handler,
         void *callback_data)
 {
@@ -166,21 +166,9 @@ void create_bucket(obs_options *options, obs_canned_acl canned_acl,
     COMMLOG(OBS_LOGINFO, "create bucket finish!");
 }
 
-void response_posix_complete_callback(obs_status status,
-                                     const obs_error_details *error, 
-                                     void *callback_data)
-{
-    if (callback_data)
-    {
-        obs_status *ret_status = (obs_status *)callback_data;
-        *ret_status = status;
-    }
-    if (error && error->message) {
-        COMMLOG(OBS_LOGERROR, "create bucket message return: %s.",error->message);
-    }
-    return;
-}
-void create_posix_bucket_step1(obs_options *options, obs_canned_acl canned_acl,
+
+// create pfs bucket.
+void create_pfs_bucket(const obs_options *options, obs_canned_acl canned_acl,
         const char *location_constraint, obs_response_handler *handler,
         void *callback_data)
 {
@@ -189,7 +177,8 @@ void create_posix_bucket_step1(obs_options *options, obs_canned_acl canned_acl,
     set_use_api_switch(options, &use_api);
     obs_put_properties  properties;
     update_bucket_common_data    *bucket_data = NULL;
-    COMMLOG(OBS_LOGINFO, "create posix bucket step1 start!");
+    
+    COMMLOG(OBS_LOGINFO, "create pfs bucket start!");
     bucket_data = init_create_bucket_cbdata(location_constraint, use_api);
     if (!bucket_data) 
     {
@@ -200,14 +189,18 @@ void create_posix_bucket_step1(obs_options *options, obs_canned_acl canned_acl,
     bucket_data->complete_callback = handler->complete_callback;
     bucket_data->callback_data = callback_data;
     bucket_data->properties_callback = handler->properties_callback;
+    
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
     memset_s(&properties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
     properties.canned_acl = canned_acl;
+
     memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
     memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
-    params.bucketContext.bucket_type = OBS_BUCKET_POSIX;
+    // create pfs bucket
+    params.bucketContext.bucket_type = OBS_BUCKET_PFS;
+
     params.put_properties         = &properties;
     params.httpRequestType        = http_request_type_put;
     params.properties_callback    = &update_bucket_common_properties_callback;
@@ -219,41 +212,14 @@ void create_posix_bucket_step1(obs_options *options, obs_canned_acl canned_acl,
     params.storageClassFormat     = default_storage_class;
     params.temp_auth              = options->temp_auth; 
     params.use_api =use_api;
+
     request_perform(&params);
-    COMMLOG(OBS_LOGINFO, "create posix bucket step1 finish!");
-}
-void create_posix_bucket(obs_options *options, obs_canned_acl canned_acl,
-        const char *location_constraint, uint64_t storage_quota, obs_response_handler *handler,
-        void *callback_data)
-{
-    obs_status ret_status = OBS_STATUS_OK;
-    obs_response_handler response_handler =
-        { 
-            0, &response_posix_complete_callback
-        };
-    COMMLOG(OBS_LOGINFO, "create bucket start!");
-
-    if (storage_quota < POSIX_BUCKET_MIN_QUOTA)
-    {
-        COMMLOG(OBS_LOGERROR, "posix bucket quote Quota should greater than the minimum allowed: %d!"
-            , POSIX_BUCKET_MIN_QUOTA);
-        (void)(*(handler->complete_callback))(OBS_STATUS_QuotaTooSmall, 0, callback_data);
-    }
-    
-    create_posix_bucket_step1(options, canned_acl, location_constraint, 
-            &response_handler, &ret_status);
-    if (ret_status != OBS_STATUS_OK)
-    {
-        COMMLOG(OBS_LOGERROR, "create posix bucket failed,return %d!", ret_status);
-        (void)(*(handler->complete_callback))(ret_status, 0, callback_data);
-        return;
-    }
-
-    set_bucket_quota(options, storage_quota, handler, callback_data);
-
-    COMMLOG(OBS_LOGINFO, "create bucket finish!");
+    COMMLOG(OBS_LOGINFO, "create pfs bucket finish!");
+	
     return;
 }
+
+
 static obs_status xml_callback(const char *element_path, const char *data,
                             int data_len, void *callback_data)
 {
@@ -384,7 +350,7 @@ static obs_status data_callback(int buffer_size, const char *buffer,
     return simplexml_add(&(cbData->simpleXml), buffer, buffer_size);
 }
 
-void list_bucket(obs_options *options, obs_list_service_handler *handler, void *callback_data)
+void list_bucket(const obs_options *options, obs_list_service_handler *handler, void *callback_data)
 {
 	obs_use_api use_api = OBS_USE_API_S3;
 
@@ -444,7 +410,7 @@ void list_bucket(obs_options *options, obs_list_service_handler *handler, void *
     COMMLOG(OBS_LOGINFO, "Leave list_bucket successfully !");
 }
 
-void list_bucket_obs(obs_options *options, obs_list_service_obs_handler *handler, void *callback_data)
+void list_bucket_obs(const obs_options *options, obs_list_service_obs_handler *handler, void *callback_data)
 {
     request_params      params;
     obs_use_api use_api = OBS_USE_API_S3;
@@ -515,7 +481,7 @@ void list_bucket_obs(obs_options *options, obs_list_service_obs_handler *handler
 }
 
 /* delete bucket */
-void delete_bucket(obs_options *options, obs_response_handler *handler, void *callback_data)
+void delete_bucket(const obs_options *options, obs_response_handler *handler, void *callback_data)
 {
     request_params params;
     COMMLOG(OBS_LOGINFO, "delete_bucket start!");
@@ -1156,7 +1122,7 @@ static void list_versions_complete_callback(obs_status requestStatus,
 }
 
 
-void list_bucket_objects(obs_options *options, const char *prefix, const char *marker, const char *delimiter, 
+void list_bucket_objects(const obs_options *options, const char *prefix, const char *marker, const char *delimiter, 
             int maxkeys, obs_list_objects_handler *handler, void *callback_data)
 {
     request_params params;
@@ -1255,7 +1221,7 @@ static obs_status set_versions_query_params(const char *prefix, const char *key_
 }
 
 
-void list_versions(obs_options *options, const char *prefix, const char *key_marker, const char *delimiter, 
+void list_versions(const obs_options *options, const char *prefix, const char *key_marker, const char *delimiter, 
            int maxkeys, const char *version_id_marker, obs_list_versions_handler *handler, void *callback_data)
 {
     request_params params;
@@ -1385,7 +1351,7 @@ static obs_status get_bucket_storageInfo_properties_callback(
 }
 
 
-void get_bucket_storage_info(obs_options *options, int capacity_length, char *capacity,
+void get_bucket_storage_info(const obs_options *options, int capacity_length, char *capacity,
                     int object_number_length, char *object_number,
                     obs_response_handler *handler, void *callback_data)
 {
@@ -1739,7 +1705,7 @@ static void list_multipart_uploads_complete_callback(obs_status requestStatus,
 }
 
 
-void list_multipart_uploads(obs_options *options, const char *prefix, const char *marker, const char *delimiter,
+void list_multipart_uploads(const obs_options *options, const char *prefix, const char *marker, const char *delimiter,
         const char* uploadid_marke, int max_uploads, obs_list_multipart_uploads_handler *handler, 
         void *callback_data)
 {
@@ -1821,7 +1787,7 @@ obs_status init_set_bucket_quota_cbdata(uint64_t storage_quota, update_bucket_co
     return OBS_STATUS_OK;
 }
 
-void set_bucket_quota(obs_options *options, uint64_t storage_quota, 
+void set_bucket_quota(const obs_options *options, uint64_t storage_quota, 
     obs_response_handler *handler, void *callback_data)
 {
     request_params params;
@@ -1948,7 +1914,7 @@ static void get_bucket_quota_complete_callback(obs_status status,
 *           Modification : Created function
 *
 *****************************************************************************/
-void get_bucket_quota(obs_options *options, uint64_t *storagequota_return,
+void get_bucket_quota(const obs_options *options, uint64_t *storagequota_return,
                     obs_response_handler *handler, void *callback_data)
 {
     request_params params;
@@ -1995,7 +1961,7 @@ void get_bucket_quota(obs_options *options, uint64_t *storagequota_return,
     COMMLOG(OBS_LOGINFO, "get bucket quota finish!");
 }
 
-void set_bucket_policy(obs_options *options, const char *policy, obs_response_handler *handler, 
+void set_bucket_policy(const obs_options *options, const char *policy, obs_response_handler *handler, 
             void *callback_data)
 {
     request_params params;
@@ -2077,7 +2043,7 @@ void get_bucket_policy_complete_callback(obs_status status,
     COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
 }
 
-void get_bucket_policy(obs_options *options, int policy_return_size, 
+void get_bucket_policy(const obs_options *options, int policy_return_size, 
                       char *policy_return, obs_response_handler *handler, 
                       void *callback_data)
 {
@@ -2121,7 +2087,7 @@ void get_bucket_policy(obs_options *options, int policy_return_size,
     COMMLOG(OBS_LOGINFO, "get bucket policy finish!");
 }
 
-void delete_bucket_policy(obs_options *options, obs_response_handler *handler, void *callback_data)
+void delete_bucket_policy(const obs_options *options, obs_response_handler *handler, void *callback_data)
 {
     request_params params;
     obs_use_api use_api = OBS_USE_API_S3;
@@ -2186,7 +2152,7 @@ obs_status init_set_bucket_version_data(const char *version_status, update_bucke
     return OBS_STATUS_OK;
 }
 
-void set_bucket_version_configuration(obs_options *options, const char *version_status, 
+void set_bucket_version_configuration(const obs_options *options, const char *version_status, 
                                     obs_response_handler *handler, void *callback_data)
 {
     request_params params;
@@ -2286,7 +2252,7 @@ void get_bucket_version_complete_callback(obs_status status,
     COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
 }
 
-void get_bucket_version_configuration(obs_options *options, int status_return_size, 
+void get_bucket_version_configuration(const obs_options *options, int status_return_size, 
                       char *status_return, obs_response_handler *handler, void *callback_data)
 {
     request_params params;
@@ -2472,7 +2438,7 @@ int set_common_data_callback(int buffer_size, char *buffer, void *callback_data)
     return ret;
 }
 
-void set_bucket_storage_class_policy(obs_options *options,
+void set_bucket_storage_class_policy(const obs_options *options,
                             obs_storage_class storage_class_policy, 
                             obs_response_handler *handler,
                             void *callback_data)
@@ -2620,7 +2586,7 @@ void get_bucket_storage_class_complete_callback(obs_status status,
     COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
 }
 
-void get_bucket_storage_class_policy(obs_options *options, 
+void get_bucket_storage_class_policy(const obs_options *options, 
                     obs_get_bucket_storage_class_handler *handler, 
                     void *callback_data)
 {
@@ -2670,7 +2636,7 @@ void get_bucket_storage_class_policy(obs_options *options,
     COMMLOG(OBS_LOGINFO, "get bucket storage class policy finish!");
 }
 
-void set_bucket_tagging(obs_options *options, obs_name_value * tagging_list, 
+void set_bucket_tagging(const obs_options *options, obs_name_value * tagging_list, 
         unsigned int number, obs_response_handler *handler, void *callback_data)
 {
     request_params params;
@@ -2873,7 +2839,7 @@ obs_status get_bucket_tagging_data_callback(int buffer_size, const char *buffer,
 }
 
 
-void get_bucket_tagging(obs_options *options, 
+void get_bucket_tagging(const obs_options *options, 
                     obs_get_bucket_tagging_handler *handler, 
                     void *callback_data)
 {
@@ -2919,7 +2885,7 @@ void get_bucket_tagging(obs_options *options,
     COMMLOG(OBS_LOGINFO, "get bucket tagging finish!");
 }
 
-void delete_bucket_tagging(obs_options *options, obs_response_handler *handler, void *callback_data)
+void delete_bucket_tagging(const obs_options *options, obs_response_handler *handler, void *callback_data)
 {
     request_params params;
     obs_use_api use_api = OBS_USE_API_S3;
@@ -3171,7 +3137,7 @@ static set_lifecycle_data* init_set_lifecycle_data( obs_lifecycle_conf* bucket_l
     return sblcData;
 }
 
-void set_bucket_lifecycle_configuration(obs_options *options, 
+void set_bucket_lifecycle_configuration(const obs_options *options, 
            obs_lifecycle_conf* bucket_lifecycle_conf, unsigned int blcc_number, 
            obs_response_handler *handler, void *callback_data)
 {
@@ -3482,7 +3448,7 @@ static void get_lifecycle_complete_callback(obs_status request_status,
 }
 
 
-void get_bucket_lifecycle_configuration(obs_options *options,
+void get_bucket_lifecycle_configuration(const obs_options *options,
                        obs_lifecycle_handler *handler, void *callback_data)
 {
     request_params params;
@@ -3527,7 +3493,7 @@ void get_bucket_lifecycle_configuration(obs_options *options,
 
 
 /*************************delete_bucket_lifecycle_configuration *******************************/
-void delete_bucket_lifecycle_configuration(obs_options *options, obs_response_handler *handler, 
+void delete_bucket_lifecycle_configuration(const obs_options *options, obs_response_handler *handler, 
             void *callback_data)
 {
     request_params params;
@@ -3743,7 +3709,7 @@ static void set_cors_complete_callback(obs_status request_status,
 
     
 
-void set_bucket_cors_configuration(obs_options *options, obs_bucket_cors_conf *obs_cors_conf_info, 
+void set_bucket_cors_configuration(const obs_options *options, obs_bucket_cors_conf *obs_cors_conf_info, 
             unsigned int conf_num, obs_response_handler *handler, void *callback_data)
 {
     request_params     params;
@@ -4140,7 +4106,7 @@ static void get_cors_complete_callback(obs_status request_status,
     COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
 }
 
-void get_bucket_cors_configuration(obs_options *options, obs_cors_handler *handler,
+void get_bucket_cors_configuration(const obs_options *options, obs_cors_handler *handler,
             void *callback_data)
 {
     request_params params;
@@ -4185,7 +4151,7 @@ void get_bucket_cors_configuration(obs_options *options, obs_cors_handler *handl
 }
 
 /******************************delete_bucket_cors_configuration **********************************/
-void delete_bucket_cors_configuration(obs_options *options, obs_response_handler *handler, 
+void delete_bucket_cors_configuration(const obs_options *options, obs_response_handler *handler, 
                         void *callback_data)
 {
     request_params params;
@@ -4354,7 +4320,7 @@ obs_status generate_logging_xml_document(char *target_bucket, char *target_prefi
     }
 }
 
-void set_bucket_logging_configuration_common(obs_options *options, char *target_bucket, char *target_prefix, char *agency,
+void set_bucket_logging_configuration_common(const obs_options *options, char *target_bucket, char *target_prefix, char *agency,
             obs_acl_group *acl_group, obs_response_handler *handler, void *callback_data)
 {
     request_params params;
@@ -4409,14 +4375,14 @@ void set_bucket_logging_configuration_common(obs_options *options, char *target_
     COMMLOG(OBS_LOGINFO, "set bucket logging configuration finish!");
 }
 
-void set_bucket_logging_configuration(obs_options *options, char *target_bucket, char *target_prefix, 
+void set_bucket_logging_configuration(const obs_options *options, char *target_bucket, char *target_prefix, 
             obs_acl_group *acl_group, obs_response_handler *handler, void *callback_data)
 {
     set_bucket_logging_configuration_common(options, target_bucket, target_prefix, NULL,
                                             acl_group, handler, callback_data);
 }
 
-void set_bucket_logging_configuration_obs(obs_options *options, char *target_bucket, char *target_prefix, char *agency,
+void set_bucket_logging_configuration_obs(const obs_options *options, char *target_bucket, char *target_prefix, char *agency,
             obs_acl_group *acl_group, obs_response_handler *handler, void *callback_data)
 {
     set_bucket_logging_configuration_common(options, target_bucket, target_prefix, agency,
@@ -4676,7 +4642,7 @@ void get_bucket_logging_complete_callback(obs_status status,
 
 }
 
-void get_bucket_logging_configuration(obs_options *options, obs_response_handler *handler, 
+void get_bucket_logging_configuration(const obs_options *options, obs_response_handler *handler, 
                     bucket_logging_message *logging_message_data, void *callback_data)
 {
     request_params params;
@@ -4957,7 +4923,7 @@ obs_status generate_website_redirctall_doc(update_bucket_common_data **data,
 
 }
 
-void set_bucket_website_configuration(obs_options *options, 
+void set_bucket_website_configuration(const obs_options *options, 
                     obs_set_bucket_redirect_all_conf *set_bucket_redirect_all,
                     obs_set_bucket_website_conf *set_bucket_website_conf,
                     obs_response_handler *handler, void *callback_data)
@@ -5205,7 +5171,7 @@ void get_bucket_websiteconf_complete_callback(obs_status status, const obs_error
     COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
 }
 
-void get_bucket_website_configuration(obs_options *options, 
+void get_bucket_website_configuration(const obs_options *options, 
                     obs_get_bucket_websiteconf_handler *handler, 
                     void *callback_data)
 {
@@ -5255,7 +5221,7 @@ void get_bucket_website_configuration(obs_options *options,
     COMMLOG(OBS_LOGINFO, "get bucket website configuration finish!");
 }
 
-void delete_bucket_website_configuration(obs_options *options, obs_response_handler *handler,
+void delete_bucket_website_configuration(const obs_options *options, obs_response_handler *handler,
         void *callback_data)
 {
     request_params params;
@@ -5670,7 +5636,7 @@ static void set_notification_complete_callback(obs_status request_status,
     COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
 }
 
-void set_notification_configuration(obs_options *options, 
+void set_notification_configuration(const obs_options *options, 
     obs_smn_notification_configuration* notification_conf, obs_response_handler *handler, 
     void *callback_data)
 {
@@ -6183,7 +6149,7 @@ static void get_notification_complete_callback(obs_status request_status,
 
 
 
-void get_notification_configuration(obs_options *options,
+void get_notification_configuration(const obs_options *options,
                             obs_smn_handler *handler,  void *callback_data)
 {
     request_params  params;
@@ -6227,7 +6193,7 @@ void get_notification_configuration(obs_options *options,
 }
 
 
-void set_bucket_acl(obs_options * options, manager_acl_info * aclinfo, 
+void set_bucket_acl(const obs_options * options, manager_acl_info * aclinfo, 
                     obs_response_handler * handler, void *callback_data)
 {
     obs_type_acl type = TYPE_BUCKET_ACL;
@@ -6235,21 +6201,21 @@ void set_bucket_acl(obs_options * options, manager_acl_info * aclinfo,
     COMMLOG(OBS_LOGINFO, "set bucket acl finish!");
 }
 
-void set_bucket_acl_by_head(obs_options * options, obs_canned_acl canned_acl, 
+void set_bucket_acl_by_head(const obs_options * options, obs_canned_acl canned_acl, 
                             obs_response_handler * handler, void *callback_data)
 {
     set_object_acl_by_head(options, NULL, canned_acl, handler,callback_data);
     COMMLOG(OBS_LOGINFO, "set bucket acl by head finish!");
 }
 
-void get_bucket_acl(obs_options * options, manager_acl_info * aclinfo, 
+void get_bucket_acl(const obs_options * options, manager_acl_info * aclinfo, 
                     obs_response_handler * handler, void *callback_data)
 {
     get_object_acl(options, aclinfo, handler, callback_data);   
     COMMLOG(OBS_LOGINFO, "get bucket acl finish!");
 }
 
-void obs_options_bucket(obs_options *options, char* origin,
+void obs_options_bucket(const obs_options *options, char* origin,
                     char (*request_method)[OBS_COMMON_LEN_256], unsigned int method_number,
                     char (*request_header)[OBS_COMMON_LEN_256], unsigned int header_number,
                     obs_response_handler *handler, void *callback_data)
@@ -6263,14 +6229,14 @@ void obs_options_bucket(obs_options *options, char* origin,
 
 }
 
-void obs_head_bucket(obs_options *options, obs_response_handler *handler, void *callback_data)
+void obs_head_bucket(const obs_options *options, obs_response_handler *handler, void *callback_data)
 { 
     COMMLOG(OBS_LOGINFO, "Enter %s successfully !", __FUNCTION__);
     obs_head_object(options, 0, handler, callback_data);
     COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
 }
 
-void get_bucket_metadata_with_corsconf(obs_options *options, char *origin,
+void get_bucket_metadata_with_corsconf(const obs_options *options, char *origin,
                     char (*requestHeader)[OBS_COMMON_LEN_256], unsigned int number, 
                     obs_response_handler *handler)
 {

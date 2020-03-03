@@ -1,5 +1,5 @@
 PROJECT=libsecurec.so
-CFLAG= -I ../include -Wall -s -DNDEBUG -O2 
+CFLAG= -I ../include -Wall -s -DNDEBUG -O2 -fstack-protector-all -Wl,-z,relro,-z,now
 CXXFLAG= $(CFLAG)
 CC=aarch64-linux-gnu-gcc
 GCC=aarch64-linux-gnu-gcc

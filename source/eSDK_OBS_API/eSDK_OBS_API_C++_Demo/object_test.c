@@ -817,7 +817,7 @@ static void test_create_bucket_new(int argc, char **argv, int optindex)
 }
 
 
-static void test_create_posix_bucket_new(int argc, char **argv, int optindex)
+static void test_create_pfs_bucket_new(int argc, char **argv, int optindex)
 {
     obs_options option;
     char *location = NULL;
@@ -827,7 +827,6 @@ static void test_create_posix_bucket_new(int argc, char **argv, int optindex)
     tempAuthResult  ptrResult;
     memset(&ptrResult,0,sizeof(tempAuthResult));
     obs_status status = OBS_STATUS_OK;
-    uint64_t quota_length = 0;
     
     if (optindex == argc) {
         fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
@@ -889,10 +888,6 @@ static void test_create_posix_bucket_new(int argc, char **argv, int optindex)
         else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
             option.bucket_options.certificate_info = &(param[CERTIFICATE_INFO_PREFIX_LEN]);
         }
-        else if(!strncmp(param, BUCKET_QUOTA, BUCKET_QUOTA_LEN))
-        {
-            quota_length = convertInt(&(param[BUCKET_QUOTA_LEN]), "quota_length");
-        }
         //tmp auth
         else if (!strncmp(param, TMP_AUTH_EXPIRES_PREFIX,TMP_AUTH_EXPIRES_PREFIX_LEN)){
             tempauth.callback_data = (void *)(&ptrResult);
@@ -913,7 +908,7 @@ static void test_create_posix_bucket_new(int argc, char **argv, int optindex)
         0, &response_complete_callback
     };
 
-    create_posix_bucket(&option, bucket_acl, location, quota_length, &response_handler, &ret_status);
+    create_pfs_bucket(&option, bucket_acl, location, &response_handler, &ret_status);
 
     if (OBS_STATUS_OK == ret_status) {
         printf("create Bucket [%s] successfully. \n", bucket_name);
@@ -1788,8 +1783,8 @@ static obs_bucket_list_type get_list_type_from_argv(char *param)
     printf("list_type is: %s\n", val);
     if (!strcmp(val, "object")) {
         ret_list_type = OBS_BUCKET_LIST_OBJECT;
-    }else if (!strcmp(val, "posix")) {
-        ret_list_type = OBS_BUCKET_LIST_POSIX;
+    }else if (!strcmp(val, "pfs")) {
+        ret_list_type = OBS_BUCKET_LIST_PFS;
     }else {
         fprintf(stderr, "ERROR: Unknown list_type: %s.\n", val);
     }
@@ -2053,7 +2048,7 @@ static void test_list_versions_new(int argc, char **argv, int optindex)
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
 
-    char *prefix = 0, *key_marker = 0, *delimiter = 0, *version_id_marker;
+    char *prefix = 0, *key_marker = 0, *delimiter = 0, *version_id_marker = NULL;
     int maxkeys = 0;
 
     while (optindex < argc) {
@@ -4832,7 +4827,7 @@ static void test_concurrent_copy_part(int argc, char **argv, int optindex)
 static void test_upload_file(int argc, char **argv, int optindex)
 {
     obs_status ret_status = OBS_STATUS_BUTT;
-    uint64_t uploadSliceSize =5L * 1024 * 1024;                   // upload part slice size
+    uint64_t uploadSliceSize =40L * 1024 * 1024;                   // upload part slice size
     int thread_num = 10;
     int check_point = 0;
     char *filename =0 ;                               // the upload file name 
@@ -4913,7 +4908,7 @@ static void test_upload_file(int argc, char **argv, int optindex)
 static void test_download_file(int argc, char **argv, int optindex)
 {
     obs_status ret_status = OBS_STATUS_BUTT;
-    uint64_t uploadSliceSize =5L * 1024 * 1024;                   // upload part slice size
+    uint64_t uploadSliceSize = 40L * 1024 * 1024;                   // upload part slice size
     int thread_num = 0;
     int check_point = 0;
     char *filename =0 ;                               // the upload file name 
@@ -6025,8 +6020,8 @@ int main(int argc, char **argv)
          test_create_bucket_new(argc, argv, optind);
     }
      // posix add func with create posix bucket.
-    else if (!strcmp(command, "create_posix_bucket")) {
-         test_create_posix_bucket_new(argc, argv, optind);
+    else if (!strcmp(command, "create_pfs_bucket")) {
+         test_create_pfs_bucket_new(argc, argv, optind);
     }
     else if (!strcmp(command, "list_bucket")) {
         test_list_bucket_new(argc, argv, optind);
