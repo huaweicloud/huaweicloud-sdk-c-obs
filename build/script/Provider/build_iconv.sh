@@ -10,13 +10,17 @@ cd $iconv_dir
 chmod 777 configure
 
 if [ $# = 0 ]; then 
-	if [ -z $BUILD_FOR_ARM ]; then
-	CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/libiconv --enable-static
-	elif [ $BUILD_FOR_ARM = "true" ]; then
-	CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/libiconv --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
+    if [ $BUILD_FOR_ARM = "true" ];then
+        CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/libiconv --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
+    elif [ $BUILD_FOR_NDK_AARCH64 = "true" ];then
+        CFLAGS="-fstack-protector-all" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libiconv --host=aarch64-linux-android CC=aarch64-linux-android-gcc
+    else
+        CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/libiconv --enable-static
 	fi
 elif [ $1 = "BUILD_FOR_ARM" ]; then
     CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/libiconv --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
+elif [ $1 = "BUILD_FOR_NDK_AARCH64" ]; then
+    CFLAGS="-fstack-protector-all" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libiconv --host=aarch64-linux-android CC=aarch64-linux-android-gcc
 fi
 
 make clean 

@@ -12,37 +12,51 @@ chmod 777 configure
 aclocal -I m4
 autoreconf -ivf
 automake -a -c
-if [ "$ARCH"x = "x86_64"x ];then
-CXXFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -O2" ./configure --prefix=/usr/local/log4cpp --with-pthreads
-elif [ "$ARCH"x = "aarch64"x ];then
-CXXFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -O2" ./configure --prefix=/usr/local/log4cpp --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld --with-pthreads
+if [ $# = 0 ]; then 
+    if [ $BUILD_FOR_ARM = "true" ];then
+        CXXFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -O2" ./configure --prefix=/usr/local/log4cpp --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld --with-pthreads
+        lib_out=aarch64
+    elif [ $BUILD_FOR_NDK_AARCH64 = "true" ];then
+        CXXFLAGS="-fstack-protector-all -O2" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/log4cpp --host=aarch64-linux-android CC=aarch64-linux-android-gcc --with-pthreads
+        lib_out=ndk-aarch64
+    else
+        CXXFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -O2" ./configure --prefix=/usr/local/log4cpp --with-pthreads
+        lib_out=linux_64
+    fi
+elif [ $1 = "BUILD_FOR_ARM" ]; then
+    CXXFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -O2" ./configure --prefix=/usr/local/log4cpp --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld --with-pthreads
+    lib_out=aarch64
+elif [ $1 = "BUILD_FOR_NDK_AARCH64" ]; then
+    CXXFLAGS="-fstack-protector-all -O2" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/log4cpp --host=aarch64-linux-android CC=aarch64-linux-android-gcc --with-pthreads
+    lib_out=ndk-aarch64
 fi
 
 make clean 
-make
+make -j16
+make uninstall
 make install
 
 cd $open_src_path
 
 mkdir -p $log4cpplib_dir
-if [ "$ARCH"x = "x86_64"x ];then
-cp -af /usr/local/log4cpp/lib/liblog4cpp*.so* $logAPI_dir/../C/linux_64
-elif [ "$ARCH"x = "aarch64"x ];then
-cp -af /usr/local/log4cpp/lib/liblog4cpp*.so* $logAPI_dir/../C/aarch64
+
+mkdir -p $logAPI_dir/../C/$lib_out
+if [ "$lib_out"x = "ndk-aarch64"x ];then
+cp -af /usr/local/log4cpp/lib/liblog4cpp.a $logAPI_dir/../C/$lib_out
+else
+cp -af /usr/local/log4cpp/lib/liblog4cpp*.so* $logAPI_dir/../C/$lib_out
 fi
 
 echo =========build the libeSDKLogAPI.so=========
 cd $logAPI_dir
 make clean
+if [ "$lib_out"x = "ndk-aarch64"x ];then
+make -f Makefile.ndk-aarch64
+else
 make
-
-if [ "$ARCH"x = "x86_64"x ];then
-mkdir -p ../C/linux_64
-cp libeSDKLogAPI.so ../C/linux_64 -f
-elif [ "$ARCH"x = "aarch64"x ];then
-mkdir -p ../C/aarch64
-cp libeSDKLogAPI.so ../C/aarch64 -f
 fi
+
+cp libeSDKLogAPI.so ../C/$lib_out -f
 
 cd $open_src_path
 

@@ -16,16 +16,22 @@ cd $curl_dir
 chmod 777 configure
 
 if [ $# = 0 ]; then 
-	if [ -z $BUILD_FOR_ARM ]; then
-	CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/curl --with-ssl=/usr/local/openssl #--with-nghttp2=/usr/local/nghttp2
-	lib_out="linux_x64"
-	elif [ $BUILD_FOR_ARM = "true" ]; then
-	CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/curl --with-ssl=/usr/local/openssl --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
-	lib_out="aarch64"
+    if [ $BUILD_FOR_ARM = "true" ];then
+        CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/curl --with-ssl=/usr/local/openssl --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
+        lib_out="aarch64"
+    elif [ $BUILD_FOR_NDK_AARCH64 = "true" ];then
+        CFLAGS="-fstack-protector-all" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/curl --with-ssl=/usr/local/openssl --host=aarch64-linux-android CC=aarch64-linux-android-gcc
+        lib_out="ndk-aarch64"
+    else
+        CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/curl --with-ssl=/usr/local/openssl #--with-nghttp2=/usr/local/nghttp2
+        lib_out="linux_x64"
 	fi
 elif [ $1 = "BUILD_FOR_ARM" ]; then
-CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/curl --with-ssl=/usr/local/openssl --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
-lib_out="aarch64"
+    CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/curl --with-ssl=/usr/local/openssl --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
+    lib_out="aarch64"
+elif [ $1 = "BUILD_FOR_NDK_AARCH64" ]; then
+    CFLAGS="-fstack-protector-all" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/curl --with-ssl=/usr/local/openssl --host=aarch64-linux-android CC=aarch64-linux-android-gcc
+    lib_out="ndk-aarch64"
 fi
 
 #ln -s /usr/local/nghttp2/lib/libnghttp2.so.14.16.2 /usr/local/nghttp2/lib/libnghttp2.so

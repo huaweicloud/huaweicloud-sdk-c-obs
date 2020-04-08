@@ -13,13 +13,17 @@ chmod 777 configure
 autoreconf -f -i
 
 if [ $# = 0 ]; then 
-	if [ -z $BUILD_FOR_ARM ]; then
-	EXTRA_CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libxml2 --with-threads --with-python=no
-	elif [ $BUILD_FOR_ARM = "true" ]; then
-	EXTRA_CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libxml2 --with-threads --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld --with-python=no
+    if [ $BUILD_FOR_ARM = "true" ];then
+        EXTRA_CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libxml2 --with-threads --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld --with-python=no
+    elif [ $BUILD_FOR_NDK_AARCH64 = "true" ];then
+        CFLAGS="-fstack-protector-all -g -O2" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libxml2 --host=aarch64-linux-android CC=aarch64-linux-android-gcc --with-threads --with-python=no --without-lzma
+    else
+        EXTRA_CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libxml2 --with-threads --with-python=no
 	fi
 elif [ $1 = "BUILD_FOR_ARM" ]; then
     EXTRA_CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libxml2 --with-threads --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld --with-python=no   
+elif [ $1 = "BUILD_FOR_NDK_AARCH64" ]; then
+    CFLAGS="-fstack-protector-all -g -O2" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/libxml2 --host=aarch64-linux-android CC=aarch64-linux-android-gcc --with-threads --with-python=no --without-lzma
 fi
 
 make clean 

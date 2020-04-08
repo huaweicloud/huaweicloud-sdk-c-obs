@@ -5286,7 +5286,7 @@ int writeCheckpointFile_Download(download_file_summary * pstDownloadFileSummary,
 
     xmlNodePtr root_node = xmlNewNode(NULL,BAD_CAST"downloadinfo");   
 
-    xmlNodePtr node_objectinfo = xmlNewNode(NULL,BAD_CAST"object_info");    
+    xmlNodePtr node_objectinfo = xmlNewNode(NULL,BAD_CAST"objectinfo");    
     xmlNodePtr node_partsinfo = xmlNewNode(NULL,BAD_CAST"partsinfo"); 
     //set the root node <uploadinfo>    
     xmlDocSetRootElement(doc,root_node);    
@@ -5547,19 +5547,19 @@ static obs_status DownloadPartCompletePropertiesCallback
             sprintf_sec(pathToUpdate,1024,"%s%d/%s","downloadinfo/partsinfo/part",
                 cbd->pstDownloadFilePartInfo->part_num + 1,"etag");
 #if defined(WIN32)
-            EnterCriticalSection(&g_csThreadCheckpoint_download);
+            EnterCriticalSection((CRITICAL_SECTION *)cbd->xmlWriteMutex);
 #endif
 
 #if defined __GNUC__ || defined LINUX
-                     pthread_mutex_lock(&g_mutexThreadCheckpoint_download);
+            pthread_mutex_lock((pthread_mutex_t *)cbd->xmlWriteMutex);
 #endif
             updateCheckPoint(pathToUpdate, properties->etag, cbd->checkpointFilename);
 #if defined(WIN32)
-            LeaveCriticalSection(&g_csThreadCheckpoint_download);
+            LeaveCriticalSection((CRITICAL_SECTION *)cbd->xmlWriteMutex);
 #endif
 
 #if defined __GNUC__ || defined LINUX
-                     pthread_mutex_unlock(&g_mutexThreadCheckpoint_download);
+            pthread_mutex_unlock((pthread_mutex_t *)cbd->xmlWriteMutex);
 #endif
         }
     }
@@ -5601,21 +5601,29 @@ static void  downloadPartCompleteCallback(obs_status status,
         {
             sprintf_sec(contentToSet,32,"%s","DOWNLOAD_FAILED");
         }
+
+        //must ensure do close tempfile before updateCheckPoint
+        if (cbd->fdStorefile != -1)
+        {
+            close(cbd->fdStorefile);
+            cbd->fdStorefile = -1;
+        }
+        
 #if defined(WIN32)
-        EnterCriticalSection(&g_csThreadCheckpoint_download);
+        EnterCriticalSection((CRITICAL_SECTION *)cbd->xmlWriteMutex);
 #endif
 
 #if defined __GNUC__ || defined LINUX
-        pthread_mutex_lock(&g_mutexThreadCheckpoint_download);
+        pthread_mutex_lock((pthread_mutex_t *)cbd->xmlWriteMutex);
 #endif
 
         updateCheckPoint(pathToUpdate, contentToSet, cbd->checkpointFilename);
 #if defined(WIN32)
-        LeaveCriticalSection(&g_csThreadCheckpoint_download);
+        LeaveCriticalSection((CRITICAL_SECTION *)cbd->xmlWriteMutex);
 #endif
 
 #if defined __GNUC__ || defined LINUX
-        pthread_mutex_unlock(&g_mutexThreadCheckpoint_download);
+        pthread_mutex_unlock((pthread_mutex_t *)cbd->xmlWriteMutex);
 #endif
         
     }
@@ -5650,6 +5658,7 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
     int part_num = pstPara->pstDownloadFilePartInfo->part_num;
     server_side_encryption_params * pstEncrypParam;
     char strPartNum[16] = {0};
+    download_file_callback_data  data;
     int fd = -1;
     char * fileNameTemp = (char*)malloc(1024);
 	
@@ -5679,7 +5688,6 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
             &getObjectPartDataCallback 
         };
         
-        download_file_callback_data  data;
         sprintf_sec(strPartNum,16,"%d",part_num+1);
         memset(&data,0,sizeof(download_file_callback_data));
         data.bytesRemaining = part_size;
@@ -5701,9 +5709,9 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
 
             sprintf_sec(pathToUpdate,1024,"%s%s/%s","downloadinfo/partsinfo/part",strPartNum,"downloadStatus");
             sprintf_sec(contentToSet,32,"%s","DOWNLOADING");            
-            EnterCriticalSection(&g_csThreadCheckpoint_download);
+            EnterCriticalSection((CRITICAL_SECTION *)pstPara->xmlWriteMutex);
             updateCheckPoint(pathToUpdate, contentToSet, pstPara->pstDownloadParams->fileNameCheckpoint);
-            LeaveCriticalSection(&g_csThreadCheckpoint_download);
+            LeaveCriticalSection((CRITICAL_SECTION *)pstPara->xmlWriteMutex);
             
         }
         obs_object_info object_info;
@@ -5711,14 +5719,21 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
         object_info.key = pstPara->pstDownloadParams->objectName;
         object_info.version_id = pstPara->pstDownloadParams->version_id;
         pstPara->pstDownloadFilePartInfo->downloadStatus = DOWNLOADING;
-        get_object(pstPara->pstDownloadParams->options, &object_info,pstPara->pstDownloadParams->get_conditions,
+
+        obs_get_conditions get_conditions = *(pstPara->pstDownloadParams->get_conditions);
+        get_conditions.start_byte = pstPara->pstDownloadFilePartInfo->start_byte;
+        get_conditions.byte_count = part_size;
+        COMMLOG(OBS_LOGINFO, "get_object partnum[%d] start:%ld size:%ld",part_num, get_conditions.start_byte, get_conditions.byte_count);
+        get_object(pstPara->pstDownloadParams->options, &object_info, &get_conditions,
                    pstPara->pstDownloadParams->pstServerSideEncryptionParams, &getObjectHandler,&data );
     }
-    if(fd != -1)
+    
+    if (data.fdStorefile != -1)
     {
-        _close(fd);
-        fd = -1;
+        close(data.fdStorefile);
+        data.fdStorefile = -1;
     }
+    
     return 1;
 }
 #endif
@@ -5731,6 +5746,7 @@ void * DownloadThreadProc_linux(void* param)
     uint64_t part_size = pstPara->pstDownloadFilePartInfo->part_size;
     int part_num = pstPara->pstDownloadFilePartInfo->part_num;
     char strPartNum[16] = {0};
+    download_file_callback_data  data;
     int fd = -1;
     char * fileNameTemp = (char*)malloc(1024);
 	
@@ -5747,7 +5763,7 @@ void * DownloadThreadProc_linux(void* param)
 
     if(fd == -1)
     {
-        COMMLOG(OBS_LOGINFO, "open store file failed, partnum[%d]\n",part_num);
+        COMMLOG(OBS_LOGERROR, "open store file failed, partnum[%d]\n",part_num);
         return NULL;
     }
     else
@@ -5758,7 +5774,7 @@ void * DownloadThreadProc_linux(void* param)
             &downloadPartCompleteCallback}, 
             &getObjectPartDataCallback 
         };
-        download_file_callback_data  data;
+        
         sprintf_sec(strPartNum,16,"%d",part_num+1);
         
         memset(&data,0,sizeof(download_file_callback_data));
@@ -5772,6 +5788,7 @@ void * DownloadThreadProc_linux(void* param)
         data.respHandler = pstPara->pstDownloadParams->response_handler;
         data.taskHandler = 0;
         data.pstDownloadFilePartInfo = pstPara->pstDownloadFilePartInfo;
+        data.xmlWriteMutex = pstPara->xmlWriteMutex;
 
         
         if(data.enableCheckPoint == 1)
@@ -5781,9 +5798,9 @@ void * DownloadThreadProc_linux(void* param)
 
             sprintf_sec(pathToUpdate,1024,"%s%s/%s","downloadinfo/partsinfo/part",strPartNum,"downloadStatus");
             sprintf_sec(contentToSet,32,"%s","DOWNLOADING");            
-            pthread_mutex_lock(&g_mutexThreadCheckpoint_download);
+            pthread_mutex_lock((pthread_mutex_t *)pstPara->xmlWriteMutex);
             updateCheckPoint(pathToUpdate, contentToSet, pstPara->pstDownloadParams->fileNameCheckpoint);
-            pthread_mutex_unlock(&g_mutexThreadCheckpoint_download);
+            pthread_mutex_unlock((pthread_mutex_t *)pstPara->xmlWriteMutex);
             
         }
 
@@ -5792,23 +5809,29 @@ void * DownloadThreadProc_linux(void* param)
         object_info.key = pstPara->pstDownloadParams->objectName;
         object_info.version_id = pstPara->pstDownloadParams->version_id;
         pstPara->pstDownloadFilePartInfo->downloadStatus = DOWNLOADING;
-        get_object(pstPara->pstDownloadParams->options, &object_info,pstPara->pstDownloadParams->get_conditions,
+
+        obs_get_conditions get_conditions = *(pstPara->pstDownloadParams->get_conditions);
+        get_conditions.start_byte = pstPara->pstDownloadFilePartInfo->start_byte;
+        get_conditions.byte_count = part_size;
+        COMMLOG(OBS_LOGINFO, "get_object partnum[%d] start:%ld size:%ld",part_num, get_conditions.start_byte, get_conditions.byte_count);
+        get_object(pstPara->pstDownloadParams->options, &object_info, &get_conditions,
                    pstPara->pstDownloadParams->pstServerSideEncryptionParams, &getObjectHandler,&data );
      }
 
-     if(fd != -1)
-        {
-            close(fd);
-            fd = -1;
-        }
-        return NULL;
+     if (data.fdStorefile != -1)
+     {
+         close(data.fdStorefile);
+         data.fdStorefile = -1;
+     }
+     
+     return NULL;
 }
 #endif
 
 
 void startDownloadThreads(download_params * pstDownloadParams, 
                           download_file_part_info * downloadFilePartInfoList,  
-                          int partCount, void* callback_data)
+                          int partCount, void* callback_data, void *xmlwrite_mutex)
 {
 
     int i=0;
@@ -5845,6 +5868,7 @@ void startDownloadThreads(download_params * pstDownloadParams,
         pstDownloadFileProcData->pstDownloadParams = pstDownloadParams;
         pstDownloadFileProcData->pstDownloadFilePartInfo = pstOnePartInfo;
         pstDownloadFileProcData->callBackData = callback_data;
+        pstDownloadFileProcData->xmlWriteMutex = xmlwrite_mutex;
         pstOnePartInfo = pstOnePartInfo->next;
         pstDownloadFileProcData ++;
     }
@@ -5882,14 +5906,17 @@ void startDownloadThreads(download_params * pstDownloadParams,
     } 
 #endif
 #if defined __GNUC__ || defined LINUX
-    for(i=0;i<partCount;i++)
+    for (i = 0; i < partCount; i++)
     {
         err = pthread_create(&arrThread[i], NULL,DownloadThreadProc_linux,(void *)&downloadFileProcDataList[i]);
         if(err != 0)
         {
             COMMLOG(OBS_LOGWARN, "startDownloadThreads create thread failed i[%d]\n",i);
         }
-        
+    } 
+
+    for (i = 0; i < partCount; i++)
+    {
         err = pthread_join(arrThread[i], NULL);
         if(err != 0)
         {
@@ -5940,7 +5967,7 @@ int isAllDownLoadPartsSuccess(download_file_part_info * downloadPartNode)
     return 1;
 }
 
-int combinePartsFile(const char * fileName, download_file_part_info * downloadPartList, const char * check_point_file)
+int combinePartsFile(const char * fileName, download_file_part_info * downloadPartList, const char * check_point_file, void *xmlwrite_mutex)
 {
     download_file_part_info * partNode = downloadPartList;
     char fileNameTemp[1024] = {0};
@@ -6059,7 +6086,6 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
         fdSrc = -1;
         if(writeSuccess == 1)
         {
-            remove(fileNameTemp);
             partNode->downloadStatus = COMBINE_SUCCESS;
             if(check_point_file)
             {
@@ -6067,21 +6093,23 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
                 sprintf_sec(contentToSet,32,"%s","COMBINE_SUCCESS");
 
 #if defined(WIN32)
-                EnterCriticalSection(&g_csThreadCheckpoint_download);
+                EnterCriticalSection((CRITICAL_SECTION *)xmlwrite_mutex);
 #endif
 
 #if defined __GNUC__ || defined LINUX
-                pthread_mutex_lock(&g_mutexThreadCheckpoint_download);
+                pthread_mutex_lock((pthread_mutex_t *)xmlwrite_mutex);
 #endif
                 updateCheckPoint(pathToUpdate, contentToSet, check_point_file);
 #if defined(WIN32)
-                LeaveCriticalSection(&g_csThreadCheckpoint_download);
+                LeaveCriticalSection((CRITICAL_SECTION *)xmlwrite_mutex);
 #endif
 
 #if defined __GNUC__ || defined LINUX
-                pthread_mutex_unlock(&g_mutexThreadCheckpoint_download);
+                pthread_mutex_unlock((pthread_mutex_t *)xmlwrite_mutex);
 #endif
-           }
+            }
+            //must resure do remove tempfile after updateCheckPoint(COMBINE_SUCCESS)
+            remove(fileNameTemp);
         
        }
        else
@@ -6179,9 +6207,9 @@ int checkDownloadPartsInfo(download_file_part_info * downloadPartList)
     return isValid;
 }
 
-int get_download_isfirst_time(obs_download_file_configuration * download_file_config, char *storeFile,
+static int get_download_isfirst_time(obs_download_file_configuration * download_file_config, char *storeFile,
             const char *key, char *checkpointFile, download_file_summary *pdownLoadFileInfo,
-            download_file_part_info * pstDownloadFilePartInfoList, int *partCount)
+            download_file_part_info** pstDownloadFilePartInfoList, int *partCount)
 {
     int isFirstTime = 1;
     int retVal = -1;
@@ -6241,28 +6269,28 @@ int get_download_isfirst_time(obs_download_file_configuration * download_file_co
     }
     
     retVal = readCheckpointFile_Download(&downLoadFileInfoOld,
-                        &pstDownloadFilePartInfoList,partCount,checkpointFile);        
+                        pstDownloadFilePartInfoList,partCount,checkpointFile);        
     if(retVal == -1)
     {
         isFirstTime = 1;
-        if(pstDownloadFilePartInfoList != NULL)
+        if(*pstDownloadFilePartInfoList != NULL)
         {
-            cleanDownloadList(pstDownloadFilePartInfoList);
-            pstDownloadFilePartInfoList = NULL;
+            cleanDownloadList(*pstDownloadFilePartInfoList);
+            *pstDownloadFilePartInfoList = NULL;
         }            
     }
     else
     {
         isObjectModified =  isObjectChanged(pdownLoadFileInfo,&downLoadFileInfoOld);
-        isPatsInfoValid = checkDownloadPartsInfo(pstDownloadFilePartInfoList);
+        isPatsInfoValid = checkDownloadPartsInfo(*pstDownloadFilePartInfoList);
         is_true = ((isObjectModified)||(!isPatsInfoValid));
         if (is_true)
         {
-            removeTempFiles(storeFile,pstDownloadFilePartInfoList,1);
+            removeTempFiles(storeFile,*pstDownloadFilePartInfoList,1);
             isFirstTime = 1;
-            if(pstDownloadFilePartInfoList != NULL)
+            if(*pstDownloadFilePartInfoList != NULL)
             {
-                cleanDownloadList(pstDownloadFilePartInfoList);
+                cleanDownloadList(*pstDownloadFilePartInfoList);
                 pstDownloadFilePartInfoList = NULL;
             }
         }                        
@@ -6275,7 +6303,7 @@ void download_complete_handle(download_file_part_info * pstPartInfoListDone,
           obs_download_file_configuration * download_file_config,
           char *checkpointFile, const char *storeFile,
           obs_download_file_response_handler *handler, void *callback_data,
-          int partCount)
+          int partCount, void *xmlwrite_mutex)
 {
     int retVal = -1;
     download_file_part_info * pstDownloadFilePartInfoList = NULL;
@@ -6285,7 +6313,7 @@ void download_complete_handle(download_file_part_info * pstPartInfoListDone,
     {
         char * pstCheckPoint = download_file_config->enable_check_point ? checkpointFile : NULL;
         COMMLOG(OBS_LOGINFO, "%s all parts download success\n","DownloadFile");
-        retVal = combinePartsFile(storeFile,pstDownloadFilePartInfoList, pstCheckPoint);
+        retVal = combinePartsFile(storeFile,pstDownloadFilePartInfoList, pstCheckPoint, xmlwrite_mutex);
         if(retVal == 0)
         {
             char strReturn[1024] = {0};
@@ -6361,6 +6389,13 @@ void download_file(const obs_options *options, char *key, char* version_id,
     int partCountToProc = 0;
     uint64_t part_size = 0;
     int is_true = 0;
+#if defined __GNUC__ || defined LINUX
+    pthread_mutex_t mutexThreadCheckpoint;
+#endif
+#if defined WIN32
+    CRITICAL_SECTION  mutexThreadCheckpoint;
+#endif
+
 
     download_params stDownloadParams;
     COMMLOG(OBS_LOGERROR, "in DownloadFile download_file_config: partsize=%d ",download_file_config->part_size);
@@ -6391,7 +6426,7 @@ void download_file(const obs_options *options, char *key, char* version_id,
 
     //2,set the file to store the object, and the checkpoint file
     isFirstTime = get_download_isfirst_time(download_file_config, storeFile, key, checkpointFile, 
-                        &downLoadFileInfo, pstDownloadFilePartInfoList, &partCount);
+                        &downLoadFileInfo, &pstDownloadFilePartInfoList, &partCount);
     
     is_true = ((download_file_config->part_size <= 0) 
             || (download_file_config->part_size > MAX_PART_SIZE));
@@ -6438,17 +6473,38 @@ void download_file(const obs_options *options, char *key, char* version_id,
     download_file_config->task_num = download_file_config->task_num == 0 ? MAX_THREAD_NUM :
                             download_file_config->task_num;                          
     partCountToProc = 0;
+
+    if (download_file_config->enable_check_point)
+    {
+    #if defined __GNUC__ || defined LINUX
+        pthread_mutex_init(&mutexThreadCheckpoint,NULL); 
+    #endif
+    #if defined WIN32
+        InitializeCriticalSection(&mutexThreadCheckpoint);
+    #endif
+    }
+    
     while(pstPartInfoListNotDone)
     {
         GetDownloadPartListToProcess(&pstPartInfoListDone,&pstPartInfoListNotDone,
             partCountToProc,&partCountToProc,download_file_config->task_num);
         if(partCountToProc > 0)
         {
-            startDownloadThreads(&stDownloadParams,pstPartInfoListNotDone,partCountToProc,callback_data); 
+            startDownloadThreads(&stDownloadParams,pstPartInfoListNotDone,partCountToProc,callback_data, &mutexThreadCheckpoint); 
         }
     }
     download_complete_handle(pstPartInfoListDone, download_file_config, checkpointFile, storeFile,
-          handler, callback_data, partCount);
+          handler, callback_data, partCount, &mutexThreadCheckpoint);
+
+    if (download_file_config->enable_check_point)
+    {
+    #if defined __GNUC__ || defined LINUX
+        pthread_mutex_destroy(&mutexThreadCheckpoint);  
+    #endif
+    #if defined WIN32
+        DeleteCriticalSection(&mutexThreadCheckpoint);
+    #endif
+    }
 }
 
 

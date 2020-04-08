@@ -1,0 +1,69 @@
+// Please note -- this is a representative set of error suppression
+//                options.  Please adjust to suit your own policies
+//                See  manual (chapter LIVING WITH LINT)
+//                for further details.
+
+//-iprebuilt/linux-x86/toolchain/arm-eabi-4.4.3/lib/gcc/arm-eabi/4.4.3/include
+//-isystem/core/include/arch/linux-arm/ 
+//-iframeworks/base/libs/ui/
+//-iprebuilt/linux-x86/toolchain/i686-linux-glibc2.7-4.4.3/sysroot/usr/include
+//-ihardware/libhardware/include/hardware/
+//-ibionic/libc/private/
+//-iexternal/astl/include/
+//-iexternal/stlport/stlport/
+//-ibionic/libc/include/
+//-iprebuilt/linux-x86/toolchain/arm-eabi-4.4.3/lib/gcc/arm-eabi/4.4.3/include/
+
+// ignore all warnings in header, because it makes user confused when only report warnings on new/modified lines
+-e686 //Option '-elib(*)' is suspicious
++libclass(all)    //all header files as library
+-elib(*)
+-e830
+-e831
+/*The below is the standard requirement from company*/
+-e718                   // allow calls to undeclared C functions
+-e746                   // allow calls w/o prototypes in C.
+-e46			// Field type should be int
+-e123			// Macro defined with arguments at Location
+-e505			// Redundant left argument to comma
+-e506			// Constant value Boolean
+-e525			// Negative indentation from Location
+-e534			// Ignoring return value of Symbol
+-e537			// Repeated include file
+-e539			// Did not expect positive indentation from Location
+-e544			// endif or else not followed by EOL
+-e545			// Suspicious use of &
+-e641			// Converting enum to int
+-e656			// Arithmetic operation uses (compatible) enum's
+-e725			// Expected positive indentation from Location
+-e726			// Extraneous comma ignored
+-e740			// Unusual pointer cast (incompatible indirect types)
+-e760			// Redundant macro Symbol defined identically at Location
+-e762			// Redundant declaration of Symbol previously declared at Location
+-e766			// Header file FileName not used in module
+-e783			// Line does not end with new-line
+-e788			// enum constant Symbol not used within defaulted switch
+-e793			// ANSI limit of Integer String exceeded
+
+
+-D__arm -D__lint__ -D__inline__ -u 
+ 
+-emacro((*),va_arg)    // the va_arg() macro
+-emacro((*),LOGD)      // the LOGD macro
+co-gcc.lnt
+au-misra1.lnt
+au-misra-cpp.lnt
+
+-i"/usr/include"
+
+// the sequence of the below lnt files can't be modified
+// first, clear all warings
+zerowarning.lnt
+
+// then, load the rules service user defined 
+// svc-custom-checks.lnt
+
+// last, load the rules CloudBU defined
+cloudbu-checks.lnt
+
++e900   //  issue a message at termination.

@@ -69,9 +69,15 @@ ifdef BUILD_FOR_ARM
    libPath := aarch64
    includePath := arm
 else
-   CC := gcc
-   libPath := linux_64
-   includePath := linux
+   ifdef BUILD_FOR_NDK_AARCH64
+      CC := aarch64-linux-android-gcc
+      libPath := ndk-aarch64
+      includePath := ndk-aarch64
+   else
+      CC := gcc
+      libPath := linux_64
+      includePath := linux
+   endif
 endif
 
 ifndef openssl_version
@@ -153,7 +159,11 @@ ifndef LIBSECUREC_CFLAGS
 endif
 
 ifndef LIBICONV_CFLAGS
+     ifdef BUILD_FOR_NDK_AARCH64
+     LIBICONV_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/iconv-1.15/include
+     else
      LIBICONV_CFLAGS := -I./../../../third_party_groupware/eSDK_Storage_Plugins/libiconv-1.15/source/include
+     endif
 endif
 
 ifndef LIBICONV_LIBS
@@ -173,6 +183,9 @@ ifndef CFLAGS
     endif
 endif
 
+ifdef BUILD_FOR_NDK_AARCH64
+SPEC_PARAM = -Wno-unused-command-line-argument
+endif
 CFLAGS += -Wall -Werror -Wshadow -Wextra -Iinc \
           $(NGHTTP2_CFLAGS) $(CURL_CFLAGS) $(LIBXML2_CFLAGS) $(LIBESDKLOGAPI_CFLAGS) $(LIBOPENSSL_CFLAGS) $(LIBPCRE_CFLAGS) $(LIBSSH2_CFLAGS) $(LIBSECUREC_CFLAGS) $(LIBICONV_CFLAGS)\
           -DLIBOBS_VER_MAJOR=\"$(LIBOBS_VER_MAJOR)\" \
@@ -182,9 +195,13 @@ CFLAGS += -Wall -Werror -Wshadow -Wextra -Iinc \
           -D_ISOC99_SOURCE \
           -D_POSIX_C_SOURCE=200112L \
 		  -std=c99 \
-		  -Wno-char-subscripts -Wno-implicit-fallthrough
+		  -Wno-char-subscripts -Wno-implicit-fallthrough $(SPEC_PARAM)
 
-LDFLAGS = $(NGHTTP2_LIBS) $(CURL_LIBS) $(LIBXML2_LIBS) $(LIBESDKLOGAPI_LIBS) $(LIBOPENSSL_LIBS) $(LIBPCRE_LIBS) $(LIBSSH2_LIBS) $(LIBSECUREC_LIBS) $(LIBICONV_LIBS) -lpthread
+ifndef BUILD_FOR_NDK_AARCH64
+PTHREAD = -lpthread
+endif
+
+LDFLAGS = $(NGHTTP2_LIBS) $(CURL_LIBS) $(LIBXML2_LIBS) $(LIBESDKLOGAPI_LIBS) $(LIBOPENSSL_LIBS) $(LIBPCRE_LIBS) $(LIBSSH2_LIBS) $(LIBSECUREC_LIBS) $(LIBICONV_LIBS) $(PTHREAD)
 
 
 # --------------------------------------------------------------------------

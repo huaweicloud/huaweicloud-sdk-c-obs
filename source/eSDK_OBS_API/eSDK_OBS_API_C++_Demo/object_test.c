@@ -4908,7 +4908,7 @@ static void test_upload_file(int argc, char **argv, int optindex)
 static void test_download_file(int argc, char **argv, int optindex)
 {
     obs_status ret_status = OBS_STATUS_BUTT;
-    uint64_t uploadSliceSize = 40L * 1024 * 1024;                   // upload part slice size
+    uint64_t uploadSliceSize = 5L * 1024 * 1024;                   // upload part slice size
     int thread_num = 0;
     int check_point = 0;
     char *filename =0 ;                               // the upload file name 

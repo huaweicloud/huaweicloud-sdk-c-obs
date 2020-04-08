@@ -991,10 +991,10 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
     easy_setopt_safe(CURLOPT_URL, uri);
     easy_setopt_safe(CURLOPT_NOBODY, 1);
 
-    curl_easy_setopt_safe(CURLOPT_LOW_SPEED_LIMIT, DEFAULT_LOW_SPEED_LIMIT);
-    curl_easy_setopt_safe(CURLOPT_LOW_SPEED_TIME, DEFAULT_LOW_SPEED_TIME_S);
-    curl_easy_setopt_safe(CURLOPT_CONNECTTIMEOUT_MS, DEFAULT_CONNECTTIMEOUT_MS);
-    curl_easy_setopt_safe(CURLOPT_TIMEOUT, DEFAULT_TIMEOUT_S);
+    easy_setopt_safe(CURLOPT_LOW_SPEED_LIMIT, DEFAULT_LOW_SPEED_LIMIT);
+    easy_setopt_safe(CURLOPT_LOW_SPEED_TIME, DEFAULT_LOW_SPEED_TIME_S);
+    easy_setopt_safe(CURLOPT_CONNECTTIMEOUT_MS, DEFAULT_CONNECTTIMEOUT_MS);
+    easy_setopt_safe(CURLOPT_TIMEOUT, DEFAULT_TIMEOUT_S);
 
     CURLcode setoptResult =  curl_easy_setopt(curl,CURLOPT_ERRORBUFFER,errorBuffer);
     COMMLOG(OBS_LOGWARN, "curl_easy_setopt curl path= %s",uri);

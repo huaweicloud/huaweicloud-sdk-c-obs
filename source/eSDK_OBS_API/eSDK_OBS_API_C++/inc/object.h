@@ -327,6 +327,7 @@ typedef struct
     download_params * pstDownloadParams;
     download_file_part_info  *pstDownloadFilePartInfo;
     void * callBackData;
+    void * xmlWriteMutex;
 }download_file_proc_data;
 
 typedef struct _download_file_callback_data
@@ -340,6 +341,7 @@ typedef struct _download_file_callback_data
     obs_response_handler * respHandler;
     download_file_part_info *pstDownloadFilePartInfo;// this store the info about one part        
     void * callbackDataIn;//the callback data pass from client
+    void * xmlWriteMutex;
 }download_file_callback_data;
 
 typedef struct  delete_object_contents

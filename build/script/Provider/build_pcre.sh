@@ -10,13 +10,17 @@ cd $pcre_dir
 chmod 777 configure
 autoreconf -f -i
 if [ $# = 0 ]; then 
-	if [ -z $BUILD_FOR_ARM ]; then
-	CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/pcre --enable-utf
-	elif [ $BUILD_FOR_ARM = "true" ]; then
-	CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/pcre --enable-utf --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
+    if [ $BUILD_FOR_ARM = "true" ];then
+        CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/pcre --enable-utf --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
+    elif [ $BUILD_FOR_NDK_AARCH64 = "true" ];then
+        CFLAGS="-fstack-protector-all -g -O2" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/pcre --enable-utf --host=aarch64-linux-android CC=aarch64-linux-android-gcc
+    else
+        CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/pcre --enable-utf
 	fi
 elif [ $1 = "BUILD_FOR_ARM" ]; then
-CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/pcre --enable-utf --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
+    CFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -g -O2" ./configure --prefix=/usr/local/pcre --enable-utf --host=aarch64-linux-gnu --build=aarch64-gnu-linux --with-gnu-ld
+elif [ $1 = "BUILD_FOR_NDK_AARCH64" ]; then
+    CFLAGS="-fstack-protector-all -g -O2" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/pcre --enable-utf --host=aarch64-linux-android CC=aarch64-linux-android-gcc
 fi
 
 make clean 

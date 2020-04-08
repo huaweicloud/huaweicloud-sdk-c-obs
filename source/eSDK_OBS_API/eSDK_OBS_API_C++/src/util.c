@@ -692,6 +692,8 @@ void HMAC_SHA256(unsigned char hmac[32], const unsigned char *key, int key_len,
     if (NULL == ctx)
     {
         COMMLOG(OBS_LOGERROR, "HMAC_CTX_new failed!");
+        free(temp);
+        temp = NULL;
         return;
     }
     HMAC_CTX_reset(ctx);
@@ -742,6 +744,8 @@ void SHA256Hash(unsigned char sha[32], const unsigned char *message, int message
     if (NULL == mdctx)
     {
         COMMLOG(OBS_LOGERROR, "EVP_MD_CTX_new failed!");
+        free(temp);
+        temp = NULL;
         return;
     }
     EVP_MD_CTX_init(mdctx);
