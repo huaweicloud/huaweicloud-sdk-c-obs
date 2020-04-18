@@ -60,3 +60,6 @@ V3.19.9.9.2
 3. 修复断点续传下载download_file的功能
 4、支持安卓ndk的编译
 
+V3.19.9.9.3
+1. 增加create_bucket_with_params函数，支持3az创建
+

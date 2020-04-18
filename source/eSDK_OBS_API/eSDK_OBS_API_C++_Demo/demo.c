@@ -127,6 +127,40 @@ static void test_create_bucket(obs_canned_acl canned_acl, char *bucket_name)
 
 }
 
+// create bucket with params---------------------------------------------------------------
+static void test_create_bucket_with_params(obs_canned_acl canned_acl, obs_az_redundancy az_redundancy, char *bucket_name)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    
+
+    obs_response_handler response_handler =
+    { 
+        0, &response_complete_callback
+    };
+
+    obs_create_bucket_params param;
+    param.canned_acl = canned_acl;
+    param.location_constraint = NULL;
+    param.az_redundancy = az_redundancy;
+
+    create_bucket_with_params(&option, &param, &response_handler, &ret_status);
+    if (ret_status == OBS_STATUS_OK) {
+        printf("create bucket with params %s successfully.\n", bucket_name);
+    }
+    else
+    {
+        printf("create bucket with params %s failed(%s).\n", bucket_name, obs_get_status_name(ret_status));
+    }
+
+}
+
+
 // create posix bucket ---------------------------------------------------------------
 static void test_create_pfs_bucket(obs_canned_acl canned_acl, char *bucket_name)
 {

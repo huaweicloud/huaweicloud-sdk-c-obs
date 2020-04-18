@@ -245,6 +245,14 @@ typedef enum
 
 typedef enum
 {
+    OBS_REDUNDANCY_1AZ                         = 0,
+    OBS_REDUNDANCY_3AZ                         = 1,  //only used by obs api
+    OBS_REDUNDANCY_BUTT
+} obs_az_redundancy;
+
+
+typedef enum
+{
     OBS_GRANT_READ                           = 0,
     OBS_GRANT_WRITE                          = 1, 
     OBS_GRANT_READ_ACP                       = 2,
@@ -396,6 +404,14 @@ typedef enum
 
 
 typedef struct obs_request_context obs_request_context;
+
+typedef struct tag_obs_create_bucket_params
+{
+    obs_canned_acl    canned_acl;
+    obs_az_redundancy az_redundancy;
+    const char       *location_constraint;   
+} obs_create_bucket_params;
+
 
 typedef struct obs_acl_grant
 {
@@ -1082,6 +1098,7 @@ typedef struct obs_put_properties
     uint64_t byte_count;
     int64_t expires;
     obs_canned_acl canned_acl;
+    obs_az_redundancy az_redundancy;
     grant_domain_config *domain_config;
     int meta_data_count;
     obs_name_value *meta_data;
@@ -1162,6 +1179,9 @@ eSDK_OBS_API obs_status init_certificate_by_buffer(const char *buffer, int buffe
 
 eSDK_OBS_API void create_bucket(const obs_options *options, obs_canned_acl canned_acl,
             const char *location_constraint, obs_response_handler *handler, void *callback_data);
+
+eSDK_OBS_API void create_bucket_with_params(const obs_options *options, const obs_create_bucket_params *param,
+        obs_response_handler *handler, void *callback_data);
 
 eSDK_OBS_API void create_pfs_bucket(const obs_options *options, obs_canned_acl canned_acl,
                 const char *location_constraint,  obs_response_handler *handler,

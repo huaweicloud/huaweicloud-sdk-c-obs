@@ -37,8 +37,8 @@
 #define BUCKET_LEN 65
 #define DOMAIN_LEN 254
 
-#define OBS_SDK_VERSION "3.19.9.2"
-#define USER_AGENT_VALUE  "obs-sdk-c-3.19.9.2" ;
+#define OBS_SDK_VERSION "3.19.9.3"
+#define USER_AGENT_VALUE  "obs-sdk-c-3.19.9.3" ;
 
 #define DEFAULT_LOW_SPEED_LIMIT    (1)
 #define DEFAULT_LOW_SPEED_TIME_S   (300)

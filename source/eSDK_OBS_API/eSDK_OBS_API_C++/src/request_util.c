@@ -532,6 +532,26 @@ obs_status headers_append_acl(obs_canned_acl acl, request_computed_values *value
     return OBS_STATUS_OK;
 }
 
+static obs_status headers_append_az_redundancy(obs_az_redundancy az_redundancy, request_computed_values *values, int *len, const request_params *params)
+{
+    char *azRedundancyString = NULL;
+    switch (az_redundancy)
+    {
+        case OBS_REDUNDANCY_3AZ:
+            azRedundancyString = "3az";
+            break;
+        default: 
+            break;
+    }
+    
+    if (params->use_api == OBS_USE_API_OBS && azRedundancyString != NULL) 
+    {
+        return headers_append(len, values, 1, "x-obs-az-redundancy: %s", azRedundancyString, NULL);
+    }
+    
+    return OBS_STATUS_OK;
+}
+
 obs_status headers_append_domin(const obs_put_properties *properties,
             request_computed_values *values, int *len)
 {
@@ -708,6 +728,11 @@ obs_status request_compose_properties(request_computed_values *values, const req
 
 		ret_status = headers_append_acl(properties->canned_acl, values, len, params);
 		if (OBS_STATUS_OK != ret_status) {
+			return ret_status;
+		}
+
+        ret_status = headers_append_az_redundancy(properties->az_redundancy, values, len, params);
+        if (OBS_STATUS_OK != ret_status) {
 			return ret_status;
 		}
 

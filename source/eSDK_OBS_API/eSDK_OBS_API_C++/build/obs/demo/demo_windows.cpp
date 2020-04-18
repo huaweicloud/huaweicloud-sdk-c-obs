@@ -846,6 +846,76 @@ static void test_create_bucket(int argc, char **argv, int optindex)
     }
 }
 
+// create bucket with params ---------------------------------------------------------------
+static void test_create_bucket_with_params(int argc, char **argv, int optindex)
+{
+    char *location = NULL;
+    obs_options option;
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_canned_acl canned_acl = OBS_CANNED_ACL_PRIVATE;
+    temp_auth_configure tempauth;
+    tempAuthResult  ptrResult;
+    memset(&ptrResult,0,sizeof(tempAuthResult));
+    obs_status status = OBS_STATUS_OK;
+
+	if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+	char *bucket_name = argv[optindex++];
+    printf("Bucket's name is == %s \n", bucket_name);
+	
+    init_obs_options(&option);
+
+    while (optindex < argc) {
+        char *param = argv[optindex++];
+        if (!strncmp(param, LOCATION_PREFIX, LOCATION_PREFIX_LEN)) {
+            location = &(param[LOCATION_PREFIX_LEN]);
+            printf("locationconstrint is: %s\n", location);
+        }
+        else if (!strncmp(param, CANNED_ACL_PREFIX, CANNED_ACL_PREFIX_LEN)) {
+            canned_acl = get_acl_from_argv(param);
+        }
+        else if (!strncmp(param, STORAGE_CLASS_PREFIX, STORAGE_CLASS_PREFIX_LEN)) {
+            option.bucket_options.storage_class = get_storage_class_from_argv(param);
+        }
+        else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+            option.bucket_options.protocol = get_protocol_from_argv(param);
+        }
+        else if (!strncmp(param, TMP_AUTH_EXPIRES_PREFIX,TMP_AUTH_EXPIRES_PREFIX_LEN)){
+            tempauth.callback_data = (void *)(&ptrResult);
+            int auth_expire = atoi(&param[TMP_AUTH_EXPIRES_PREFIX_LEN]);
+            tempauth.expires = auth_expire;
+            tempauth.temp_auth_callback = &tempAuthCallBack_getResult;
+            option.temp_auth = &tempauth;
+        }
+    }
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    
+
+    obs_response_handler response_handler =
+    { 
+        0, &response_complete_callback
+    };
+
+    obs_create_bucket_params param;
+    param.canned_acl = canned_acl;
+    param.location_constraint = location;
+    param.az_redundancy = OBS_REDUNDANCY_3AZ;
+        
+    create_bucket_with_params(&option, &param, &response_handler, &ret_status);
+    if (OBS_STATUS_OK == ret_status) {
+        printf("create Bucket With Params [%s] successfully. \n", bucket_name);
+    }
+    else
+    {
+        printf("create Bucket With Params [%s] failed.\n", bucket_name);
+    }
+}
+
+
 // create bucket ---------------------------------------------------------------
 static void test_create_bucket_with_option(obs_canned_acl canned_acl, char *bucket_name,
                                    obs_storage_class storage_class_value, char *bucket_region)
