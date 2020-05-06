@@ -1,0 +1,28 @@
+1. compile third party lib
+1.1. download openssl-1.1.1d curl-7.66.0 libxml2-2.9.9 pcre-8.39 from github or other official source
+1.2. refer to build/script/Provider/,build_openssl.sh build_curl.sh build_libxml2.sh build_pcre.sh
+1.3. compile openssl: CFLAGS="-Wall -O3 -fstack-protector-all" ./config threads shared --prefix=/usr/local/openssl --openssldir=/usr/local/ssl/;make;make install
+1.4. compile curl: CFLAGS="-fstack-protector-all" ./configure --prefix=/usr/local/curl --with-ssl=/usr/local/openssl;make;make install;
+1.5. compile libxml2: EXTRA_CFLAGS="-fstack-protector-all" ./configure --prefix=/usr/local/libxml2 --with-threads --with-python=no;make;make install
+1.6. compile pcre: CFLAGS="-fstack-protector-all -g -O2" ./configure --prefix=/usr/local/pcre --enable-utf;make;make install;
+
+2. copy third-party to sdk source
+2.1. cd build/script/Provider/build; mkdir macos
+2.2. cd macos;mkdir openssl-1.1.1d;mkdir curl-7.66.0;mkdir libxml2-2.9.9;mkdir pcre-8.39
+2.3. copy build/script/Provider/build/linux/*/include to corresponding build/script/Provider/build/macos/*/include dir
+2.4. copy the library compiled in step.1 to corresponding build/script/Provider/build/macos/*/lib dir
+     such as: cp -a /usr/local/openssl/lib/*.dylib build/script/Provider/build/macos/openssl-1.1.1d/lib/ 
+              cp -a /usr/local/curl/lib/*.dylib build/script/Provider/build/macos/curl-7.66.0/lib/
+              cp -a /usr/local/libxml2/lib/*.dylib build/script/Provider/build/macos/libxml2-2.9.9/lib/
+              cp -a /usr/local/pcre/lib/*.dylib build/script/Provider/build/macos/pcre-8.39/lib/
+			  
+3. compile libeSDKLogAPI.dylib
+3.1. cd platform/eSDK_LogAPI_V2.1.10/log4cpp;mkdir build;cmake ../ -DCMAKE_BUILD_TYPE=Release;make
+3.2. cd platform/eSDK_LogAPI_V2.1.10/C;mkdir macos;cp platform/eSDK_LogAPI_V2.1.10/log4cpp/build/liblog4cpp.a platform/eSDK_LogAPI_V2.1.10/C/macos/
+3.3. cd platform/eSDK_LogAPI_V2.1.10/eSDKLogAPI;make -f Makefile.Macos;cp ./libeSDKLogAPI.dylib platform/eSDK_LogAPI_V2.1.10/C/macos/
+
+4. compile sdk release version
+4.1. cd source/eSDK_OBS_API/eSDK_OBS_API_C++
+4.2. sh build_macos.sh huaweicloud-obs-sdk-c-macos
+4.3. if success, libeSDKOBS.dylib should be in source/eSDK_OBS_API/eSDK_OBS_API_C++/build/lib/
+     in current dir, huaweicloud-obs-sdk-c-macos.tgz shoule be in here

@@ -75,8 +75,13 @@ else
       includePath := ndk-aarch64
    else
       CC := gcc
-      libPath := linux_64
-      includePath := linux
+      ifdef BUILD_FOR_MACOS
+          libPath := macos
+          includePath := macos
+      else
+          libPath := linux_64
+          includePath := linux
+      endif
    endif
 endif
 
@@ -159,15 +164,21 @@ ifndef LIBSECUREC_CFLAGS
 endif
 
 ifndef LIBICONV_CFLAGS
-     ifdef BUILD_FOR_NDK_AARCH64
-     LIBICONV_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/iconv-1.15/include
-     else
-     LIBICONV_CFLAGS := -I./../../../third_party_groupware/eSDK_Storage_Plugins/libiconv-1.15/source/include
+     ifndef BUILD_FOR_MACOS
+         ifdef BUILD_FOR_NDK_AARCH64
+         LIBICONV_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/iconv-1.15/include
+         else
+         LIBICONV_CFLAGS := -I./../../../third_party_groupware/eSDK_Storage_Plugins/libiconv-1.15/source/include
+         endif
      endif
 endif
 
 ifndef LIBICONV_LIBS
+    ifdef BUILD_FOR_MACOS
+     LIBICONV_LIBS := -liconv
+    else
      LIBICONV_LIBS := -L./../../../build/script/Provider/build/${includePath}/iconv-1.15/lib -liconv
+    endif
 endif
 
 # --------------------------------------------------------------------------
@@ -185,6 +196,9 @@ endif
 
 ifdef BUILD_FOR_NDK_AARCH64
 SPEC_PARAM = -Wno-unused-command-line-argument
+endif
+ifdef BUILD_FOR_MACOS
+SPEC_PARAM = -Wno-unused-command-line-argument -Wno-format
 endif
 CFLAGS += -Wall -Werror -Wshadow -Wextra -Iinc \
           $(NGHTTP2_CFLAGS) $(CURL_CFLAGS) $(LIBXML2_CFLAGS) $(LIBESDKLOGAPI_CFLAGS) $(LIBOPENSSL_CFLAGS) $(LIBPCRE_CFLAGS) $(LIBSSH2_CFLAGS) $(LIBSECUREC_CFLAGS) $(LIBICONV_CFLAGS)\
@@ -263,7 +277,11 @@ $(BUILD)/obj/%.do: src/%.c
 # --------------------------------------------------------------------------
 # libeSDKOBS library targets
 
+ifdef BUILD_FOR_MACOS
+LIBOBS_SHARED = $(BUILD)/lib/libeSDKOBS.dylib
+else
 LIBOBS_SHARED = $(BUILD)/lib/libeSDKOBS.so
+endif
 LIBOBS_STATIC = $(BUILD)/lib/libeSDKOBS.a
 
 .PHONY: libeSDKOBS
@@ -276,6 +294,13 @@ LIBOBS_SOURCES := bucket.c  object.c request.c request_context.c \
 $(LIBOBS_SHARED): $(LIBOBS_SOURCES:%.c=$(BUILD)/obj/%.do)
 	$(QUIET_ECHO) $@: Building shared library
 	@ mkdir -p $(dir $@)
+ifdef BUILD_FOR_MACOS
+    $(VERBOSE_SHOW) $(CC) -shared  \
+						-fstack-protector 			\
+						--param ssp-buffer-size=4	\
+						-fPIC            			\
+						-o $@ $^  $(LDFLAGS)
+else
 	$(VERBOSE_SHOW) $(CC) -shared -Wl,-soname,libeSDKOBS.so \
 						-fstack-protector 			\
 						--param ssp-buffer-size=4	\
@@ -283,6 +308,7 @@ $(LIBOBS_SHARED): $(LIBOBS_SOURCES:%.c=$(BUILD)/obj/%.do)
 						-Wl,-z,noexecstack   		\
 						-fPIC            			\
 						-o $@ $^  $(LDFLAGS)
+endif
 
 $(LIBOBS_STATIC): $(LIBOBS_SOURCES:%.c=$(BUILD)/obj/%.o)
 	$(QUIET_ECHO) $@: Building static library

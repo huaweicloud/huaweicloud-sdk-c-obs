@@ -77,7 +77,9 @@ extern "C" {
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <sys/wait.h>
+#ifndef __APPLE__
 #include <sys/epoll.h>
+#endif
 #include <netdb.h>
 
 #elif  (VOS_APP_OS == VOS_OS_WIN32)

@@ -19,6 +19,11 @@ if [ $# = 0 ]; then
     elif [ $BUILD_FOR_NDK_AARCH64 = "true" ];then
         CXXFLAGS="-fstack-protector-all -O2" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/log4cpp --host=aarch64-linux-android CC=aarch64-linux-android-gcc --with-pthreads
         lib_out=ndk-aarch64
+    elif [ $BUILD_FOR_MACOS = "true" ]; then
+        mkdir build
+        cd build
+        cmake ../ -DCMAKE_BUILD_TYPE=Release
+        lib_out = macos
     else
         CXXFLAGS="-fstack-protector-all -Wl,-z,relro,-z,now -O2" ./configure --prefix=/usr/local/log4cpp --with-pthreads
         lib_out=linux_64
@@ -29,6 +34,11 @@ elif [ $1 = "BUILD_FOR_ARM" ]; then
 elif [ $1 = "BUILD_FOR_NDK_AARCH64" ]; then
     CXXFLAGS="-fstack-protector-all -O2" LDFLAGS="-Wl,-z,relro,-z,now" ./configure --prefix=/usr/local/log4cpp --host=aarch64-linux-android CC=aarch64-linux-android-gcc --with-pthreads
     lib_out=ndk-aarch64
+elif [ $1 = "BUILD_FOR_MACOS" ]; then
+    mkdir build
+    cd build
+    cmake ../ -DCMAKE_BUILD_TYPE=Release
+    lib_out = macos
 fi
 
 make clean 
@@ -43,6 +53,8 @@ mkdir -p $log4cpplib_dir
 mkdir -p $logAPI_dir/../C/$lib_out
 if [ "$lib_out"x = "ndk-aarch64"x ];then
 cp -af /usr/local/log4cpp/lib/liblog4cpp.a $logAPI_dir/../C/$lib_out
+elif [ "$lib_out"x = "macos"x ];then
+cp -af $log4cpp_dir/build/liblog4cpp.a $logAPI_dir/../C/$lib_out
 else
 cp -af /usr/local/log4cpp/lib/liblog4cpp*.so* $logAPI_dir/../C/$lib_out
 fi
@@ -52,11 +64,17 @@ cd $logAPI_dir
 make clean
 if [ "$lib_out"x = "ndk-aarch64"x ];then
 make -f Makefile.ndk-aarch64
+elif [ "$lib_out"x = "macos"x ];then
+make -f Makefile.Macos
 else
 make
 fi
 
+if [ "$lib_out"x = "macos"x ]; then
+cp libeSDKLogAPI.dylib ../C/$lib_out -f
+else
 cp libeSDKLogAPI.so ../C/$lib_out -f
+fi
 
 cd $open_src_path
 
