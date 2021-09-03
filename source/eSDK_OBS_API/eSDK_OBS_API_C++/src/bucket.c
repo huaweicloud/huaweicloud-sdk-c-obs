@@ -40,7 +40,7 @@ static int update_bucket_common_data_callback(int buffer_size, char *buffer,
         return 0;
     }
     
-	errno_t err = EOK;  
+    errno_t err = EOK;  
 	err = memcpy_s(buffer,buffer_size,&(bucket_data->doc[bucket_data->docBytesWritten]),toCopy);
     if (err != EOK)
     {
@@ -48,7 +48,7 @@ static int update_bucket_common_data_callback(int buffer_size, char *buffer,
 		return 0;
     }
 	
-	bucket_data->docBytesWritten += toCopy;
+    bucket_data->docBytesWritten += toCopy;
 
     return toCopy;
 }
@@ -80,16 +80,17 @@ update_bucket_common_data* init_create_bucket_cbdata(const char *location_constr
     {
         int mark = pcre_replace(location_constraint,&plocationConstraint);
         if (use_api == OBS_USE_API_S3) {
-            bucket_data->docLen = snprintf_sec(bucket_data->doc, sizeof(bucket_data->doc), _TRUNCATE,  
+            bucket_data->docLen = snprintf_s(bucket_data->doc, sizeof(bucket_data->doc), _TRUNCATE,
                          "<CreateBucketConfiguration><LocationConstraint>"
                          "%s</LocationConstraint></CreateBucketConfiguration>",
                          mark ? plocationConstraint : location_constraint);
         } else {
-            bucket_data->docLen = snprintf_sec(bucket_data->doc, sizeof(bucket_data->doc), _TRUNCATE,  
+            bucket_data->docLen = snprintf_s(bucket_data->doc, sizeof(bucket_data->doc), _TRUNCATE,
                          "<CreateBucketConfiguration><Location>"
                          "%s</Location></CreateBucketConfiguration>",
                          mark ? plocationConstraint : location_constraint);
         }
+        CheckAndLogNeg(bucket_data->docLen, "snprintf_s", __FUNCTION__, __LINE__);
         bucket_data->docBytesWritten = 0;
         if(mark)
         {
@@ -118,6 +119,36 @@ obs_status update_bucket_common_properties_callback(const obs_response_propertie
     return OBS_STATUS_OK;
 }
 
+void prepare_create_bucket_data(update_bucket_common_data *bucket_data, obs_response_handler *handler, void *callback_data) {
+    bucket_data->complete_callback = handler->complete_callback;
+    bucket_data->callback_data = callback_data;
+    bucket_data->properties_callback = handler->properties_callback;
+}
+
+void prepare_create_bucket_params(request_params *params, const obs_options *options, 
+    obs_put_properties *properties, update_bucket_common_data *bucket_data, obs_use_api use_api) {
+    errno_t err = EOK;
+    err = memcpy_s(&(params->bucketContext), sizeof(obs_bucket_context), &options->bucket_options,
+        sizeof(obs_bucket_context));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&(params->request_option), sizeof(obs_http_request_option), &options->request_options,
+        sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+
+    params->put_properties = properties;
+    params->httpRequestType = http_request_type_put;
+    params->properties_callback = &update_bucket_common_properties_callback;
+    params->toObsCallback = &update_bucket_common_data_callback;
+    params->toObsCallbackTotalSize = bucket_data->docLen;
+    params->complete_callback = &update_bucket_common_complete_callback;
+    params->callback_data = bucket_data;
+    params->isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params->storageClassFormat = default_storage_class;
+    params->temp_auth = options->temp_auth;
+    params->use_api = use_api;
+}
+
+
 void create_bucket(const obs_options *options, obs_canned_acl canned_acl,
         const char *location_constraint, obs_response_handler *handler,
         void *callback_data)
@@ -137,30 +168,13 @@ void create_bucket(const obs_options *options, obs_canned_acl canned_acl,
         (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
         return;
     }
-    bucket_data->complete_callback = handler->complete_callback;
-    bucket_data->callback_data = callback_data;
-    bucket_data->properties_callback = handler->properties_callback;
+    prepare_create_bucket_data(bucket_data, handler, callback_data);
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
     memset_s(&properties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
     properties.canned_acl = canned_acl;
 
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
-        sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
-        sizeof(obs_http_request_option));
-
-    params.put_properties         = &properties;
-    params.httpRequestType        = http_request_type_put;
-    params.properties_callback    = &update_bucket_common_properties_callback;
-    params.toObsCallback          = &update_bucket_common_data_callback;
-    params.toObsCallbackTotalSize = bucket_data->docLen;
-    params.complete_callback      = &update_bucket_common_complete_callback;
-    params.callback_data          = bucket_data;
-    params.isCheckCA              = options->bucket_options.certificate_info ? 1 : 0;
-    params.storageClassFormat     = default_storage_class;
-    params.temp_auth              = options->temp_auth; 
-    params.use_api =use_api;
+    prepare_create_bucket_params(&params, options, &properties, bucket_data, use_api);
     request_perform(&params);
 
     COMMLOG(OBS_LOGINFO, "create bucket finish!");
@@ -192,31 +206,14 @@ void create_bucket_with_params(const obs_options *options, const obs_create_buck
         (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
         return;
     }
-    bucket_data->complete_callback = handler->complete_callback;
-    bucket_data->callback_data = callback_data;
-    bucket_data->properties_callback = handler->properties_callback;
+    prepare_create_bucket_data(bucket_data, handler, callback_data);
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
     memset_s(&properties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
     properties.canned_acl = param->canned_acl;
     properties.az_redundancy = param->az_redundancy;
 
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
-        sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
-        sizeof(obs_http_request_option));
-
-    params.put_properties         = &properties;
-    params.httpRequestType        = http_request_type_put;
-    params.properties_callback    = &update_bucket_common_properties_callback;
-    params.toObsCallback          = &update_bucket_common_data_callback;
-    params.toObsCallbackTotalSize = bucket_data->docLen;
-    params.complete_callback      = &update_bucket_common_complete_callback;
-    params.callback_data          = bucket_data;
-    params.isCheckCA              = options->bucket_options.certificate_info ? 1 : 0;
-    params.storageClassFormat     = default_storage_class;
-    params.temp_auth              = options->temp_auth; 
-    params.use_api =use_api;
+    prepare_create_bucket_params(&params, options, &properties, bucket_data, use_api);
     request_perform(&params);
 
     COMMLOG(OBS_LOGINFO, "create bucket finish!");
@@ -243,32 +240,14 @@ void create_pfs_bucket(const obs_options *options, obs_canned_acl canned_acl,
         (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         return;
     }
-    bucket_data->complete_callback = handler->complete_callback;
-    bucket_data->callback_data = callback_data;
-    bucket_data->properties_callback = handler->properties_callback;
+    prepare_create_bucket_data(bucket_data, handler, callback_data);
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
     memset_s(&properties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
     properties.canned_acl = canned_acl;
 
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
-        sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
-        sizeof(obs_http_request_option));
-    // create pfs bucket
+    prepare_create_bucket_params(&params, options, &properties, bucket_data, use_api);
     params.bucketContext.bucket_type = OBS_BUCKET_PFS;
-
-    params.put_properties         = &properties;
-    params.httpRequestType        = http_request_type_put;
-    params.properties_callback    = &update_bucket_common_properties_callback;
-    params.toObsCallback          = &update_bucket_common_data_callback;
-    params.toObsCallbackTotalSize = bucket_data->docLen;
-    params.complete_callback      = &update_bucket_common_complete_callback;
-    params.callback_data          = bucket_data;
-    params.isCheckCA              = options->bucket_options.certificate_info ? 1 : 0;
-    params.storageClassFormat     = default_storage_class;
-    params.temp_auth              = options->temp_auth; 
-    params.use_api =use_api;
 
     request_perform(&params);
     COMMLOG(OBS_LOGINFO, "create pfs bucket finish!");
@@ -282,7 +261,7 @@ static obs_status xml_callback(const char *element_path, const char *data,
 {
     xml_callback_data *cbData = (xml_callback_data *) callback_data;
 
-    int fit;
+    int fit = 1;
 
     if (data) {
         if (!strcmp(element_path, "ListAllMyBucketsResult/Owner/ID")) {
@@ -318,7 +297,10 @@ static obs_status xml_callback(const char *element_path, const char *data,
             return status;
         }
     }
-    (void) fit;
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -327,7 +309,7 @@ static obs_status xml_obs_callback(const char *element_path, const char *data,
 {
     xml_obs_callback_data *cbData = (xml_obs_callback_data *) callback_data;
 
-    int fit;
+    int fit = 1;
 
     if (data) {
         if (!strcmp(element_path, "ListAllMyBucketsResult/Owner/ID")) {
@@ -367,7 +349,10 @@ static obs_status xml_obs_callback(const char *element_path, const char *data,
             return status;
         }
     }
-    (void) fit;
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -448,10 +433,13 @@ void list_bucket(const obs_options *options, obs_list_service_handler *handler, 
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
 
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType       = http_request_type_get;
     params.properties_callback   = &properties_callback;
@@ -518,10 +506,13 @@ void list_bucket_obs(const obs_options *options, obs_list_service_obs_handler *h
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
 
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType       = http_request_type_get;
     params.properties_callback   = &properties_callback;
@@ -547,10 +538,13 @@ void delete_bucket(const obs_options *options, obs_response_handler *handler, vo
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
     params.httpRequestType = http_request_type_delete;
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.properties_callback = handler->properties_callback;
     params.complete_callback   = handler->complete_callback;
@@ -659,7 +653,7 @@ static void initialize_list_objects_data(list_objects_data *lbData)
 obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element_path,
                                       const char *data, int data_len)
 {
-    int fit;
+    int fit = 1;
     
     if (!strcmp(element_path, "ListBucketResult/IsTruncated")) {
         string_buffer_append(lbData->is_truncated, data, data_len, fit);
@@ -679,7 +673,7 @@ obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element
             return OBS_STATUS_InternalError;
         }
         memset_s(strTmpSource, data_len + 1,  0, data_len + 1);
-        strncpy_sec(strTmpSource, data_len+1, data, data_len);
+        strncpy_s(strTmpSource, data_len+1, data, data_len);
         char* strTmpOut = UTF8_To_String(strTmpSource);
         string_buffer_append(contents->key, strTmpOut, strlen(strTmpOut), fit);
         CHECK_NULL_FREE(strTmpSource);
@@ -719,20 +713,42 @@ obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element
         string_buffer_append(contents->storage_class, data, data_len, fit);
     }
     else if (!strcmp(element_path,"ListBucketResult/CommonPrefixes/Prefix")) {
-        int which = lbData->common_prefixes_count;
-        lbData->commonPrefixLens[which] +=
-            snprintf_sec(lbData->common_prefixes[which], sizeof(lbData->common_prefixes[which]),
-                     sizeof(lbData->common_prefixes[which]) - lbData->commonPrefixLens[which] - 1,
-                     "%.*s", data_len, data);
-        if (lbData->commonPrefixLens[which] >= (int)sizeof(lbData->common_prefixes[which]))
-        {
-            COMMLOG(OBS_LOGERROR, "prefix length more than 1024.");
-            return OBS_STATUS_XmlParseFailure;
-        }
+		int which = lbData->common_prefixes_count;
+		lbData->commonPrefixLens[which] += data_len;
+		if (lbData->commonPrefixLens[which] >= (int)sizeof(lbData->common_prefixes[which]))
+		{
+			COMMLOG(OBS_LOGERROR, "prefix length more than 1024.");
+			return OBS_STATUS_XmlParseFailure;
+		}
+		char* common_Prefix = (char*)malloc(sizeof(char) * (data_len + 1));
+		if (NULL == common_Prefix) {
+			COMMLOG(OBS_LOGERROR, "In prefix , common_prefixes is NULL.");
+			return OBS_STATUS_XmlParseFailure;
+		}
+		memset_s(common_Prefix, data_len + 1, 0, data_len + 1);
+		int str_ret = 0;
+		snprintf_s(common_Prefix, data_len+1, data_len, "%.*s", data_len, data);
+		char* strTmpOut = UTF8_To_String(common_Prefix);
+		str_ret = strcat_s(lbData->common_prefixes[which], sizeof(lbData->common_prefixes[which]),strTmpOut);
+		CHECK_NULL_FREE(common_Prefix);
+		CHECK_NULL_FREE(strTmpOut);
+		if (str_ret) {
+			if (EINVAL ==str_ret) {
+				COMMLOG(OBS_LOGERROR, "In prefix , common_prefixes is uninit.");
+				return OBS_STATUS_XmlParseFailure;
+			}
+			else {
+				COMMLOG(OBS_LOGERROR, "prefix length more than 1024.");
+				return OBS_STATUS_XmlParseFailure;
+			}
+		}
     }
 
     /* Avoid compiler error about variable set but not used */
-    (void) fit;
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -858,7 +874,8 @@ static obs_status set_objects_query_params(const char *prefix, const char *marke
     {
         maxkeys = maxkeys > 1000 ? 1000 : maxkeys;
         char maxKeysString[64] = {0};
-        snprintf_sec(maxKeysString, sizeof(maxKeysString), _TRUNCATE,  "%d", maxkeys);
+        int ret = snprintf_s(maxKeysString, sizeof(maxKeysString), _TRUNCATE,  "%d", maxkeys);
+        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         safe_append_status("max-keys", maxKeysString);
     }
 
@@ -866,8 +883,9 @@ static obs_status set_objects_query_params(const char *prefix, const char *marke
     {
         safe_append_status("prefix", prefix);
     }
-
-    memcpy_s(query_params, QUERY_STRING_LEN, queryParams, QUERY_STRING_LEN);
+    errno_t err = EOK;
+    err = memcpy_s(query_params, QUERY_STRING_LEN, queryParams, QUERY_STRING_LEN);
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     return OBS_STATUS_OK;
 }
@@ -985,7 +1003,7 @@ static void initialize_list_versions_data(list_versions_data *lvData)
 obs_status parse_xml_list_versions(list_versions_data *version_data, const char *element_path,
                                       const char *data, int data_len)
 {
-    int fit;
+    int fit = 1;
 
     list_bucket_versions *versions = &(version_data->versions[version_data->versions_count]);
     if (!strcmp(element_path, "ListVersionsResult/NextKeyMarker")){
@@ -1023,7 +1041,7 @@ obs_status parse_xml_list_versions(list_versions_data *version_data, const char 
             return OBS_STATUS_OutOfMemory;
         }
         memset_s(strTmpSource, sizeof(char) * (data_len + 1), 0, data_len + 1);
-        strncpy_sec(strTmpSource, data_len+1, data, data_len);
+        strncpy_s(strTmpSource, data_len+1, data, data_len);
         char* strTmpOut = UTF8_To_String(strTmpSource);
         string_buffer_append(versions->key, strTmpOut, strlen(strTmpOut), fit);
         CHECK_NULL_FREE(strTmpSource);
@@ -1072,8 +1090,10 @@ obs_status parse_xml_list_versions(list_versions_data *version_data, const char 
             data, data_len, fit);
     }
 
-    (void) fit;
-
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -1217,10 +1237,13 @@ void list_bucket_objects(const obs_options *options, const char *prefix, const c
     initialize_list_objects_data(data);
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType        = http_request_type_get;
     params.properties_callback     = &list_objects_properties_callback;
@@ -1258,7 +1281,8 @@ static obs_status set_versions_query_params(const char *prefix, const char *key_
     {
         maxkeys = maxkeys > 1000 ? 1000 : maxkeys;
         char maxKeysString[64] = {0};
-        snprintf_sec(maxKeysString, sizeof(maxKeysString), _TRUNCATE,  "%d", maxkeys);
+        int ret = snprintf_s(maxKeysString, sizeof(maxKeysString), _TRUNCATE,  "%d", maxkeys);
+        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         safe_append_status("max-keys", maxKeysString);
     }
 
@@ -1271,8 +1295,10 @@ static obs_status set_versions_query_params(const char *prefix, const char *key_
     {
         safe_append_status("version-id-marker",version_id_marker);
     }
-
-    memcpy_s(query_params, QUERY_STRING_LEN, queryParams, QUERY_STRING_LEN);
+    
+    errno_t err = EOK;
+    err = memcpy_s(query_params, QUERY_STRING_LEN, queryParams, QUERY_STRING_LEN);
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     return OBS_STATUS_OK;
 }
@@ -1323,10 +1349,13 @@ void list_versions(const obs_options *options, const char *prefix, const char *k
     initialize_list_versions_data(lvData);
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
              sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
              sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType         = http_request_type_get;
     params.properties_callback     = &list_versions_properties_callback;
@@ -1351,7 +1380,7 @@ static obs_status get_bucket_storageInfo_xml_callback(const char *element_path, 
 {
     get_bucket_storageInfo_data *gbsiData = (get_bucket_storageInfo_data *) callback_data;
 
-    int fit;
+    int fit = 1;
     if (data)
     {
         if(!strcmp(element_path, "GetBucketStorageInfoResult/Size")) {
@@ -1362,7 +1391,10 @@ static obs_status get_bucket_storageInfo_xml_callback(const char *element_path, 
         }
     }
 
-    (void) fit;
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -1381,10 +1413,12 @@ static void get_bucket_storageInfo_complete_callback(obs_status requestStatus,
 
     get_bucket_storageInfo_data *gbsiData = (get_bucket_storageInfo_data *) callback_data;
 
-    snprintf_sec(gbsiData->capacity_return, sizeof(gbsiData->size), gbsiData->capacity_length, "%s",
+    int ret = snprintf_s(gbsiData->capacity_return, sizeof(gbsiData->size), gbsiData->capacity_length, "%s",
                 gbsiData->size);
-    snprintf_sec(gbsiData->object_number_return, sizeof(gbsiData->objectnumber), 
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
+    ret = snprintf_s(gbsiData->object_number_return, sizeof(gbsiData->objectnumber),
                 gbsiData->object_number_length, "%s", gbsiData->objectnumber);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
     (void)(*(gbsiData->complete_callback))(requestStatus, obsErrorDetails, gbsiData->callback_data);
 
@@ -1449,10 +1483,13 @@ void get_bucket_storage_info(const obs_options *options, int capacity_length, ch
     string_buffer_initialize(gbsiData->objectnumber);
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
              sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
              sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType         = http_request_type_get;
     params.properties_callback     = &get_bucket_storageInfo_properties_callback;
@@ -1492,7 +1529,8 @@ static obs_status set_multipart_query_params(const char *prefix, const char *mar
     {
         max_uploads = max_uploads > 1000 ? 1000 : max_uploads;
         char max_upload_string[64] = {0};
-        snprintf_sec(max_upload_string, sizeof(max_upload_string), _TRUNCATE,  "%d", max_uploads); 
+        int ret = snprintf_s(max_upload_string, sizeof(max_upload_string), _TRUNCATE,  "%d", max_uploads);
+        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         safe_append_status("max-uploads", max_upload_string);
     }
 
@@ -1506,7 +1544,9 @@ static obs_status set_multipart_query_params(const char *prefix, const char *mar
         safe_append_status("upload-id-marke", uploadid_marke);
     }
 
-    memcpy_s(query_params, QUERY_STRING_LEN, queryParams, QUERY_STRING_LEN);
+    errno_t err = EOK;
+    err = memcpy_s(query_params, QUERY_STRING_LEN, queryParams, QUERY_STRING_LEN);
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     return OBS_STATUS_OK;
 }
@@ -1606,7 +1646,7 @@ static obs_status make_list_multipart_uploads_callback(list_multipart_uploads_da
 obs_status parse_xml_list_multipart_uploads(list_multipart_uploads_data *lmu_data, 
             const char *element_path, const char *data, int data_len)
 {
-    int fit;
+    int fit = 1;
     multipart_upload_info  *uploads  = &(lmu_data->uploads[lmu_data->uploads_count]);
     
     if (!strcmp(element_path, "ListMultipartUploadsResult/IsTruncated")) {
@@ -1627,7 +1667,7 @@ obs_status parse_xml_list_multipart_uploads(list_multipart_uploads_data *lmu_dat
             return OBS_STATUS_InternalError;
         }
         memset_s(strTmpSource, sizeof(char) * (data_len + 1), 0, data_len + 1);
-        strncpy_sec(strTmpSource, data_len+1, data, data_len);
+        strncpy_s(strTmpSource, data_len+1, data, data_len);
         char* strTmpOut = UTF8_To_String(strTmpSource);
         string_buffer_append(uploads->key, strTmpOut, strlen(strTmpOut), fit);
         CHECK_NULL_FREE(strTmpSource);
@@ -1662,7 +1702,10 @@ obs_status parse_xml_list_multipart_uploads(list_multipart_uploads_data *lmu_dat
                     data, data_len, fit);
     }
 
-    (void) fit;
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -1798,10 +1841,13 @@ void list_multipart_uploads(const obs_options *options, const char *prefix, cons
     initialize_list_multipart_uploads_data(lmu_data);
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
              sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
              sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType        = http_request_type_get;
     params.properties_callback     = &list_multipart_uploads_properties_callback;
@@ -1830,11 +1876,12 @@ obs_status init_set_bucket_quota_cbdata(uint64_t storage_quota, update_bucket_co
     memset_s(quota_data, sizeof(update_bucket_common_data), 0, sizeof(update_bucket_common_data));
 
 
-    quota_data->docLen = snprintf_sec(quota_data->doc, sizeof(quota_data->doc), _TRUNCATE,
+    quota_data->docLen = snprintf_s(quota_data->doc, sizeof(quota_data->doc), _TRUNCATE,
                             "<Quota><StorageQuota>%lu</StorageQuota></Quota>", storage_quota);
     if(quota_data->docLen < 0)
     {
         *data = NULL;
+        CHECK_NULL_FREE(quota_data);
         return OBS_STATUS_InternalError;
     }
     
@@ -1871,10 +1918,13 @@ void set_bucket_quota(const obs_options *options, uint64_t storage_quota,
     memset_s(&properties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
     properties.canned_acl = OBS_CANNED_ACL_PRIVATE;
 
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.put_properties         = &properties;
     params.httpRequestType        = http_request_type_put;
@@ -1897,13 +1947,15 @@ static obs_status get_bucket_quotaxml_callback(const char *element_path,const ch
                                             int data_len, void *callback_data)
 {
     get_bucket_common_data *bucket_quota_data = (get_bucket_common_data *) callback_data;
-    int fit;
+    int fit = 1;
     if (data && !strcmp(element_path, "Quota/StorageQuota")) {
         string_buffer_append(bucket_quota_data->common_data, data, data_len, fit);
     }
 
-    (void) fit;
-
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -1999,10 +2051,13 @@ void get_bucket_quota(const obs_options *options, uint64_t *storagequota_return,
     string_buffer_initialize(bucket_quota_data->common_data);
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType         = http_request_type_get;
     params.properties_callback     = &get_bucket_quota_properties_callback;
@@ -2038,13 +2093,17 @@ void set_bucket_policy(const obs_options *options, const char *policy, obs_respo
     policy_data->callback_data          = callback_data;
     policy_data->docBytesWritten        = 0;
     policy_data->docLen                 = 
-            snprintf_sec(policy_data->doc, sizeof(policy_data->doc), _TRUNCATE, "%s",policy);
+        snprintf_s(policy_data->doc, sizeof(policy_data->doc), _TRUNCATE, "%s",policy);
+    CheckAndLogNeg(policy_data->docLen, "snprintf_s", __FUNCTION__, __LINE__);
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType        = http_request_type_put;
     params.properties_callback    = &update_bucket_common_properties_callback;
@@ -2077,7 +2136,8 @@ obs_status get_bucket_policy_properties_callback(const obs_response_properties *
 obs_status get_bucket_policy_data_callback(int buffer_size, const char *buffer, void *callback_data)
 {
     get_bucket_policy_data *policy_data = (get_bucket_policy_data *) callback_data;
-    snprintf_sec(policy_data->policy, sizeof(policy_data->policy),buffer_size+1, "%s",buffer);
+    int ret = snprintf_s(policy_data->policy, sizeof(policy_data->policy),buffer_size+1, "%s",buffer);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
     return OBS_STATUS_OK;
 }
@@ -2089,9 +2149,10 @@ void get_bucket_policy_complete_callback(obs_status status,
     COMMLOG(OBS_LOGINFO, "Enter %s successfully !", __FUNCTION__);
 
     get_bucket_policy_data *policy_data = (get_bucket_policy_data *)callback_data;
-    snprintf_sec(policy_data->policyReturn, sizeof(policy_data->policy),
+    int ret = snprintf_s(policy_data->policyReturn, sizeof(policy_data->policy),
              policy_data->policyReturnSize, "%s",
              policy_data->policy);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
     (void)(*(policy_data->responseCompleteCallback))(status, error_details, policy_data->callback_data);
 
@@ -2125,10 +2186,13 @@ void get_bucket_policy(const obs_options *options, int policy_return_size,
 
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.httpRequestType      = http_request_type_get;
     params.properties_callback   = &get_bucket_policy_properties_callback;
@@ -2151,10 +2215,13 @@ void delete_bucket_policy(const obs_options *options, obs_response_handler *hand
     set_use_api_switch(options, &use_api);
     COMMLOG(OBS_LOGINFO, "delete bucket policy start!");
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.httpRequestType      = http_request_type_delete;
     params.properties_callback   = handler->properties_callback;
@@ -2182,10 +2249,16 @@ obs_status init_set_bucket_version_data(const char *version_status, update_bucke
     }   
     memset_s(version_data, sizeof(update_bucket_common_data), 0, sizeof(update_bucket_common_data));
     
-    version_data->docLen = snprintf_sec(version_data->doc, sizeof(version_data->doc), _TRUNCATE, "<VersioningConfiguration>");
+    version_data->docLen = snprintf_s(version_data->doc, sizeof(version_data->doc), _TRUNCATE, "<VersioningConfiguration>");
     if (version_data->docLen < 0)
     {
+        CHECK_NULL_FREE(version_data);
         return OBS_STATUS_InternalError;
+    }
+    if (!version_status) {
+        COMMLOG(OBS_LOGERROR, "version_status for init_set_bucket_version_data is NULL");
+        CHECK_NULL_FREE(version_data);
+        return OBS_STATUS_InvalidArgument;
     }
     mark = pcre_replace(version_status,&replace_status);  
     if(mark)
@@ -2194,12 +2267,13 @@ obs_status init_set_bucket_version_data(const char *version_status, update_bucke
         replace_status = NULL;
     }
     
-    tmplen = snprintf_sec((version_data->doc) + (version_data->docLen), sizeof((version_data->doc)) - (version_data->docLen), 
+    tmplen = snprintf_s((version_data->doc) + (version_data->docLen), sizeof((version_data->doc)) - (version_data->docLen),
                     _TRUNCATE, "<Status>%s</Status></VersioningConfiguration>",mark ? replace_status : version_status);
     
     version_data->docLen += tmplen;
     if (tmplen < 0)
     {
+        CHECK_NULL_FREE(version_data);
         return OBS_STATUS_InternalError;
     }
 
@@ -2231,10 +2305,13 @@ void set_bucket_version_configuration(const obs_options *options, const char *ve
     version_data->callback_data = callback_data;
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType        = http_request_type_put;
     params.properties_callback    = &update_bucket_common_properties_callback;
@@ -2255,7 +2332,7 @@ void set_bucket_version_configuration(const obs_options *options, const char *ve
 obs_status get_bucket_version_xml_callback(const char *element_path,const char *data, 
                                                     int data_len, void *callback_data)
 {
-    int fit;
+    int fit = 1;
     
     get_bucket_common_data *version_data = (get_bucket_common_data *) callback_data;
     if (data)
@@ -2265,7 +2342,10 @@ obs_status get_bucket_version_xml_callback(const char *element_path,const char *
         }
     }
     
-    (void) fit;
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -2296,8 +2376,9 @@ void get_bucket_version_complete_callback(obs_status status,
 
     get_bucket_common_data *version_data = (get_bucket_common_data *) callback_data;
 
-    snprintf_sec(version_data->common_data_return, sizeof(version_data->common_data),
+    int ret = snprintf_s(version_data->common_data_return, sizeof(version_data->common_data),
              version_data->common_data_return_size, "%s", version_data->common_data);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     
     (void)(*(version_data->responseCompleteCallback))
         (status, error_details, version_data->callback_data);
@@ -2335,10 +2416,13 @@ void get_bucket_version_configuration(const obs_options *options, int status_ret
     string_buffer_initialize(version_data->common_data);
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.httpRequestType      = http_request_type_get;
     params.properties_callback   = &get_bucket_version_properties_callback;
@@ -2359,7 +2443,7 @@ obs_status append_xml_document(int *xml_document_len_return, char *xml_document,
     va_list args;
     va_start(args, fmt);
 
-    int size = vsnprintf_sec(&(xml_document[*xml_document_len_return]), 
+    int size = vsnprintf_s(&(xml_document[*xml_document_len_return]),
                     xml_document_buffer_size - *xml_document_len_return,
                     xml_document_buffer_size - *xml_document_len_return - 1,
                     fmt, args); 
@@ -2382,32 +2466,33 @@ obs_status generate_storage_class_xml_document(obs_storage_class storage_class_p
                                        int xml_document_buffer_size,  obs_use_api use_api)
 {
     *xml_document_len_return = 0;
+    obs_status ret = OBS_STATUS_OK;
 
     if (use_api == OBS_USE_API_S3) {
         char *storage_class_list[] = {"STANDARD","STANDARD_IA","GLACIER",""};
 
-        append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
+        ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
                         "%s", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
-        append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
+        ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
                         "%s", "<StoragePolicy xmlns=\"http://s3.amazonaws.com/doc/2015-06-30/\"><DefaultStorageClass>");
-        append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size, 
+        ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size, 
                         "%s",storage_class_list[storage_class_policy]);
-        append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size, 
+        ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size, 
                         "%s", "</DefaultStorageClass></StoragePolicy>");
     } else {
         char *storage_class_list[] = {"STANDARD","WARM","COLD",""};
 
-        append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
+        ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
                         "%s", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
-        append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
+        ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
                         "%s", "<StorageClass xmlns=\"http://obs.myhwclouds.com/doc/2015-06-30/\">");
-        append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size, 
+        ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size, 
                         "%s",storage_class_list[storage_class_policy]);
-        append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size, 
+        ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size, 
                         "%s", "</StorageClass>");
     }
 
-    return OBS_STATUS_OK;
+    return ret;
 }
 
 obs_status generate_tagging_xml_document(obs_name_value * tagging_list, unsigned int tag_number,
@@ -2417,26 +2502,27 @@ obs_status generate_tagging_xml_document(obs_name_value * tagging_list, unsigned
     unsigned int i = 0;
     char *key_utf8 = NULL;
     char *value_utf8 = NULL;
+    obs_status ret = OBS_STATUS_OK;
 
-    append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
+    ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
         "%s", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
-    append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
+    ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
         "%s", "<Tagging xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><TagSet>");
 
     for (i = 0; i < tag_number; i++)
     {
         key_utf8 = string_To_UTF8(tagging_list[i].name);
         value_utf8 = string_To_UTF8(tagging_list[i].value);
-        append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
+        ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
             "<Tag><Key>%s</Key><Value>%s</Value></Tag>", key_utf8, value_utf8);
         CHECK_NULL_FREE(key_utf8);
         CHECK_NULL_FREE(value_utf8);
     }
 
-    append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size, 
+    ret =append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size, 
         "%s", "</TagSet></Tagging>");
 
-    return OBS_STATUS_OK;
+    return ret;
 }
 obs_status set_common_properties_callback(const obs_response_properties *response_properties, 
     void *callback_data)
@@ -2481,7 +2567,7 @@ int set_common_data_callback(int buffer_size, char *buffer, void *callback_data)
         return 0;
     }
 
-	errno_t err = EOK; 
+    errno_t err = EOK; 
     err = memcpy_s(buffer, buffer_size, &(common_data->xml_document
         [common_data->xml_document_bytes_written]), ret);
 	if (err != EOK)
@@ -2541,10 +2627,13 @@ void set_bucket_storage_class_policy(const obs_options *options,
     properties.canned_acl = OBS_CANNED_ACL_PRIVATE;
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.put_properties         = &properties;
     params.httpRequestType        = http_request_type_put;
@@ -2573,7 +2662,7 @@ obs_status get_bucket_storage_policy_xml_callback(const char *element_path,
     get_bucket_storage_class_policy_data *storage_class_data = 
         (get_bucket_storage_class_policy_data *) callback_data;
 
-    int fit = 0;
+    int fit = 1;
 
     if (data)
     {
@@ -2590,7 +2679,10 @@ obs_status get_bucket_storage_policy_xml_callback(const char *element_path,
         }
     }
     
-    (void) fit;
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -2667,13 +2759,16 @@ void get_bucket_storage_class_policy(const obs_options *options,
     storage_class_data->response_complete_callback = handler->response_handler.complete_callback;
     storage_class_data->response_bucket_sorage_policy_callback = handler->get_bucket_sorage_class_callback;
     storage_class_data->callback_data = callback_data;
-    memset(storage_class_data->storage_class_policy,0,sizeof(storage_class_data->storage_class_policy));
+	memset_s(storage_class_data->storage_class_policy, sizeof(storage_class_data->storage_class_policy), 0, sizeof(storage_class_data->storage_class_policy));
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.httpRequestType       = http_request_type_get;
     params.properties_callback   = &get_bucket_storage_class_properties_callback;
@@ -2738,10 +2833,13 @@ void set_bucket_tagging(const obs_options *options, obs_name_value * tagging_lis
     properties.md5 = base64_md5;
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.put_properties         = &properties;
     params.httpRequestType        = http_request_type_put;
@@ -2764,7 +2862,7 @@ obs_status get_bucket_tagging_xml_callback(const char *element_path,
                 const char *data, int data_len, void *callback_data)
 {
     get_bucket_tagging_data *tagging_data = (get_bucket_tagging_data *) callback_data;
-    int fit = 0;
+    int fit = 1;
 
     if (data)
     {
@@ -2798,13 +2896,15 @@ obs_status get_bucket_tagging_xml_callback(const char *element_path,
               }
               else
               {
-                  memset(&tagging_data->tagging_list[tagging_data->tagging_count],0,sizeof(tagging_kv));
+				  memset_s(&tagging_data->tagging_list[tagging_data->tagging_count], sizeof(tagging_kv), 0, sizeof(tagging_kv));
               }
          }
     }
 
-    (void) fit;
-
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -2923,10 +3023,13 @@ void get_bucket_tagging(const obs_options *options,
     tagging_data->callback_data = callback_data; 
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.httpRequestType      = http_request_type_get;
     params.properties_callback   = &get_bucket_tagging_properties_callback;
@@ -2950,10 +3053,13 @@ void delete_bucket_tagging(const obs_options *options, obs_response_handler *han
 
     COMMLOG(OBS_LOGINFO, "delete bucket tagging start!");
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.httpRequestType       = http_request_type_delete;
     params.properties_callback   = handler->properties_callback;
@@ -3113,7 +3219,7 @@ static int set_lifecycle_data_callback(int buffer_size, char *buffer, void *call
         return 0;
     }
 
-	errno_t err = EOK;  
+    errno_t err = EOK;  
 	err = memcpy_s(buffer, buffer_size, &(sblcData->doc[sblcData->docBytesWritten]), toCopy); 
     if (err != EOK)
     {
@@ -3228,10 +3334,13 @@ void set_bucket_lifecycle_configuration(const obs_options *options,
     
    
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
              sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
              sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     memset_s(&put_properties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
     put_properties.md5 = sblcData->doc_md5;
@@ -3259,7 +3368,7 @@ void set_bucket_lifecycle_configuration(const obs_options *options,
 obs_status parse_xml_get_lifecycle(get_lifecycle_config_data *gblcDataEx, 
                 const char *element_path,const char *data, int data_len)
 {
-    int fit;
+    int fit = 1;
     int nIndex = gblcDataEx->blcc_number - 1;
     int transitionIndex = gblcDataEx->blcc_data[nIndex]->transition_num;
     int nonCurrentVersionTransitionIndex = gblcDataEx->blcc_data[nIndex]->noncurrent_version_transition_num;
@@ -3300,7 +3409,10 @@ obs_status parse_xml_get_lifecycle(get_lifecycle_config_data *gblcDataEx,
                     data, data_len, fit);
     }
     
-    (void)fit;
+    //(void)fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -3410,6 +3522,11 @@ static obs_status make_get_lifecycle_callback(get_lifecycle_config_data *gblcDat
                 sizeof(obs_lifecycle_transtion) * (gblcDataEx->blcc_data[i]->transition_num));
         if (NULL == buckLifeCycleConf[i].transition)
         {
+            for (int n = 0; n < i; ++n) {
+                CHECK_NULL_FREE(buckLifeCycleConf[n].noncurrent_version_transition);
+                CHECK_NULL_FREE(buckLifeCycleConf[n].transition);
+            }
+            CHECK_NULL_FREE(buckLifeCycleConf);
             COMMLOG(OBS_LOGERROR, "malloc obs_lifecycle_conf failed.");
             return OBS_STATUS_OutOfMemory;
         }
@@ -3426,6 +3543,12 @@ static obs_status make_get_lifecycle_callback(get_lifecycle_config_data *gblcDat
             sizeof(obs_lifecycle_noncurrent_transtion) * gblcDataEx->blcc_data[i]->noncurrent_version_transition_num);
         if (NULL == buckLifeCycleConf[i].noncurrent_version_transition )
         {
+            for (int n = 0; n < i; ++n) {
+                CHECK_NULL_FREE(buckLifeCycleConf[n].noncurrent_version_transition);
+                CHECK_NULL_FREE(buckLifeCycleConf[n].transition);
+            }
+            CHECK_NULL_FREE(buckLifeCycleConf[i].transition);
+            CHECK_NULL_FREE(buckLifeCycleConf);
             COMMLOG(OBS_LOGERROR, "malloc noncurrent_version_transition failed.");
             return OBS_STATUS_OutOfMemory;
         }
@@ -3449,7 +3572,6 @@ static obs_status make_get_lifecycle_callback(get_lifecycle_config_data *gblcDat
         CHECK_NULL_FREE(buckLifeCycleConf[i].transition);
     }
 
-    CHECK_NULL_FREE(buckLifeCycleConf);
 
     return iRet;
 }
@@ -3527,10 +3649,13 @@ void get_bucket_lifecycle_configuration(const obs_options *options,
     }
     gblcDataEx->use_api = use_api;
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
              sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
              sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType        = http_request_type_get;
     params.properties_callback     = &get_lifecycle_properties_callback;
@@ -3565,10 +3690,13 @@ void delete_bucket_lifecycle_configuration(const obs_options *options, obs_respo
     }
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
                 sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
                 sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType      = http_request_type_delete;
     params.properties_callback   = handler->properties_callback;
@@ -3728,7 +3856,9 @@ static int set_cors_data_callback(int buffer_size, char *buffer, void *callback_
         return 0;
     }
 
-    memcpy_s(buffer, buffer_size, &(sbccData->doc[sbccData->doc_bytes_written]), toCopy);
+    errno_t err = EOK;
+    err = memcpy_s(buffer, buffer_size, &(sbccData->doc[sbccData->doc_bytes_written]), toCopy);
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     sbccData->doc_bytes_written += toCopy;
 
@@ -3799,10 +3929,13 @@ void set_bucket_cors_configuration(const obs_options *options, obs_bucket_cors_c
     }
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
              sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
              sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     memset_s(&put_properties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
     put_properties.md5 = sbccData->doc_md5;
@@ -3873,7 +4006,7 @@ static obs_status get_cors_xml_callback(const char *element_path,
                                       const char *data, int data_len,
                                       void *callback_data)
 {
-    int fit;
+    int fit = 1;
     obs_status ret_status = OBS_STATUS_OK;
     get_bucket_cors_data *gbccDataEx = (get_bucket_cors_data *) callback_data;
     int nIndex = gbccDataEx->bccd_number - 1;
@@ -3888,7 +4021,7 @@ static obs_status get_cors_xml_callback(const char *element_path,
         else if (!strcmp(element_path, "CORSConfiguration/CORSRule/AllowedMethod")) {
             int which = gbccDataEx->bcc_data[nIndex]->allowedMethodCount;
             gbccDataEx->bcc_data[nIndex]->allowedMethodLens[which] +=
-                snprintf_sec(gbccDataEx->bcc_data[nIndex]->allowedMethodes[which], 
+                snprintf_s(gbccDataEx->bcc_data[nIndex]->allowedMethodes[which],
                     sizeof(gbccDataEx->bcc_data[nIndex]->allowedMethodes[which]), 
                     sizeof(gbccDataEx->bcc_data[nIndex]->allowedMethodes[which]) -
                          gbccDataEx->bcc_data[nIndex]->allowedMethodLens[which] - 1,
@@ -3901,7 +4034,7 @@ static obs_status get_cors_xml_callback(const char *element_path,
         else if (!strcmp(element_path, "CORSConfiguration/CORSRule/AllowedOrigin")) {
             int which = gbccDataEx->bcc_data[nIndex]->allowedOriginCount;
             gbccDataEx->bcc_data[nIndex]->allowedOriginLens[which] +=
-                snprintf_sec(gbccDataEx->bcc_data[nIndex]->allowedOrigines[which],
+                snprintf_s(gbccDataEx->bcc_data[nIndex]->allowedOrigines[which],
                        sizeof(gbccDataEx->bcc_data[nIndex]->allowedOrigines[which]), 
                          sizeof(gbccDataEx->bcc_data[nIndex]->allowedOrigines[which]) -
                          gbccDataEx->bcc_data[nIndex]->allowedOriginLens[which] - 1,
@@ -3915,7 +4048,7 @@ static obs_status get_cors_xml_callback(const char *element_path,
                          "CORSConfiguration/CORSRule/AllowedHeader")) {
             int which = gbccDataEx->bcc_data[nIndex]->allowedHeaderCount;
             gbccDataEx->bcc_data[nIndex]->allowedHeaderLens[which] +=
-                snprintf_sec(gbccDataEx->bcc_data[nIndex]->allowedHeaderes[which], 
+                snprintf_s(gbccDataEx->bcc_data[nIndex]->allowedHeaderes[which],
                   sizeof(gbccDataEx->bcc_data[nIndex]->allowedHeaderes[which]), 
                          sizeof(gbccDataEx->bcc_data[nIndex]->allowedHeaderes[which]) -
                          gbccDataEx->bcc_data[nIndex]->allowedHeaderLens[which] - 1,
@@ -3928,7 +4061,7 @@ static obs_status get_cors_xml_callback(const char *element_path,
         else if (!strcmp(element_path, "CORSConfiguration/CORSRule/ExposeHeader")) {
             int which = gbccDataEx->bcc_data[nIndex]->exposeHeaderCount;
             gbccDataEx->bcc_data[nIndex]->exposeHeaderLens[which] +=
-                snprintf_sec(gbccDataEx->bcc_data[nIndex]->exposeHeaderes[which], 
+                snprintf_s(gbccDataEx->bcc_data[nIndex]->exposeHeaderes[which],
                     sizeof(gbccDataEx->bcc_data[nIndex]->exposeHeaderes[which]),
                          sizeof(gbccDataEx->bcc_data[nIndex]->exposeHeaderes[which]) -
                          gbccDataEx->bcc_data[nIndex]->exposeHeaderLens[which] - 1,
@@ -3948,8 +4081,10 @@ static obs_status get_cors_xml_callback(const char *element_path,
         }
     }
 
-    (void) fit;
-
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -4187,10 +4322,13 @@ void get_bucket_cors_configuration(const obs_options *options, obs_cors_handler 
     }
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
              sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
              sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType        = http_request_type_get;
     params.properties_callback     = &get_cors_properties_callback;
@@ -4223,10 +4361,14 @@ void delete_bucket_cors_configuration(const obs_options *options, obs_response_h
     }
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
                 sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
                 sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+
     params.httpRequestType      = http_request_type_delete;
     params.properties_callback  = handler->properties_callback;
     params.complete_callback    = handler->complete_callback;
@@ -4245,48 +4387,49 @@ obs_status generate_logging_xml_document_s3(char *target_bucket, char *target_pr
             obs_acl_group *acl_group, int *xml_doc_len_return, 
             char *xml_document, int xml_doc_buffer_size)
 {
+    obs_status ret = OBS_STATUS_OK;
     if (!target_bucket) {
-        append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
+        ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
            "%s", "<BucketLoggingStatus xmlns=\"http://doc.s3.amazonaws.com/2006-03-01\" />");
-        return OBS_STATUS_OK;
+        return ret;
     }
 
-    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
+    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
        "%s", "<BucketLoggingStatus xmlns=\"http://doc.s3.amazonaws.com/2006-03-01\">");
-    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
+    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
        "<LoggingEnabled><TargetBucket>%s</TargetBucket>", target_bucket);
-    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
+    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
        "<TargetPrefix>%s</TargetPrefix>", target_prefix ? target_prefix : "");
     if (acl_group) 
     {
-        append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
+        ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
             "%s", "<TargetGrants>");
         int i;
         for (i = 0; i < acl_group->acl_grant_count; i++) 
         {
-            append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, "%s", 
+            ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, "%s", 
                 "<Grant><Grantee xmlns:xsi=\"http://www.w3.org/2001/"
                 "XMLSchema-instance\" xsi:type=\"");
             obs_acl_grant *grant = &(acl_group->acl_grants[i]);
             switch (grant->grantee_type) 
             {
                 case OBS_GRANTEE_TYPE_HUAWEI_CUSTOMER_BYEMAIL:
-                    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+                    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
                     "AmazonCustomerByEmail\"><EmailAddress>%s</EmailAddress>",
                     grant->grantee.huawei_customer_by_email.email_address);
                     break;
                 case OBS_GRANTEE_TYPE_CANONICAL_USER:
-                    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+                    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
                     "CanonicalUser\"><ID>%s</ID><DisplayName>%s</DisplayName>",
                     grant->grantee.canonical_user.id, grant->grantee.canonical_user.display_name);
                     break;
                 default:
-                    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+                    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
                     "Group\"><URI>%s</URI>", (grant->grantee_type == OBS_GRANTEE_TYPE_ALL_OBS_USERS) ?
                     ACS_GROUP_AWS_USERS : ACS_GROUP_ALL_USERS);
                     break;
             }
-            append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+            ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
                     "</Grantee><Permission>%s</Permission></Grant>",
                    ((grant->permission == OBS_PERMISSION_READ) ? "READ" :
                     (grant->permission == OBS_PERMISSION_WRITE) ? "WRITE" :
@@ -4294,58 +4437,58 @@ obs_status generate_logging_xml_document_s3(char *target_bucket, char *target_pr
                     (grant->permission == OBS_PERMISSION_WRITE_ACP) ? "WRITE_ACP" :
                     (grant->permission == OBS_PERMISSION_FULL_CONTROL) ? "FULL_CONTROL" : "READ"));
         }
-        append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+        ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
                     "%s", "</TargetGrants>");
     }
-    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
         "%s", "</LoggingEnabled>");
-    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
         "%s", "</BucketLoggingStatus>");
 
-    return OBS_STATUS_OK;
+    return ret;
 }
 
 obs_status generate_logging_xml_document_obs(char *target_bucket, char *target_prefix, char *agency,
             obs_acl_group *acl_group, int *xml_doc_len_return, 
             char *xml_document, int xml_doc_buffer_size)
 {
-
+    obs_status ret = OBS_STATUS_OK;
     if (!target_bucket)
     {
-        append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
+        ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
            "%s", "<BucketLoggingStatus xmlns=\"http://obs.myhwclouds.com/doc/2015-06-30/\" />");
-        return OBS_STATUS_OK;
+        return ret;
     }
     
-    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
+    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
        "%s", "<BucketLoggingStatus>");
-    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
+    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
        "<Agency>%s</Agency><LoggingEnabled><TargetBucket>%s</TargetBucket>", agency, target_bucket);
-    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
+    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
        "<TargetPrefix>%s</TargetPrefix>", target_prefix ? target_prefix : "");
     if (acl_group) 
     {
-        append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
+        ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size,
             "%s", "<TargetGrants>");
         int i;
         for (i = 0; i < acl_group->acl_grant_count; i++) 
         {
-            append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, "%s", 
+            ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, "%s", 
                 "<Grant><Grantee>");
             obs_acl_grant *grant = &(acl_group->acl_grants[i]);
             switch (grant->grantee_type) 
             {
                 case OBS_GRANTEE_TYPE_CANONICAL_USER:
-                    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+                    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
                     "<ID>%s</ID>",
                     grant->grantee.canonical_user.id);
                     break;
                 default:
-                    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+                    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
                     "%s", "<Canned>Everyone</Canned>");
                     break;
             }
-            append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+            ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
                     "</Grantee><Permission>%s</Permission><Delivered>%s</Delivered></Grant>",
                    ((grant->permission == OBS_PERMISSION_READ) ? "READ" :
                     (grant->permission == OBS_PERMISSION_WRITE) ? "WRITE" :
@@ -4355,15 +4498,15 @@ obs_status generate_logging_xml_document_obs(char *target_bucket, char *target_p
                     (grant->bucket_delivered) ? "true" : "false");
 
         }
-        append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+        ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
                     "%s", "</TargetGrants>");
     } 
-    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
         "%s", "</LoggingEnabled>");
-    append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
+    ret = append_xml_document(xml_doc_len_return, xml_document, xml_doc_buffer_size, 
         "%s", "</BucketLoggingStatus>");
 
-    return OBS_STATUS_OK;
+    return ret;
 }
 
 obs_status generate_logging_xml_document(char *target_bucket, char *target_prefix, char *agency,
@@ -4411,10 +4554,13 @@ void set_bucket_logging_configuration_common(const obs_options *options, char *t
     bucket_logging_data->callback_data                = callback_data;
        
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType        = http_request_type_put;
     params.properties_callback    = &set_common_properties_callback;
@@ -4484,19 +4630,19 @@ obs_status conver_bucket_logging_grant(const char *element_path, convert_bucket_
     }
 
     obs_acl_grant *grant = &(convert_data->acl_grants[*(convert_data->acl_grant_count_return)]);
-
+    errno_t err = EOK;
     if (convert_data->use_api == OBS_USE_API_S3) {
         if (convert_data->email_address[0]) {
             grant->grantee_type = OBS_GRANTEE_TYPE_HUAWEI_CUSTOMER_BYEMAIL;
-            strcpy_s(grant->grantee.huawei_customer_by_email.email_address,
+            err = strcpy_s(grant->grantee.huawei_customer_by_email.email_address,
                 sizeof(grant->grantee.huawei_customer_by_email.email_address),
                    convert_data->email_address);
         }
         else_if (convert_data->userId[0] && convert_data->userDisplayName[0]) {
             grant->grantee_type = OBS_GRANTEE_TYPE_CANONICAL_USER;
-            strcpy_s(grant->grantee.canonical_user.id, sizeof(grant->grantee.canonical_user.id), 
+            err = strcpy_s(grant->grantee.canonical_user.id, sizeof(grant->grantee.canonical_user.id), 
                 convert_data->userId);
-            strcpy_s(grant->grantee.canonical_user.display_name,
+            err = strcpy_s(grant->grantee.canonical_user.display_name,
             sizeof(grant->grantee.canonical_user.display_name),
                    convert_data->userDisplayName);
         }
@@ -4518,10 +4664,12 @@ obs_status conver_bucket_logging_grant(const char *element_path, convert_bucket_
         grant->grantee_type = OBS_GRANTEE_TYPE_ALL_USERS;
         if (convert_data->userId[0]) {
             grant->grantee_type = OBS_GRANTEE_TYPE_CANONICAL_USER;
-            strcpy_s(grant->grantee.canonical_user.id, sizeof(grant->grantee.canonical_user.id), 
+            err = strcpy_s(grant->grantee.canonical_user.id, sizeof(grant->grantee.canonical_user.id), 
                 convert_data->userId);
         }
     }
+
+    CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
 
     if (!strcmp(convert_data->permission, "READ")) {
         grant->permission = OBS_PERMISSION_READ;
@@ -4563,7 +4711,7 @@ obs_status convert_bucket_logging_xml_callback(const char *element_path,
         if (!strcmp(element_path, "BucketLoggingStatus/Agency"))
         {
             convert_data->agencyReturnLen +=
-                snprintf_sec(&(convert_data->agencyReturn
+                snprintf_s(&(convert_data->agencyReturn
                            [convert_data->agencyReturnLen]),
                             convert_data->agencyReturnSize,
                          convert_data->agencyReturnSize - convert_data->agencyReturnLen - 1,
@@ -4576,7 +4724,7 @@ obs_status convert_bucket_logging_xml_callback(const char *element_path,
                     "TargetBucket")) 
         {
             convert_data->targetBucketReturnLen +=
-                snprintf_sec(&(convert_data->targetBucketReturn
+                snprintf_s(&(convert_data->targetBucketReturn
                            [convert_data->targetBucketReturnLen]),
                             convert_data->targetBucketReturnSize,
                          convert_data->targetBucketReturnSize - convert_data->targetBucketReturnLen - 1,
@@ -4589,7 +4737,7 @@ obs_status convert_bucket_logging_xml_callback(const char *element_path,
                     "TargetPrefix")) 
         {
             convert_data->targetPrefixReturnLen +=
-                snprintf_sec(&(convert_data->targetPrefixReturn
+                snprintf_s(&(convert_data->targetPrefixReturn
                            [convert_data->targetPrefixReturnLen]),
                             convert_data->targetPrefixReturnSize,
                          convert_data->targetPrefixReturnSize - convert_data->targetPrefixReturnLen - 1,
@@ -4728,10 +4876,13 @@ void get_bucket_logging_configuration(const obs_options *options, obs_response_h
     logging_data->use_api = use_api;
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.httpRequestType      = http_request_type_get;
     params.properties_callback   = &get_bucket_logging_properties_callback;
@@ -4758,10 +4909,11 @@ void generate_redirect(update_bucket_common_data *website_data,
     {
         char* pprotocol = 0;
         mark = pcre_replace(set_bucket_website_conf->routingrule_info[i].protocol,&pprotocol);
-        tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+        tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
             sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
             "<Protocol>%s</Protocol>", 
             mark ? pprotocol : set_bucket_website_conf->routingrule_info[i].protocol);
+        CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
         website_data->docLen += tmplen;
         free(pprotocol);
     }
@@ -4769,9 +4921,10 @@ void generate_redirect(update_bucket_common_data *website_data,
     {
         char* phostName = 0;
         mark = pcre_replace(set_bucket_website_conf->routingrule_info[i].host_name,&phostName);
-        tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+        tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
             sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,"<HostName>%s</HostName>", 
             mark ? phostName : set_bucket_website_conf->routingrule_info[i].host_name);
+        CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
         website_data->docLen += tmplen;
         free(phostName);
     }
@@ -4779,10 +4932,11 @@ void generate_redirect(update_bucket_common_data *website_data,
     {
         char* preplaceKeyPrefixWith = 0;
         mark = pcre_replace(set_bucket_website_conf->routingrule_info[i].replace_key_prefix_with,&preplaceKeyPrefixWith);
-        tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+        tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
             sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
             "<ReplaceKeyPrefixWith>%s</ReplaceKeyPrefixWith>", 
             mark ? preplaceKeyPrefixWith : set_bucket_website_conf->routingrule_info[i].replace_key_prefix_with);
+        CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
         website_data->docLen += tmplen;
         free(preplaceKeyPrefixWith);
     }
@@ -4790,10 +4944,11 @@ void generate_redirect(update_bucket_common_data *website_data,
     {
         char* preplaceKeyWith = 0;
         mark = pcre_replace(set_bucket_website_conf->routingrule_info[i].replace_key_with,&preplaceKeyWith);
-        tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+        tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
             sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
             "<ReplaceKeyWith>%s</ReplaceKeyWith>", 
             mark ? preplaceKeyWith : set_bucket_website_conf->routingrule_info[i].replace_key_with);
+        CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
         website_data->docLen += tmplen;
         free(preplaceKeyWith);
     }
@@ -4801,10 +4956,11 @@ void generate_redirect(update_bucket_common_data *website_data,
     {
         char*phttpRedirectCode = 0;
         mark = pcre_replace(set_bucket_website_conf->routingrule_info[i].http_redirect_code,&phttpRedirectCode);
-        tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+        tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
             sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
             "<HttpRedirectCode>%s</HttpRedirectCode>", 
             mark ? phttpRedirectCode : set_bucket_website_conf->routingrule_info[i].http_redirect_code);
+        CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
         website_data->docLen += tmplen;
         free(phttpRedirectCode);
     }
@@ -4817,25 +4973,28 @@ void generate_routingrules(update_bucket_common_data *website_data,
     int mark = 0;
     int i = 0;
     
-    tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+    tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
     sizeof(website_data->doc) - website_data->docLen, 
     _TRUNCATE, "<RoutingRules>");
+    CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
     website_data->docLen += tmplen;
     
     for(i = 0; i < set_bucket_website_conf->routingrule_count; i++)
     {
-        tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+        tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
             sizeof(website_data->doc) - website_data->docLen,
             _TRUNCATE, "<RoutingRule><Condition>");
+        CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
         website_data->docLen += tmplen;
         if (set_bucket_website_conf->routingrule_info[i].key_prefix_equals)
         {
             char* pkeyPrefixEquals = 0;
             mark = pcre_replace(set_bucket_website_conf->routingrule_info[i].key_prefix_equals,&pkeyPrefixEquals);
-            tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+            tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
                 sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
                 "<KeyPrefixEquals>%s</KeyPrefixEquals>", 
                 mark ? pkeyPrefixEquals : set_bucket_website_conf->routingrule_info[i].key_prefix_equals);
+            CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
             website_data->docLen += tmplen;
             free(pkeyPrefixEquals);
         }
@@ -4843,30 +5002,34 @@ void generate_routingrules(update_bucket_common_data *website_data,
         {
             char* phttpErrorCodeReturnedEquals = 0;
             mark = pcre_replace(set_bucket_website_conf->routingrule_info[i].http_errorcode_returned_equals,&phttpErrorCodeReturnedEquals);
-            tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+            tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
                 sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
                 "<HttpErrorCodeReturnedEquals>%s</HttpErrorCodeReturnedEquals>",
                 mark ? phttpErrorCodeReturnedEquals : set_bucket_website_conf->routingrule_info[i].http_errorcode_returned_equals);
+            CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
             website_data->docLen += tmplen;
             free(phttpErrorCodeReturnedEquals);
         }
 
-        tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+        tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
             sizeof(website_data->doc) - website_data->docLen,
             _TRUNCATE,"</Condition><Redirect>");
-            website_data->docLen += tmplen;
+        CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
+        website_data->docLen += tmplen;
 
         generate_redirect(website_data, set_bucket_website_conf, i);
         
-        tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+        tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
             sizeof(website_data->doc) - website_data->docLen, 
             _TRUNCATE,"</Redirect></RoutingRule>");
+        CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
         website_data->docLen += tmplen;
     }
     
-    tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+    tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
         sizeof(website_data->doc) - website_data->docLen, 
         _TRUNCATE,"</RoutingRules>");
+    CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
     website_data->docLen += tmplen;
     
 }
@@ -4886,15 +5049,16 @@ obs_status generate_websiteconf_doc (update_bucket_common_data **data,
         return OBS_STATUS_InvalidParameter;
     }
 
-    website_data->docLen = snprintf_sec(website_data->doc, sizeof(website_data->doc), 
+    website_data->docLen = snprintf_s(website_data->doc, sizeof(website_data->doc),
         _TRUNCATE, "<WebsiteConfiguration>");
 
     char* psuffix = 0;
     mark = pcre_replace(set_bucket_website_conf->suffix,&psuffix);
-    tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+    tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
         sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
         "<IndexDocument><Suffix>%s</Suffix></IndexDocument>", 
         mark ? psuffix : set_bucket_website_conf->suffix);
+    CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
     website_data->docLen += tmplen;
     free(psuffix);
     
@@ -4903,19 +5067,21 @@ obs_status generate_websiteconf_doc (update_bucket_common_data **data,
         char*pkey = 0;
         mark = pcre_replace(set_bucket_website_conf->key,&pkey);
 
-        tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+        tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
             sizeof(website_data->doc) - website_data->docLen, _TRUNCATE, 
             "<ErrorDocument><Key>%s</Key></ErrorDocument>", 
             mark ? pkey : set_bucket_website_conf->key);
+        CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
         website_data->docLen += tmplen;
         free(pkey);
     }
     
     generate_routingrules(website_data, set_bucket_website_conf);
     
-    tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+    tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
     sizeof(website_data->doc) - website_data->docLen, 
     _TRUNCATE,"</WebsiteConfiguration>");
+    CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
     website_data->docLen += tmplen;
     website_data->docBytesWritten = 0;
     return OBS_STATUS_OK;
@@ -4930,7 +5096,7 @@ obs_status generate_website_redirctall_doc(update_bucket_common_data **data,
     int mark = 0;
     update_bucket_common_data *website_data = *data;
 
-    website_data->docLen = snprintf_sec(website_data->doc, sizeof(website_data->doc), 
+    website_data->docLen = snprintf_s(website_data->doc, sizeof(website_data->doc),
         _TRUNCATE, "<WebsiteConfiguration>");
     
     if (website_data->docLen < 0)
@@ -4946,16 +5112,19 @@ obs_status generate_website_redirctall_doc(update_bucket_common_data **data,
         return OBS_STATUS_InvalidParameter;
     }
 
-    tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+    tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
             sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
             "<RedirectAllRequestsTo>");
+    CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
     website_data->docLen += tmplen;
 
     char* phostName = 0;
     mark = pcre_replace(set_bucket_redirect_all->host_name,&phostName);
-    tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+    tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
         sizeof(website_data->doc)- website_data->docLen, _TRUNCATE,
         "<HostName>%s</HostName>", mark ? phostName : set_bucket_redirect_all->host_name);
+    CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
+
     website_data->docLen += tmplen;
     free(phostName);
     phostName = NULL;
@@ -4964,17 +5133,19 @@ obs_status generate_website_redirctall_doc(update_bucket_common_data **data,
     {
         char*pprotocol = 0;
         mark = pcre_replace(set_bucket_redirect_all->protocol,&pprotocol);
-        tmplen = snprintf_sec(website_data->doc + website_data->docLen, 
+        tmplen = snprintf_s(website_data->doc + website_data->docLen,
             sizeof(website_data->doc)- website_data->docLen, _TRUNCATE,
             "<Protocol>%s</Protocol>", mark ? pprotocol : set_bucket_redirect_all->protocol);
+        CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
         website_data->docLen += tmplen;
         free(pprotocol);
         pprotocol = NULL;
     }
 
-    tmplen = snprintf_sec((website_data->doc) + (website_data->docLen), 
+    tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
         sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
         "</RedirectAllRequestsTo></WebsiteConfiguration>");
+    CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
     website_data->docLen += tmplen;
     return OBS_STATUS_OK;
 
@@ -5026,10 +5197,13 @@ void set_bucket_website_configuration(const obs_options *options,
     }
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType        = http_request_type_put;
     params.properties_callback    = &update_bucket_common_properties_callback;
@@ -5108,7 +5282,7 @@ obs_status get_bucket_websiteconf_xml_callback(const char *element_path, const c
     obs_bucket_website_configuration_data *website_data = 
         (obs_bucket_website_configuration_data *) callback_data;
 
-    int fit;
+    int fit = 1;
 
     if (!data)
     {
@@ -5183,8 +5357,10 @@ obs_status get_bucket_websiteconf_xml_callback(const char *element_path, const c
         string_buffer_append(bws->http_redirect_code, data, data_len, fit);
     }
 
-    (void) fit;
-
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -5217,7 +5393,10 @@ void get_bucket_websiteconf_complete_callback(obs_status status, const obs_error
         (obs_bucket_website_configuration_data *) callback_data;
     if (OBS_STATUS_OK == status)
     {
-        make_get_bucket_websitedata_callback(websiteconf_data);
+        obs_status ret = make_get_bucket_websitedata_callback(websiteconf_data);
+        if (ret != OBS_STATUS_OK){
+            COMMLOG(OBS_LOGWARN, "Failed to call make_get_bucket_websitedata_callback, status: %d", ret);
+        }
     }
     (*(websiteconf_data->response_complete_callback))
         (status, error_details, websiteconf_data->callback_data);
@@ -5259,10 +5438,13 @@ void get_bucket_website_configuration(const obs_options *options,
     string_buffer_initialize(websiteconf_data->key);
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.httpRequestType      = http_request_type_get;
     params.properties_callback   = &get_bucket_websiteconf_properties_callback;
@@ -5287,10 +5469,13 @@ void delete_bucket_website_configuration(const obs_options *options, obs_respons
 
     COMMLOG(OBS_LOGINFO, "delete bucket website configuration start!");
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.httpRequestType       = http_request_type_delete;
     params.properties_callback   = handler->properties_callback;
@@ -5651,12 +5836,12 @@ static int set_notification_data_callback(int buffer_size, char *buffer,
         return 0;
     }
 
-	errno_t err = EOK;  
-	err = memcpy_s(buffer, buffer_size, &(sncData->doc[sncData->doc_bytes_written]), toCopy);
+    errno_t err = EOK;  
+    err = memcpy_s(buffer, buffer_size, &(sncData->doc[sncData->doc_bytes_written]), toCopy);
     if (err != EOK)
     {
-		COMMLOG(OBS_LOGWARN, "set_notification_data_callback: memcpy_s failed!\n");
-		return 0;
+        COMMLOG(OBS_LOGWARN, "set_notification_data_callback: memcpy_s failed!\n");
+        return 0;
     }
 	
     sncData->doc_bytes_written += toCopy;
@@ -5726,10 +5911,13 @@ void set_notification_configuration(const obs_options *options,
     }
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
              sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
              sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType        = http_request_type_put;
     params.properties_callback     = &set_notification_properties_callback;
@@ -6229,10 +6417,13 @@ void get_notification_configuration(const obs_options *options,
     }
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
              sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
              sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType        = http_request_type_get;
     params.properties_callback     = &get_notification_properties_callback;
@@ -6314,10 +6505,13 @@ void get_bucket_metadata_with_corsconf(const obs_options *options, char *origin,
         cors_conf.requestHeader[i] = requestHeader[i];
     }
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.httpRequestType         = http_request_type_head;
     params.properties_callback     = handler->properties_callback;

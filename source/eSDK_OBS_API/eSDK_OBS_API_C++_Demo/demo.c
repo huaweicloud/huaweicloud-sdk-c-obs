@@ -68,7 +68,7 @@ static void test_get_object_metadata(char *key, char *version_id)
 {
 
     obs_object_info objectinfo;
-    memset(&objectinfo,0,sizeof(obs_object_info));
+    memset_s(&objectinfo,sizeof(obs_object_info),0,sizeof(obs_object_info));
     objectinfo.key=key;
     objectinfo.version_id=version_id;
     // init struct obs_option
@@ -367,13 +367,15 @@ void test_set_bucket_policy(char *bucket_name)
 
     char bucket_policy[1024] = {0};
     if(demoUseObsApi == OBS_USE_API_S3) {
-        sprintf(bucket_policy,
+        sprintf_s(bucket_policy,
+			sizeof(bucket_policy),
             "{\"Version\":\"2008-10-17\",\"Id\":\"111\","
             "\"Statement\":[{\"Sid\": \"AddPerm\", \"Action\": [\"s3:GetObject\" ]," 
             "\"Effect\": \"Allow\",\"Resource\": \"arn:aws:s3:::%s/*\",\"Principal\":\"*\"} ] }", 
             bucket_name);
     } else {
-        sprintf(bucket_policy,
+        sprintf_s(bucket_policy,
+			sizeof(bucket_policy),
             "{\"Statement\":[{\"Sid\": \"AddPerm\", \"Action\": [\"GetObject\" ]," 
             "\"Effect\": \"Allow\",\"Resource\": \"%s/*\",\"Principal\":\"*\"} ] }", 
             bucket_name);
@@ -630,7 +632,7 @@ void test_get_bucket_tagging(char *bucket_name)
     };
 
     TaggingInfo tagging_info;
-    memset(&tagging_info, 0, sizeof(TaggingInfo));
+    memset_s(&tagging_info, sizeof(TaggingInfo), 0, sizeof(TaggingInfo));
     tagging_info.ret_status = OBS_STATUS_BUTT;
 
     get_bucket_tagging(&option, &response_handler, &tagging_info);
@@ -718,10 +720,10 @@ void set_log_delivery_acl(char *bucket_name_target)
     memset_s(aclinfo.owner_id,sizeof(aclinfo.owner_id),0,sizeof(aclinfo.owner_id));
     aclinfo.owner_display_name = (char *)malloc(sizeof(char)*100);
     memset_s(aclinfo.owner_display_name,sizeof(aclinfo.owner_display_name),0,sizeof(aclinfo.owner_display_name));
-    strcpy(aclinfo.owner_id, "domainiddomainiddomainiddo000400");   
-    strcpy(aclinfo.owner_display_name, "displayname");
+    strcpy_s(aclinfo.owner_id, sizeof(aclinfo.owner_id),"domainiddomainiddomainiddo000400");   
+    strcpy_s(aclinfo.owner_display_name, sizeof(aclinfo.owner_display_name),"displayname");
     
-    memset(&aclinfo.object_info,0,sizeof(aclinfo.object_info));
+    memset_s(&aclinfo.object_info,sizeof(aclinfo.object_info),0,sizeof(aclinfo.object_info));
     set_object_acl(option, &aclinfo, &response_handler,0);
     
     if (statusG == OBS_STATUS_OK) {
@@ -761,8 +763,8 @@ static void test_set_bucket_logging_with_grant(char *bucket_name_src, char *buck
     int aclGrantCount = 2;
     obs_acl_grant acl_grants[2] = {0};
     acl_grants[0].grantee_type = OBS_GRANTEE_TYPE_CANONICAL_USER;
-    strcpy(acl_grants[0].grantee.canonical_user.id, "userid1");
-    strcpy(acl_grants[0].grantee.canonical_user.display_name, "dis1");
+    strcpy_s(acl_grants[0].grantee.canonical_user.id,sizeof(acl_grants[0].grantee.canonical_user.id), "userid1");
+    strcpy_s(acl_grants[0].grantee.canonical_user.display_name,sizeof(acl_grants[0].grantee.canonical_user.display_name), "dis1");
     acl_grants[0].permission = OBS_PERMISSION_FULL_CONTROL;
 
     acl_grants[1].grantee_type = OBS_GRANTEE_TYPE_ALL_OBS_USERS;
@@ -936,8 +938,8 @@ static void test_set_bucket_website_conf(char *bucket_name)
     set_bucket_website_conf.key = "Error.html"; 
     set_bucket_website_conf.routingrule_count = 2; 
     bucket_website_routingrule temp[2];
-    memset(&temp[0], 0, sizeof(bucket_website_routingrule));
-    memset(&temp[1], 0, sizeof(bucket_website_routingrule));
+    memset_s(&temp[0], sizeof(bucket_website_routingrule),0, sizeof(bucket_website_routingrule));
+    memset_s(&temp[1], sizeof(bucket_website_routingrule),0, sizeof(bucket_website_routingrule));
     set_bucket_website_conf.routingrule_info = temp; 
     temp[0].key_prefix_equals = "key_prefix1"; 
     temp[0].replace_key_prefix_with = "replace_key_prefix1"; 
@@ -1096,14 +1098,14 @@ void init_acl_info(manager_acl_info *aclinfo)
 
     aclinfo->acl_grants = (obs_acl_grant*)malloc(sizeof(obs_acl_grant)*2);
     memset_s( aclinfo->acl_grants, 2 * sizeof(obs_acl_grant), 0, 2 *sizeof(obs_acl_grant));
-    strcpy(aclinfo->acl_grants->grantee.canonical_user.id, "userid1"); 
-    strcpy(aclinfo->acl_grants->grantee.canonical_user.display_name, "name1"); 
+    strcpy_s(aclinfo->acl_grants->grantee.canonical_user.id, sizeof(aclinfo->acl_grants->grantee.canonical_user.id),"userid1");
+    strcpy_s(aclinfo->acl_grants->grantee.canonical_user.display_name, sizeof(aclinfo->acl_grants->grantee.canonical_user.display_name),"name1");
     aclinfo->acl_grants->grantee_type = OBS_GRANTEE_TYPE_LOG_DELIVERY;
     aclinfo->acl_grants->permission = OBS_PERMISSION_WRITE;
     aclinfo->acl_grants->bucket_delivered = BUCKET_DELIVERED_FALSE;
 
-    strcpy((aclinfo->acl_grants + 1)->grantee.canonical_user.id, "userid1"); 
-    strcpy((aclinfo->acl_grants + 1)->grantee.canonical_user.display_name, "name1"); 
+    strcpy_s((aclinfo->acl_grants + 1)->grantee.canonical_user.id, sizeof((aclinfo->acl_grants + 1)->grantee.canonical_user.id),"userid1");
+    strcpy_s((aclinfo->acl_grants + 1)->grantee.canonical_user.display_name, sizeof((aclinfo->acl_grants + 1)->grantee.canonical_user.display_name),"name1");
     (aclinfo->acl_grants + 1)->grantee_type = OBS_GRANTEE_TYPE_CANONICAL_USER;
     (aclinfo->acl_grants + 1)->permission = OBS_PERMISSION_READ_ACP;
     (aclinfo->acl_grants + 1)->bucket_delivered = BUCKET_DELIVERED_TRUE; 
@@ -1115,10 +1117,10 @@ void init_acl_info(manager_acl_info *aclinfo)
     memset_s(aclinfo->owner_id,sizeof(aclinfo->owner_id),0,sizeof(aclinfo->owner_id));
     aclinfo->owner_display_name = (char *)malloc(sizeof(char)*100);
     memset_s(aclinfo->owner_display_name,sizeof(aclinfo->owner_display_name),0,sizeof(aclinfo->owner_display_name));
-    strcpy(aclinfo->owner_id, "domainiddomainiddomainiddo000400");   
-    strcpy(aclinfo->owner_display_name, "displayname");
+    strcpy_s(aclinfo->owner_id, sizeof(aclinfo->owner_id),"domainiddomainiddomainiddo000400");   
+    strcpy_s(aclinfo->owner_display_name, sizeof(aclinfo->owner_display_name),"displayname");
 
-    memset(&aclinfo->object_info,0,sizeof(aclinfo->object_info));
+    memset_s(&aclinfo->object_info,sizeof(aclinfo->object_info),0,sizeof(aclinfo->object_info));
 }
 
 void deinitialize_acl_info(manager_acl_info *aclinfo)
@@ -1357,7 +1359,7 @@ static void test_list_bucket_objects(char *bucket_name)
     };
 
     list_object_callback_data data;
-    memset(&data, 0, sizeof(list_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(list_object_callback_data));
     data.allDetails = 1;
     list_bucket_objects(&option, NULL, data.next_marker, NULL, maxkeys, &list_bucket_objects_handler, &data); 
     if (OBS_STATUS_OK == data.ret_status) {
@@ -1394,7 +1396,7 @@ static void test_list_versions(char *bucket_name,char *version_id_marker)
     };
 
     list_versions_callback_data data;
-    memset(&data, 0, sizeof(list_versions_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(list_versions_callback_data));
     
     list_versions(&option, prefix, key_marker, delimiter, maxkeys, version_id_marker,
                 &list_versions_handler, &data);
@@ -1464,7 +1466,7 @@ static void test_set_bucket_lifecycle_configuration(char *bucket_name)
     };
 
     obs_lifecycle_conf bucket_lifecycle_conf[2];
-    memset(bucket_lifecycle_conf, 0, sizeof(obs_lifecycle_conf)*2); 
+    memset_s(bucket_lifecycle_conf, sizeof(bucket_lifecycle_conf),0, sizeof(obs_lifecycle_conf)*2); 
 
     // Lifecycle rule id
     bucket_lifecycle_conf[0].id = "test1"; 
@@ -1523,7 +1525,7 @@ static void test_set_bucket_lifecycle_configuration2(char *bucket_name)
     };
 
     obs_lifecycle_conf bucket_lifecycle_conf;
-    memset(&bucket_lifecycle_conf, 0, sizeof(obs_lifecycle_conf)); 
+    memset_s(&bucket_lifecycle_conf, sizeof(bucket_lifecycle_conf),0, sizeof(obs_lifecycle_conf)); 
     
     // Lifecycle rule id
     bucket_lifecycle_conf.id = "test3"; 
@@ -1533,7 +1535,7 @@ static void test_set_bucket_lifecycle_configuration2(char *bucket_name)
     bucket_lifecycle_conf.status = "Enabled"; 
     
     obs_lifecycle_transtion transition;
-    memset(&transition, 0, sizeof(obs_lifecycle_transtion));
+    memset_s(&transition, sizeof(transition),0, sizeof(obs_lifecycle_transtion));
     // Specify that the object that satisfies the prefix is ??converted after 30 days of creation. 
     transition.days = "30";
     // Specify the storage type after the object is converted
@@ -1542,7 +1544,7 @@ static void test_set_bucket_lifecycle_configuration2(char *bucket_name)
     bucket_lifecycle_conf.transition_num = 1;
 
     obs_lifecycle_noncurrent_transtion noncurrent_transition;
-    memset(&noncurrent_transition, 0, sizeof(obs_lifecycle_noncurrent_transtion));
+    memset_s(&noncurrent_transition, sizeof(noncurrent_transition),0, sizeof(obs_lifecycle_noncurrent_transtion));
     // Specify a historical version of the object that satisfies the prefix to convert after 30 days 
     noncurrent_transition.noncurrent_version_days = "30";
     // Specifies the storage type of the historical version of the object that satisfies the prefix
@@ -1661,7 +1663,7 @@ static void test_set_bucket_cors(char *bucket_name)
     // Attachment header field in response
     const char* exposeHeader_1[2]  = {"hello", "world"}; 
      
-    memset(&bucketCorsConf, 0, sizeof(obs_bucket_cors_conf)); 
+    memset_s(&bucketCorsConf, sizeof(bucketCorsConf),0, sizeof(obs_bucket_cors_conf)); 
     bucketCorsConf.id = id_1; 
     bucketCorsConf.max_age_seconds = max_age_seconds; 
     bucketCorsConf.allowed_method = allowedMethod_1; 
@@ -1775,7 +1777,7 @@ static void test_set_notification_configuration(char *bucket_name)
     topic_conf.filter_rule = &filter_rule; 
     topic_conf.filter_rule_num = 1; 
       
-    memset(&notification_conf, 0, sizeof(obs_smn_notification_configuration)); 
+    memset_s(&notification_conf, sizeof(notification_conf),0, sizeof(obs_smn_notification_configuration)); 
     notification_conf.topic_conf = &topic_conf; 
     notification_conf.topic_conf_num = 1;
 
@@ -1837,7 +1839,7 @@ static void test_close_notification_configuration(char *bucket_name)
         NULL, &response_complete_callback
     };
 
-    memset(&notification_conf, 0, sizeof(obs_smn_notification_configuration)); 
+    memset_s(&notification_conf, sizeof(notification_conf),0, sizeof(obs_smn_notification_configuration)); 
     set_notification_configuration(&option, &notification_conf, 
                     &response_handler, &ret_status);
     if (OBS_STATUS_OK == ret_status) {
@@ -1906,7 +1908,7 @@ static void test_put_object_from_file(char *bucket_name, char *key, char *file_n
 
     // Initialize the structure that stores the uploaded data
     put_file_object_callback_data data;
-    memset(&data, 0, sizeof(put_file_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_file_object_callback_data));
     // Open the file and get the file length
     content_length = open_file_and_get_length(file_name, &data);
 
@@ -1950,7 +1952,7 @@ static void test_put_object_from_buffer(char *bucket_name, char *key)
     
     //Initialize the structure that stores the uploaded data
     put_buffer_object_callback_data data;
-    memset(&data, 0, sizeof(put_buffer_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_buffer_object_callback_data));
     // Assign buffer to the uploaded data structure
     data.put_buffer = buffer;
     // set buffersize
@@ -1995,7 +1997,7 @@ static void test_put_object_by_strorageclass(char *key, char *file_name, char *b
 
     // Initialize the structure that stores the uploaded data
     put_file_object_callback_data data;
-    memset(&data, 0, sizeof(put_file_object_callback_data));
+    memset_s(&data,sizeof(data),0, sizeof(put_file_object_callback_data));
     // Open the file and get the file length
     content_length = open_file_and_get_length(file_name, &data);
 
@@ -2041,7 +2043,7 @@ static void test_put_object_by_kms_encrypt(char *bucket_name, char *key)
     
     //Initialize the structure that stores the uploaded data
     put_buffer_object_callback_data data;
-    memset(&data, 0, sizeof(put_buffer_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_buffer_object_callback_data));
     // Assign buffer to the uploaded data structure
     data.put_buffer = buffer;
     // set buffersize
@@ -2050,7 +2052,7 @@ static void test_put_object_by_kms_encrypt(char *bucket_name, char *key)
     //Server decryption
     /*SSE-KMS decryption*/
     server_side_encryption_params encryption_params;
-    memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+    memset_s(&encryption_params, sizeof(encryption_params),0, sizeof(server_side_encryption_params));
     encryption_params.encryption_type = OBS_ENCRYPTION_KMS;
     if(demoUseObsApi == OBS_USE_API_S3) {
         encryption_params.kms_server_side_encryption = "aws:kms";
@@ -2058,7 +2060,7 @@ static void test_put_object_by_kms_encrypt(char *bucket_name, char *key)
         encryption_params.kms_server_side_encryption = "kms";
     }
     //This parameter can be left blank. The system has a default encryption key.
-    //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/4f1cd4de-ab64-4807-920a-47fc42e7f0d0";
+    //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/xxxxxxxxxxxxxxxxxxxxxx";
 
     // Set callback function
     obs_put_object_handler putobjectHandler =
@@ -2099,7 +2101,7 @@ static void test_put_object_by_aes_encrypt(char *bucket_name, char *key)
     
     //Initialize the structure that stores the uploaded data
     put_buffer_object_callback_data data;
-    memset(&data, 0, sizeof(put_buffer_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_buffer_object_callback_data));
     // Assign buffer to the uploaded data structure
     data.put_buffer = buffer;
     // set buffersize
@@ -2108,11 +2110,11 @@ static void test_put_object_by_aes_encrypt(char *bucket_name, char *key)
     //Server decryption
     /*SSE-KMS encryption*/
     server_side_encryption_params encryption_params;
-    memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+    memset_s(&encryption_params, sizeof(encryption_params),0, sizeof(server_side_encryption_params));
     encryption_params.encryption_type = OBS_ENCRYPTION_SSEC;
     encryption_params.ssec_customer_algorithm = "AES256";
     encryption_params.ssec_customer_key = 
-                    "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
+                    "xxxxxxxxxx";
     // Set callback function
     obs_put_object_handler putobjectHandler =
     { 
@@ -2147,7 +2149,7 @@ static void test_get_object(char *bucket_name, char *key)
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     
 
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
     object_info.key =key;
     
     get_object_callback_data data;
@@ -2155,7 +2157,7 @@ static void test_get_object(char *bucket_name, char *key)
     data.outfile = write_to_file(file_name);
 
     obs_get_conditions getcondition;
-    memset(&getcondition, 0, sizeof(obs_get_conditions));
+    memset_s(&getcondition, sizeof(getcondition),0, sizeof(obs_get_conditions));
     init_get_properties(&getcondition);
     // The starting position of the reading
     getcondition.start_byte = 0;
@@ -2192,7 +2194,7 @@ static void test_get_object_by_kms_encrypt(char *bucket_name, char *key)
     
     option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
     
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
     object_info.key =key;
     
     get_object_callback_data data;
@@ -2200,7 +2202,7 @@ static void test_get_object_by_kms_encrypt(char *bucket_name, char *key)
     data.outfile = write_to_file(file_name);
 
     obs_get_conditions getcondition;
-    memset(&getcondition, 0, sizeof(obs_get_conditions));
+    memset_s(&getcondition, sizeof(getcondition),0, sizeof(obs_get_conditions));
     init_get_properties(&getcondition);
     // The starting position of the reading
     getcondition.start_byte = 0;
@@ -2239,12 +2241,12 @@ static void test_get_object_by_aes_encrypt(char *bucket_name, char *key)
 
     // SSE encrypted object download, need the SSE key
     server_side_encryption_params encryption_params;
-    memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+    memset_s(&encryption_params, sizeof(encryption_params),0, sizeof(server_side_encryption_params));
     encryption_params.encryption_type = OBS_ENCRYPTION_SSEC;
     encryption_params.ssec_customer_algorithm = "AES256";
-    encryption_params.ssec_customer_key = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
+    encryption_params.ssec_customer_key = "xxxxxxxxxxx";
     
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
     object_info.key =key;
     
     get_object_callback_data data;
@@ -2252,7 +2254,7 @@ static void test_get_object_by_aes_encrypt(char *bucket_name, char *key)
     data.outfile = write_to_file(file_name);
 
     obs_get_conditions getcondition;
-    memset(&getcondition, 0, sizeof(obs_get_conditions));
+    memset_s(&getcondition, sizeof(getcondition),0, sizeof(obs_get_conditions));
     init_get_properties(&getcondition);
     // The starting position of the reading
     getcondition.start_byte = 0;
@@ -2281,7 +2283,7 @@ static void test_delete_object(char *key, char *version_id, char *bucket_name)
 {
     obs_status ret_status = OBS_STATUS_BUTT;
     obs_object_info object_info;
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
     object_info.key = key;
     object_info.version_id = version_id;
 
@@ -2396,7 +2398,7 @@ static void test_copy_object(char *key, char *version_id, char *source_bucket,
 static void test_restore_object(char *key, char *versionid, char *days, char *bucket_name)
 {
     obs_object_info object_info;
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
     object_info.key = key;
     object_info.version_id = versionid;
 
@@ -2443,7 +2445,7 @@ static void test_list_bucket_s3(obs_bucket_list_type list_type)
     option.bucket_options.bucket_list_type = list_type;
     
     list_service_data data;
-    memset(&data, 0, sizeof(list_service_data));
+    memset_s(&data, sizeof(data),0, sizeof(list_service_data));
     data.allDetails = 1;
 
     obs_list_service_handler listHandler =
@@ -2475,7 +2477,7 @@ static void test_list_bucket_obs(obs_bucket_list_type list_type)
     option.bucket_options.bucket_list_type = list_type;
     
     list_service_data data;
-    memset(&data, 0, sizeof(list_service_data));
+    memset_s(&data, sizeof(data),0, sizeof(list_service_data));
     data.allDetails = 1;
     
     obs_list_service_obs_handler listHandler =
@@ -2634,7 +2636,7 @@ static void test_init_upload_part(char *bucket_name, char *key)
     if (OBS_STATUS_OK == ret_status)
     {
         printf("test init upload part %s successfully. uploadId= %s\n", key, upload_id);
-        strcpy(UPLOAD_ID, upload_id);
+        strcpy_s(UPLOAD_ID, sizeof(UPLOAD_ID),upload_id);
     }
     else
     {
@@ -2661,7 +2663,7 @@ static void test_upload_part(char *filename, char *bucket_name, char *key)
     init_put_properties(&putProperties);
 
     obs_upload_part_info uploadPartInfo;
-    memset(&uploadPartInfo, 0, sizeof(obs_upload_part_info));
+    memset_s(&uploadPartInfo, sizeof(uploadPartInfo),0, sizeof(obs_upload_part_info));
 
     obs_upload_handler Handler =
     { 
@@ -2670,7 +2672,7 @@ static void test_upload_part(char *filename, char *bucket_name, char *key)
     };
 
     test_upload_file_callback_data data;
-    memset(&data, 0, sizeof(test_upload_file_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(test_upload_file_callback_data));
     //read local file total size :uploadTotalLength
     filesize = get_file_info(filename,&data);
     data.noStatus = 1;
@@ -2806,7 +2808,7 @@ static void test_list_parts(char *bucket_name, char *key)
     };
 
     list_parts_callback_data data;
-    memset(&data, 0, sizeof(list_parts_callback_data));
+    memset_s(&data,  sizeof(data),0, sizeof(list_parts_callback_data));
     
     do{
         list_parts(&option, key, &listpart, &Handler, &data);
@@ -2839,20 +2841,20 @@ static void test_copy_part(char *bucket_name, char *srcKey, char *dstKey)
 
     /*SSE-KMS encryption*/
     server_side_encryption_params encryption_params;
-    memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+    memset_s(&encryption_params, sizeof(encryption_params),0, sizeof(server_side_encryption_params));
     /*encryption_params.use_kms = '1';
     encryption_params.kms_server_side_encryption = "aws:kms";
     //This parameter can be NULL the default system key
-    encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/4f1cd4de-ab64-4807-920a-47fc42e7f0d0";*/
+    encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/xxxxxxxxxxxxxxxxxxxxxxxxxxx";*/
 
     /*SSE-C*/
-    /*char* buffer = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
+    /*char* buffer = "xxxxxxxxxxxxxxxxxx";
     encryption_params.use_ssec = '1';
     encryption_params.ssec_customer_algorithm = "AES256";
     encryption_params.ssec_customer_key = buffer;
     
     //Decrypt source object parameters; used to copy one encrypted object to another object
-    char *des_key = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
+    char *des_key = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
     encryption_params.des_ssec_customer_algorithm = "AES256";
     encryption_params.des_ssec_customer_key = des_key;*/
 
@@ -2860,14 +2862,14 @@ static void test_copy_part(char *bucket_name, char *srcKey, char *dstKey)
     init_put_properties(&putProperties);
 
     obs_copy_destination_object_info object_info;
-    memset(&object_info, 0, sizeof(obs_copy_destination_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_copy_destination_object_info));
     object_info.destination_bucket = BUCKET_NAME;
     object_info.destination_key = dstKey;
     object_info.etag_return = etagreturn;
     object_info.etag_return_size = 256;
 
     obs_upload_part_info copypart;
-    memset(&copypart, 0, sizeof(obs_upload_part_info));
+    memset_s(&copypart, sizeof(copypart),0, sizeof(obs_upload_part_info));
 
     obs_response_handler responseHandler =
     { 
@@ -3030,7 +3032,7 @@ static void start_upload_threads(test_upload_file_callback_data data,
      int i= 0;
      for(i=0; i <partCount; i++)
      {
-        memset(concurrent_temp[i].etag, 0,sizeof(concurrent_temp[i].etag));
+        memset_s(concurrent_temp[i].etag, sizeof(concurrent_temp[i].etag),0,sizeof(concurrent_temp[i].etag));
         concurrent_temp[i].part_num = i + 1;
         concurrent_temp[i].infile = data.infile;
         concurrent_temp[i].upload_id = concurrent_upload_id;
@@ -3110,7 +3112,7 @@ static void test_concurrent_upload_part(char *bucket_name, char *filename, char 
     
     //Large file information: file pointer, file size, number of segments according to segment size
     test_upload_file_callback_data data;
-    memset(&data, 0, sizeof(test_upload_file_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(test_upload_file_callback_data));
     filesize = get_file_info(filename,&data);
     data.noStatus = 1;
     data.part_size = uploadSize;
@@ -3123,7 +3125,7 @@ static void test_concurrent_upload_part(char *bucket_name, char *filename, char 
         0,&Handler, &ret_status);
     if (OBS_STATUS_OK == ret_status) {
         printf("test init upload part return uploadIdReturn(%s). \n", uploadIdReturn);
-        strcpy(concurrent_upload_id,uploadIdReturn);
+        strcpy_s(concurrent_upload_id,sizeof(concurrent_upload_id),uploadIdReturn);
     }
     else
     {
@@ -3188,7 +3190,7 @@ static void test_append_object_from_file(char *bucket_name, char *key, char *fil
     init_put_properties(&put_properties);
     //read from local file to buffer
     put_file_object_callback_data data;
-    memset(&data, 0, sizeof(put_file_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_file_object_callback_data));
     data.infile = 0;
     content_length = open_file_and_get_length(file_name, &data);
 
@@ -3227,7 +3229,7 @@ static void test_append_object_from_buffer(char *bucket_name, char *key, char *b
     init_put_properties(&put_properties);
     //Initialize the structure that stores the uploaded data
     put_buffer_object_callback_data data;
-    memset(&data, 0, sizeof(put_buffer_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_buffer_object_callback_data));
     // Assign buffer to the uploaded data structure
     data.put_buffer = buffer;
     // set buffersize
@@ -3311,7 +3313,7 @@ static void test_gen_signed_url_put_object(char *bucket_name, char *key)
 
     // Initialize the structure that stores the uploaded data
     put_file_object_callback_data data;
-    memset(&data, 0, sizeof(put_file_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_file_object_callback_data));
     // Open the file and get the file length
     content_length = open_file_and_get_length(file_name, &data);
 
@@ -3348,7 +3350,7 @@ static void test_gen_signed_url_get_object(char *bucket_name, char *key, char *v
 {
     char *file_name = "./test";
     obs_object_info object_info;
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
     object_info.key =key;
     object_info.version_id = versionid;
 
@@ -3367,7 +3369,7 @@ static void test_gen_signed_url_get_object(char *bucket_name, char *key, char *v
     data.outfile = write_to_file(file_name);
 
     obs_get_conditions getcondition;
-    memset(&getcondition, 0, sizeof(obs_get_conditions));
+    memset_s(&getcondition, sizeof(getcondition),0, sizeof(obs_get_conditions));
     init_get_properties(&getcondition);
     getcondition.start_byte = 0;
     getcondition.byte_count = 100;
@@ -3475,7 +3477,7 @@ static void test_list_multipart_uploads(char *bucket_name)
     
     
     list_multipart_uploads_callback_data data;
-    memset(&data, 0, sizeof(list_multipart_uploads_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(list_multipart_uploads_callback_data));
     
     obs_list_multipart_uploads_handler listHandler =
     { 
@@ -3512,12 +3514,12 @@ static void test_modify_object_from_buffer(char *bucket_name, char *key, char *b
 
     obs_put_properties put_properties;
     init_put_properties(&put_properties);
-    //3?¨º??¡¥¡ä?¡ä¡é¨¦?¡ä?¨ºy?Y¦Ì??¨¢11¨¬?
+    //3?ï¿½ï¿½??ï¿½ï¿½ï¿½ï¿½?ï¿½ï¿½é¨¦?ï¿½ï¿½?ï¿½ï¿½y?Yï¿½ï¿½??ï¿½ï¿½11ï¿½ï¿½?
     put_buffer_object_callback_data data;
-    memset(&data, 0, sizeof(put_buffer_object_callback_data));
-    // ¡ã?buffer?3?¦Ì¦Ì?¨¦?¡ä?¨ºy?Y?¨¢11?D
+    memset_s(&data, sizeof(data),0, sizeof(put_buffer_object_callback_data));
+    // ï¿½ï¿½?buffer?3?ï¿½Ì¦ï¿½?ï¿½ï¿½?ï¿½ï¿½?ï¿½ï¿½y?Y?ï¿½ï¿½11?D
     data.put_buffer = buffer;
-    // ¨¦¨¨??buffersize
+    // ï¿½ï¿½ï¿½ï¿½??buffersize
     data.buffer_size = buffer_size;
 
     obs_modify_object_handler putobjectHandler =
@@ -3605,7 +3607,7 @@ int test_pfs()
     char bucket_target[]="bucket-target-pfs";
     char bucket_obj_acl[]="bucket-obj-acl-pfs";
 
-    strcpy(BUCKET_NAME,"esdk-c-test-pfs");
+    strcpy_s(BUCKET_NAME,sizeof(BUCKET_NAME),"esdk-c-test-pfs");
 
     /*------ bucket test------*/
     test_create_pfs_bucket(canned_acl, BUCKET_NAME);
@@ -3749,10 +3751,10 @@ int test_pfs()
 
 int main(int argc, char **argv)
 {
-    strcpy(ACCESS_KEY_ID,"xxxxxxxxxxxxxxxxxxxx");
-    strcpy(SECRET_ACCESS_KEY,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    strcpy(HOST_NAME,"xx.xx.xx.xx");
-    strcpy(BUCKET_NAME,"esdk-c-test");
+    strcpy_s(ACCESS_KEY_ID,sizeof(ACCESS_KEY_ID),"xxxxxxxxxxxxxxxxxxxx");
+    strcpy_s(SECRET_ACCESS_KEY,sizeof(SECRET_ACCESS_KEY),"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    strcpy_s(HOST_NAME,sizeof(HOST_NAME),"xx.xx.xx.xx");
+    strcpy_s(BUCKET_NAME,sizeof(BUCKET_NAME),"esdk-c-test");
      
     obs_canned_acl canned_acl = OBS_CANNED_ACL_BUCKET_OWNER_FULL_CONTROL;
     char bucket_src[]="bucket-src";

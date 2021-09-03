@@ -1,17 +1,27 @@
-/*********************************************************************************
-* Copyright 2019 Huawei Technologies Co.,Ltd.
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-* this file except in compliance with the License.  You may obtain a copy of the
-* License at
-* 
-* http://www.apache.org/licenses/LICENSE-2.0
-* 
-* Unless required by applicable law or agreed to in writing, software distributed
-* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-* CONDITIONS OF ANY KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations under the License.
-**********************************************************************************
-*/
+/** **************************************************************************
+ *
+ * Copyright 2008 Bryan Ischo <bryan@ischo.com>
+ *
+ * This file is part of libs3.
+ *
+ * libs3 is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation, version 3 of the License.
+ *
+ * In addition, as a special exception, the copyright holders give
+ * permission to link the code of this library and its programs with the
+ * OpenSSL library, and distribute linked combinations including the two.
+ *
+ * libs3 is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * version 3 along with libs3, in a file named COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ ************************************************************************** **/
 #ifndef REQUEST_H
 #define REQUEST_H
 
@@ -24,8 +34,8 @@
 
 
 #ifdef WIN32
-#define LIBOBS_VER_MAJOR "3.19"
-#define LIBOBS_VER_MINOR "9"
+#define LIBOBS_VER_MAJOR "3.21"
+#define LIBOBS_VER_MINOR "8"
 #endif
 
 #if defined __GNUC__ || defined LINUX
@@ -37,8 +47,8 @@
 #define BUCKET_LEN 65
 #define DOMAIN_LEN 254
 
-#define OBS_SDK_VERSION "3.19.9.3"
-#define USER_AGENT_VALUE  "obs-sdk-c-3.19.9.3" ;
+#define OBS_SDK_VERSION "3.21.8"
+#define USER_AGENT_VALUE  "obs-sdk-c-3.21.8" ;
 
 #define DEFAULT_LOW_SPEED_LIMIT    (1)
 #define DEFAULT_LOW_SPEED_TIME_S   (300)
@@ -46,15 +56,15 @@
 #define DEFAULT_TIMEOUT_S          (0)
 
 #define signbuf_append(format, ...)                             \
-    if (snprintf_sec(&(signbuf[len]), buf_len - (len), _TRUNCATE,format, __VA_ARGS__) > 0) \
+    if (snprintf_s(&(signbuf[len]), buf_len - (len), _TRUNCATE,format, __VA_ARGS__) > 0) \
     {\
-        (len) += snprintf_sec(&(signbuf[len]), buf_len - (len), _TRUNCATE,      \
+        (len) += snprintf_s(&(signbuf[len]), buf_len - (len), _TRUNCATE,      \
             format, __VA_ARGS__);                                                     \
     }\
 
 #define uri_append(fmt, ...)                                                 \
         do {                                                                     \
-            len += snprintf_sec(&(buffer[len]), buffer_size - len, _TRUNCATE,  fmt, __VA_ARGS__); \
+            len += snprintf_s(&(buffer[len]), buffer_size - len, _TRUNCATE,  fmt, __VA_ARGS__); \
             if (len >= buffer_size) {                                             \
                 return OBS_STATUS_UriTooLong;                                       \
             }                                                                    \
@@ -63,6 +73,7 @@
 #define curl_easy_setopt_safe(opt, val)                                 \
                 if ((status = curl_easy_setopt                                      \
                      (request->curl, opt, val)) != CURLE_OK) {                      \
+                    COMMLOG(OBS_LOGWARN, "curl_easy_setopt_safe failed, status: %d", status);    \
                     return OBS_STATUS_FailedToIInitializeRequest;                       \
                 }
                 
@@ -72,7 +83,7 @@
                                                              values-> fieldName);       \
                     }
                     
-#define append_request(str) len += sprintf_sec(&(buffer[len]), buffer_size-len, "%s", str)
+#define append_request(str) len += sprintf_s(&(buffer[len]), buffer_size-len, "%s", str)
 
 #define return_status(status)                                           \
     (*(params->complete_callback))(status, 0, params->callback_data);     \
@@ -188,6 +199,8 @@ typedef struct request_computed_values
 
     char urlEncodedKey[MAX_URLENCODED_KEY_SIZE + 1];
 
+    char urlEncodedSrcKey[MAX_URLENCODED_KEY_SIZE + 1];
+
     char canonicalizedResource[MAX_CANONICALIZED_RESOURCE_SIZE + 1];
 
     char cacheControlHeader[HEAD_NORMAL_LEN];
@@ -253,6 +266,8 @@ void request_perform(const request_params *params);
 void set_use_api_switch(const obs_options *options ,obs_use_api *use_api_temp);
 
 obs_use_api get_api_protocol(char *bucket_name, char *host_name);
+
+void request_finish_log(struct curl_slist* tmp, OBS_LOGLEVEL logLevel);
 
 #endif /* REQUEST_H */
 

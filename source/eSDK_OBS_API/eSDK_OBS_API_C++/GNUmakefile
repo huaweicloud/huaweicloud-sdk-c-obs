@@ -86,11 +86,19 @@ else
 endif
 
 ifndef openssl_version
-   openssl_version := openssl-1.1.1d
+   openssl_version := openssl-1.1.1k
 endif
 
 ifndef curl_version
-   curl_version := curl-7.66.0
+   curl_version := curl-7.78.0
+endif
+
+ifndef pcre_version
+   pcre_version := pcre-8.45
+endif
+
+ifndef iconv_version
+   iconv_version := iconv-1.15
 endif
 
 ifndef nghttp2_version
@@ -147,16 +155,16 @@ ifndef LIBOPENSSL_CFLAGS
 endif
 
 ifndef LIBPCRE_LIBS
-     LIBPCRE_LIBS := -L./../../../build/script/Provider/build/${includePath}/pcre-8.39/lib -lpcre
+     LIBPCRE_LIBS := -L./../../../build/script/Provider/build/${includePath}/${pcre_version}/lib -lpcre
 endif
 
 ifndef LIBPCRE_CFLAGS
-     LIBPCRE_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/pcre-8.39/include/pcre
+     LIBPCRE_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/${pcre_version}/include/pcre
 endif
 
 # add libsecurec by jwx329074 2016.09.18
 ifndef LIBSECUREC_LIBS
-     LIBSECUREC_LIBS := -L./../../../platform/huaweisecurec/lib -lsecurec
+     LIBSECUREC_LIBS := -L./../../../platform/huaweisecurec/lib/${includePath} -lsecurec
 endif
 
 ifndef LIBSECUREC_CFLAGS
@@ -166,7 +174,7 @@ endif
 ifndef LIBICONV_CFLAGS
      ifndef BUILD_FOR_MACOS
          ifdef BUILD_FOR_NDK_AARCH64
-         LIBICONV_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/iconv-1.15/include
+         LIBICONV_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/${iconv_version}/include
          else
          LIBICONV_CFLAGS := -I./../../../third_party_groupware/eSDK_Storage_Plugins/libiconv-1.15/source/include
          endif
@@ -177,7 +185,7 @@ ifndef LIBICONV_LIBS
     ifdef BUILD_FOR_MACOS
      LIBICONV_LIBS := -liconv
     else
-     LIBICONV_LIBS := -L./../../../build/script/Provider/build/${includePath}/iconv-1.15/lib -liconv
+     LIBICONV_LIBS := -L./../../../build/script/Provider/build/${includePath}/${iconv_version}/lib -liconv
     endif
 endif
 

@@ -566,7 +566,7 @@ static void test_batch_delete_new(int argc, char **argv, int optindex)
             break;
         }
         key_version[num] = (char *) malloc(1024);
-        memset(key_version[num], 0, 1024);  
+        memset_s(key_version[num], sizeof(key_version[num]),0, 1024);  
         fgets(key_version[num],1024,fd);
         find = strchr(key_version[num], '\n');
         if (find)
@@ -712,7 +712,7 @@ static void test_create_bucket_new(int argc, char **argv, int optindex)
     obs_canned_acl bucket_acl = OBS_CANNED_ACL_PRIVATE;
     temp_auth_configure tempauth;
     tempAuthResult  ptrResult;
-    memset(&ptrResult,0,sizeof(tempAuthResult));
+    memset_s(&ptrResult,sizeof(ptrResult),0,sizeof(tempAuthResult));
     obs_status status = OBS_STATUS_OK;
     
     if (optindex == argc) {
@@ -825,7 +825,7 @@ static void test_create_pfs_bucket_new(int argc, char **argv, int optindex)
     obs_canned_acl bucket_acl = OBS_CANNED_ACL_PRIVATE;
     temp_auth_configure tempauth;
     tempAuthResult  ptrResult;
-    memset(&ptrResult,0,sizeof(tempAuthResult));
+    memset_s(&ptrResult,sizeof(ptrResult),0,sizeof(tempAuthResult));
     obs_status status = OBS_STATUS_OK;
     
     if (optindex == argc) {
@@ -1197,7 +1197,7 @@ static void test_append_object_new(int argc, char **argv, int optindex)
             if (!put_properties.meta_data)
             {
                 put_properties.meta_data = (obs_name_value *) malloc(sizeof(obs_name_value)*50);
-                memset(put_properties.meta_data, 0, sizeof(obs_name_value)*50);
+                memset_s(put_properties.meta_data, sizeof(put_properties.meta_data),0, sizeof(obs_name_value)*50);
             }
             put_properties.meta_data[put_properties.meta_data_count].name = name;
             put_properties.meta_data[put_properties.meta_data_count++].value = value;
@@ -1231,7 +1231,7 @@ static void test_append_object_new(int argc, char **argv, int optindex)
 
     //read from local file to buffer
     put_object_callback_data data;
-    memset(&data, 0, sizeof(put_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_object_callback_data));
 
     data.infile = 0;
     data.gb = 0;
@@ -1305,7 +1305,7 @@ static void test_put_object_new(int argc, char **argv, int optindex)
     
     temp_auth_configure tempauth;
     tempAuthResult  ptrResult;
-    memset(&ptrResult,0,sizeof(tempAuthResult));
+    memset_s(&ptrResult,sizeof(ptrResult),0,sizeof(tempAuthResult));
     
     printf("Bucket's name is == %s, object's name is == %s. \n", bucket_name, key);
     init_obs_options(&option);
@@ -1319,7 +1319,7 @@ static void test_put_object_new(int argc, char **argv, int optindex)
     init_put_properties(&put_properties);
     
     put_properties.meta_data = (obs_name_value*)malloc(sizeof(obs_name_value)*10);
-    memset(put_properties.meta_data, 0, sizeof(obs_name_value)*10);
+    memset_s(put_properties.meta_data, sizeof(put_properties.meta_data),0, sizeof(obs_name_value)*10);
 
     //check parameters
     while (optindex < argc) {
@@ -1403,7 +1403,7 @@ static void test_put_object_new(int argc, char **argv, int optindex)
 
     //read from local file to buffer
     put_object_callback_data data;
-    memset(&data, 0, sizeof(put_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_object_callback_data));
 
     data.infile = 0;
     data.gb = 0;
@@ -1473,7 +1473,7 @@ void set_image_proc(char *strImageProcConfig, obs_get_conditions *get_conditions
     {
         strCmds_StyleName ++;
         get_conditions->image_process_config = (image_process_configure *)malloc(sizeof(image_process_configure));
-        memset(get_conditions->image_process_config,0,sizeof(image_process_configure));
+        memset_s(get_conditions->image_process_config,sizeof(get_conditions->image_process_config),0,sizeof(image_process_configure));
         get_conditions->image_process_config->cmds_stylename = strCmds_StyleName;
         
         if (strncmp(strImageProcConfig, "style", strlen("style")) == 0) {
@@ -1499,7 +1499,7 @@ void set_image_proc(char *strImageProcConfig, obs_get_conditions *get_conditions
 obs_get_conditions* malloc_init_condition()
 {
     obs_get_conditions *get_conditions = (obs_get_conditions *)malloc(sizeof(obs_get_conditions));
-    memset(get_conditions, 0, sizeof(obs_get_conditions));
+    memset_s(get_conditions, sizeof(get_conditions),0, sizeof(obs_get_conditions));
     init_get_properties(get_conditions); 
     return get_conditions;
 }
@@ -1515,9 +1515,9 @@ void test_get_object_new(int argc, char **argv, int optindex)
     obs_get_conditions *get_conditions = NULL;
     temp_auth_configure tempauth;
     tempAuthResult  ptrResult;
-    memset(&ptrResult,0,sizeof(tempAuthResult));
+    memset_s(&ptrResult,sizeof(ptrResult),0,sizeof(tempAuthResult));
     
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
     object_info.key = key;
     printf("Bucket's name is == %s, object's name is == %s. \n", bucket_name, key);
 
@@ -1650,7 +1650,7 @@ static void test_delete_object_new(int argc, char **argv, int optindex)
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
  
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info,sizeof(object_info), 0, sizeof(obs_object_info));
     while (optindex < argc) {
         char *param = argv[optindex++];
         if (!strncmp(param, KEY_PREFIX, KEY_PREFIX_LEN)) {
@@ -1750,8 +1750,9 @@ static void test_list_bucket_object_new(int argc, char **argv, int optindex)
     }
     
     list_object_callback_data data;
-    memset(&data, 0, sizeof(list_object_callback_data));
-    snprintf(data.next_marker, sizeof(data.next_marker), "%s", marker);
+    memset_s(&data,sizeof(data) ,0, sizeof(list_object_callback_data));
+    snprintf_s(data.next_marker, sizeof(data.next_marker),
+		sizeof(data.next_marker)-1 , "%s", marker);
     data.keyCount = 0;
     data.allDetails = allDetails;
     data.is_truncated = 0;
@@ -1818,7 +1819,7 @@ void test_list_bucket_new_s3(int argc, char **argv, int optindex)
     }
     
     list_service_data data;
-    memset(&data, 0, sizeof(list_service_data));
+    memset_s(&data, sizeof(data),0, sizeof(list_service_data));
     
     obs_list_service_handler listHandler =
     { 
@@ -1863,7 +1864,7 @@ void test_list_bucket_new_obs(int argc, char **argv, int optindex)
     }
     
     list_service_data data;
-    memset(&data, 0, sizeof(list_service_data));
+    memset_s(&data,sizeof(data) ,0, sizeof(list_service_data));
     
     obs_list_service_obs_handler listHandler =
     { 
@@ -1920,7 +1921,7 @@ void test_list_bucket_new(int argc, char **argv, int optindex)
     }
 	
     list_service_data data;
-    memset(&data, 0, sizeof(list_service_data));
+    memset_s(&data, sizeof(data),0, sizeof(list_service_data));
 	
 	
 	if (option.request_options.auth_switch == OBS_S3_TYPE)
@@ -2092,7 +2093,7 @@ static void test_list_versions_new(int argc, char **argv, int optindex)
     };
 
     list_versions_callback_data data;
-    memset(&data, 0, sizeof(list_versions_callback_data)); 
+    memset_s(&data, sizeof(data),0, sizeof(list_versions_callback_data)); 
 
     list_versions(&option, prefix, key_marker, delimiter, maxkeys, version_id_marker,
                  &list_versions_handler, &data); 
@@ -2405,7 +2406,7 @@ static void test_set_bucket_lifecycle_new(int argc, char **argv, int optindex)
         { 
             noncurrent_version_transition = get_lifecycle_para(transition,RULE_NONCURRENT_TRANSITION_PREFIX,RULE_NONCURRENT_TRANSITION_PREFIX_LEN);
             bucket_lifecycle_conf[i].transition = (obs_lifecycle_transtion *)malloc(sizeof(obs_lifecycle_transtion)*10);
-            memset(bucket_lifecycle_conf[i].transition,0,sizeof(obs_lifecycle_transtion));
+            memset_s(bucket_lifecycle_conf[i].transition,sizeof(bucket_lifecycle_conf[i].transition),0,sizeof(obs_lifecycle_transtion));
             transition = &transition[RULE_TRANSITION_PREFIX_LEN];
             char *temp_transition = strtok(transition,",");
             j = 0;
@@ -2442,7 +2443,7 @@ static void test_set_bucket_lifecycle_new(int argc, char **argv, int optindex)
             noncurrent_version_transition = &noncurrent_version_transition[RULE_NONCURRENT_TRANSITION_PREFIX_LEN];
             
             bucket_lifecycle_conf[i].noncurrent_version_transition = (obs_lifecycle_noncurrent_transtion *)malloc(sizeof(obs_lifecycle_noncurrent_transtion)*10 );
-            memset(bucket_lifecycle_conf[i].noncurrent_version_transition,0,sizeof(obs_lifecycle_noncurrent_transtion));
+            memset_s(bucket_lifecycle_conf[i].noncurrent_version_transition,sizeof(bucket_lifecycle_conf[i].noncurrent_version_transition),0,sizeof(obs_lifecycle_noncurrent_transtion));
  
             char *temp_noncurrent_transition = strtok(noncurrent_version_transition,",");
             while(temp_noncurrent_transition)
@@ -3045,14 +3046,14 @@ void init_acl_info(manager_acl_info *aclinfo)
 
     aclinfo->acl_grants = (obs_acl_grant*)malloc(sizeof(obs_acl_grant)*2);
     memset_s( aclinfo->acl_grants, 2 * sizeof(obs_acl_grant), 0, 2 *sizeof(obs_acl_grant));
-    strcpy(aclinfo->acl_grants->grantee.canonical_user.id, "userid1"); 
-    strcpy(aclinfo->acl_grants->grantee.canonical_user.display_name, "name1"); 
+    strcpy_s(aclinfo->acl_grants->grantee.canonical_user.id,sizeof(aclinfo->acl_grants->grantee.canonical_user.id), "userid1"); 
+    strcpy_s(aclinfo->acl_grants->grantee.canonical_user.display_name, sizeof(aclinfo->acl_grants->grantee.canonical_user.display_name),"name1"); 
     aclinfo->acl_grants->grantee_type = OBS_GRANTEE_TYPE_LOG_DELIVERY;
     aclinfo->acl_grants->permission = OBS_PERMISSION_WRITE ; 
     aclinfo->acl_grants->bucket_delivered = BUCKET_DELIVERED_FALSE;
 
-    strcpy((aclinfo->acl_grants + 1)->grantee.canonical_user.id, "userid1"); 
-    strcpy((aclinfo->acl_grants + 1)->grantee.canonical_user.display_name, "name1"); 
+    strcpy_s((aclinfo->acl_grants + 1)->grantee.canonical_user.id,sizeof((aclinfo->acl_grants + 1)->grantee.canonical_user.id), "userid1");
+    strcpy_s((aclinfo->acl_grants + 1)->grantee.canonical_user.display_name,sizeof((aclinfo->acl_grants + 1)->grantee.canonical_user.display_name), "name1");
     (aclinfo->acl_grants + 1)->grantee_type = OBS_GRANTEE_TYPE_CANONICAL_USER;
     (aclinfo->acl_grants + 1)->permission = OBS_PERMISSION_READ_ACP ; 
     (aclinfo->acl_grants + 1)->bucket_delivered = BUCKET_DELIVERED_TRUE; 
@@ -3064,10 +3065,10 @@ void init_acl_info(manager_acl_info *aclinfo)
     memset_s(aclinfo->owner_id,sizeof(aclinfo->owner_id),0,sizeof(aclinfo->owner_id));
     aclinfo->owner_display_name = (char *)malloc(sizeof(char)*100);
     memset_s(aclinfo->owner_display_name,sizeof(aclinfo->owner_display_name),0,sizeof(aclinfo->owner_display_name));
-    strcpy(aclinfo->owner_id, "domainiddomainiddomainiddo006000");   
-    strcpy(aclinfo->owner_display_name, "domainnamedom006000");
+    strcpy_s(aclinfo->owner_id,sizeof(aclinfo->owner_id), "domainiddomainiddomainiddo006000");   
+    strcpy_s(aclinfo->owner_display_name,sizeof(aclinfo->owner_display_name), "domainnamedom006000");
 
-    memset(&aclinfo->object_info,0,sizeof(aclinfo->object_info));
+    memset_s(&aclinfo->object_info,sizeof(aclinfo->object_info),0,sizeof(aclinfo->object_info));
 }
 
 void deinitialize_acl_info(manager_acl_info *aclinfo)
@@ -3084,11 +3085,11 @@ obs_acl_group* set_grant_acl(int argc, char **argv, int optindex, obs_options* o
     char *count = argv[optindex++];
     int acl_grant_count = convertInt(count, "grant_count");
     obs_acl_group *g = (obs_acl_group *)malloc(sizeof(obs_acl_group));
-    memset(g, 0, sizeof(obs_acl_group));
+    memset_s(g,sizeof(g), 0, sizeof(obs_acl_group));
     
     int aclGrantCount = 0;
     obs_acl_grant *acl_grants = (obs_acl_grant*)malloc(sizeof(obs_acl_grant)*10);
-    memset(acl_grants, 0, sizeof(obs_acl_grant) * 10); 
+    memset_s(acl_grants,sizeof(acl_grants) ,0, sizeof(obs_acl_grant) * 10); 
     while (optindex < argc) {
         char *param = argv[optindex ++];
         if (!strncmp(param, grantee_type_str, grantee_type_str_length))
@@ -3107,7 +3108,8 @@ obs_acl_group* set_grant_acl(int argc, char **argv, int optindex, obs_options* o
             aclGrantCount = 0;
             char* p=strtok(user_id,delim);
             while(p!=NULL){
-                strcpy(acl_grants[aclGrantCount++].grantee.canonical_user.id, p);
+                strcpy_s(acl_grants[aclGrantCount++].grantee.canonical_user.id, 
+					sizeof(acl_grants[aclGrantCount++].grantee.canonical_user.id),p);
                 p=strtok(NULL,delim);
             }
         }
@@ -3117,7 +3119,8 @@ obs_acl_group* set_grant_acl(int argc, char **argv, int optindex, obs_options* o
             aclGrantCount = 0;
             char* p=strtok(display_name,delim);
             while(p!=NULL){
-                strcpy(acl_grants[aclGrantCount++].grantee.canonical_user.display_name, p);
+                strcpy_s(acl_grants[aclGrantCount++].grantee.canonical_user.display_name, 
+					sizeof(acl_grants[aclGrantCount++].grantee.canonical_user.display_name),p);
                 p=strtok(NULL,delim);
             }
         }
@@ -3147,8 +3150,8 @@ obs_acl_group* set_grant_acl(int argc, char **argv, int optindex, obs_options* o
             aclGrantCount = 0;
             char* p=strtok(email_str,delim);
             while(p!=NULL){
-                strcpy(acl_grants[aclGrantCount++].grantee.huawei_customer_by_email.email_address,
-                    p);
+                strcpy_s(acl_grants[aclGrantCount++].grantee.huawei_customer_by_email.email_address,
+                    sizeof(acl_grants[aclGrantCount++].grantee.huawei_customer_by_email.email_address),p);
                 p=strtok(NULL,delim);
             } 
         }
@@ -3200,7 +3203,7 @@ void test_set_bucket_acl_new(int argc, char **argv, int optindex)
     };
 
     manager_acl_info aclinfo;    
-    memset(&aclinfo, 0, sizeof(manager_acl_info));
+    memset_s(&aclinfo,sizeof(aclinfo) ,0, sizeof(manager_acl_info));
     aclinfo.acl_grant_count_return = (int*)malloc(sizeof(int));
     *(aclinfo.acl_grant_count_return) = 0;
 
@@ -3221,7 +3224,7 @@ void test_set_bucket_acl_new(int argc, char **argv, int optindex)
     *(aclinfo.acl_grant_count_return) = g->acl_grant_count;
     aclinfo.acl_grants = g->acl_grants;
     
-    memset(&aclinfo.object_info,0,sizeof(aclinfo.object_info));
+    memset_s(&aclinfo.object_info,sizeof(aclinfo.object_info),0,sizeof(aclinfo.object_info));
 
     set_bucket_acl(&option, &aclinfo, &response_handler, &ret_status);
     
@@ -3296,6 +3299,9 @@ void test_set_object_acl_new(int argc, char **argv, int optindex)
         }
 		else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
 			option.request_options.auth_switch = OBS_S3_TYPE;
+        }else if (!strncmp(param, owner_id_str, owner_id_str_length))
+        {
+            aclinfo.owner_id = &param[owner_id_str_length];
         }
     }
     set_object_acl(&option, &aclinfo, &response_handler, &ret_status);
@@ -3409,7 +3415,7 @@ void test_get_bucket_tagging_new(int argc, char **argv, int optindex)
     };
 
     TaggingInfo tagging_info;
-    memset(&tagging_info, 0, sizeof(TaggingInfo));
+    memset_s(&tagging_info,sizeof(tagging_info) ,0, sizeof(TaggingInfo));
     tagging_info.ret_status = OBS_STATUS_BUTT;
 
     get_bucket_tagging(&option, &response_handler, &tagging_info);
@@ -3598,7 +3604,7 @@ pointer_char_256 parserString(char* sourceString, const char* delimiter)
                 exit(EXIT_FAILURE);
         }
 
-        snprintf(p[j - 1] , OBS_COMMON_LEN_256 - 1, "%s",  token);
+        snprintf_s(p[j - 1] , OBS_COMMON_LEN_256 - 1, OBS_COMMON_LEN_256 - 2, "%s",  token);
     }
     return p;
 }
@@ -3629,7 +3635,7 @@ const char ** parserString2CPP(char* sourceString, const char* delimiter, int *n
         pp[j-1] = (char *)malloc(sizeof(char) * OBS_COMMON_LEN_256);
         if (!pp[j - 1])
             exit(EXIT_FAILURE);
-        snprintf(pp[j-1] , OBS_COMMON_LEN_256, "%s",  token);
+        snprintf_s(pp[j-1] , OBS_COMMON_LEN_256, OBS_COMMON_LEN_256-1,"%s",  token);
     }
     if (pp)
         *num = j - 1;
@@ -3805,7 +3811,7 @@ void test_set_bucket_cors(int argc, char **argv, int optindex)
 
     const char *delimiter = ",";
     obs_bucket_cors_conf bucketCorsConf; 
-    memset(&bucketCorsConf, 0, sizeof(obs_bucket_cors_conf));
+    memset_s(&bucketCorsConf,sizeof(bucketCorsConf) ,0, sizeof(obs_bucket_cors_conf));
 
     // 设置option
     init_obs_options(&option);
@@ -4501,7 +4507,7 @@ static void start_upload_threads(test_upload_file_callback_data data,
      
      for(i=0; i <partCount; i++)
      {
-        memset(concurrent_temp[i].etag, 0,sizeof(concurrent_temp[i].etag));
+        memset_s(concurrent_temp[i].etag,sizeof(concurrent_temp[i].etag) ,0,sizeof(concurrent_temp[i].etag));
         concurrent_temp[i].part_num = i+1;
         concurrent_temp[i].infile = data.infile;
         concurrent_temp[i].upload_id = concurrent_upload_id;
@@ -4613,7 +4619,7 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     
     //大文件信息:文件指针，文件大小，按照分段大小的分段数
     test_upload_file_callback_data data;
-    memset(&data, 0, sizeof(test_upload_file_callback_data));
+    memset_s(&data,sizeof(data), 0, sizeof(test_upload_file_callback_data));
     filesize = get_file_info(filename,&data);
     data.noStatus = 1;
     data.part_size = uploadSize;
@@ -4626,7 +4632,7 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
         0,&Handler, &ret_status);
     if (OBS_STATUS_OK == ret_status) {
         printf("test init upload part return uploadIdReturn(%s). \n", uploadIdReturn);
-        strcpy(concurrent_upload_id,uploadIdReturn);
+        strcpy_s(concurrent_upload_id,sizeof(concurrent_upload_id),uploadIdReturn);
     }
     else
     {
@@ -4757,7 +4763,7 @@ static void test_concurrent_copy_part(int argc, char **argv, int optindex)
         0,&Handler, &ret_status);
     if (OBS_STATUS_OK == ret_status) {
         printf("test init upload part return uploadIdReturn(%s). \n", uploadIdReturn);
-        strcpy(concurrent_upload_id,uploadIdReturn);
+        strcpy_s(concurrent_upload_id,sizeof(concurrent_upload_id),uploadIdReturn);
     }
     else
     {
@@ -4797,7 +4803,7 @@ static void test_concurrent_copy_part(int argc, char **argv, int optindex)
     listpart.max_parts = atol(part_num);
     listpart.part_number_marker = 0;
     list_parts_callback_data data;
-    memset(&data, 0, sizeof(list_parts_callback_data));
+    memset_s(&data, sizeof(data), 0, sizeof(list_parts_callback_data));
     option.bucket_options.bucket_name = destinationBucket;
     do{
         list_parts(&option, destinationKey,&listpart, &listHandler, &data);
@@ -5013,7 +5019,7 @@ static void test_set_bucket_website_conf_new(int argc, char **argv, int optindex
        set_bucket_website_conf.key = &param[KEY_PREFIX_LEN]; 
     }
     bucket_website_routingrule temp[10] = {0};
-    memset(temp, 0, sizeof(bucket_website_routingrule)*10);
+    memset_s(temp,sizeof(temp), 0, sizeof(bucket_website_routingrule)*10);
     set_bucket_website_conf.routingrule_info = temp; 
     int rule_number = 0;
     char *delim = ",";
@@ -5129,7 +5135,7 @@ void test_restore_object(int argc, char **argv, int optindex)
 
 
     obs_object_info object_info;
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info,sizeof(object_info) ,0, sizeof(obs_object_info));
     object_info.key =key;
 
     obs_status ret_status = OBS_STATUS_BUTT;
@@ -5293,7 +5299,7 @@ static void test_put_object_with_encrypt(int argc, char **argv, int optindex)
     //服务端加密
     /*SSE-KMS加密*/
     server_side_encryption_params encryption_params;
-    memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+    memset_s(&encryption_params,sizeof(encryption_params) ,0, sizeof(server_side_encryption_params));
     //不设置 系统会生成默认的加密密钥
 
     /*SSE-C*/
@@ -5343,7 +5349,7 @@ static void test_put_object_with_encrypt(int argc, char **argv, int optindex)
 
     //read from local file to buffer
     put_object_callback_data data;
-    memset(&data, 0, sizeof(put_object_callback_data));
+    memset_s(&data,sizeof(data), 0, sizeof(put_object_callback_data));
 
     data.infile = 0;
     data.gb = 0;
@@ -5391,7 +5397,7 @@ void test_get_object_with_encrypt(int argc, char **argv, int optindex)
     obs_options option;
     obs_get_conditions *get_conditions = NULL;
     
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
     object_info.key =key;
     printf("Bucket's name is == %s, object's name is == %s. \n", bucket_name, key);
 
@@ -5403,7 +5409,7 @@ void test_get_object_with_encrypt(int argc, char **argv, int optindex)
     option.bucket_options.uri_style = gDefaultURIStyle;
 
     server_side_encryption_params encryption_params;
-    memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+    memset_s(&encryption_params,sizeof(encryption_params), 0, sizeof(server_side_encryption_params));
 
     char* buffer = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
 
@@ -5487,7 +5493,7 @@ void test_get_object_with_encrypt(int argc, char **argv, int optindex)
         else if (!strncmp(param, TMP_AUTH_EXPIRES_PREFIX,TMP_AUTH_EXPIRES_PREFIX_LEN)){
             temp_auth_configure tempauth;
             tempAuthResult  ptrResult;
-            memset(&ptrResult,0,sizeof(tempAuthResult));
+            memset_s(&ptrResult,sizeof(ptrResult),0,sizeof(tempAuthResult));
             tempauth.callback_data = (void *)(&ptrResult);
             int auth_expire = atoi(&param[TMP_AUTH_EXPIRES_PREFIX_LEN]);
             tempauth.expires = auth_expire;
@@ -5557,8 +5563,8 @@ static void test_set_notification_configuration_new(int argc, char **argv, int o
     int i = 0;
     char *tmp[10] = {0};
 
-    memset(topic_event, 0, sizeof(obs_smn_event_enum)*10*10);
-    memset(filter_rule, 0, sizeof(obs_smn_filter_rule)*10*10);
+    memset_s(topic_event,sizeof(topic_event), 0, sizeof(obs_smn_event_enum)*10*10);
+    memset_s(filter_rule,sizeof(filter_rule),0, sizeof(obs_smn_filter_rule)*10*10);
     
     obs_response_handler response_handler =
     { 
@@ -5671,7 +5677,7 @@ static void test_set_notification_configuration_new(int argc, char **argv, int o
         }
     }
     
-    memset(&notification_conf, 0, sizeof(obs_smn_notification_configuration)); 
+    memset_s(&notification_conf,sizeof(notification_conf), 0, sizeof(obs_smn_notification_configuration)); 
     notification_conf.topic_conf = topic_conf; 
     notification_conf.topic_conf_num = topic_num;
 
@@ -5794,7 +5800,7 @@ static void test_modify_object_new(int argc, char **argv, int optindex)
             if (!put_properties.meta_data)
             {
                 put_properties.meta_data = (obs_name_value *) malloc(sizeof(obs_name_value)*50);
-                memset(put_properties.meta_data, 0, sizeof(obs_name_value)*50);
+                memset_s(put_properties.meta_data, sizeof(put_properties.meta_data),0, sizeof(obs_name_value)*50);
             }
             put_properties.meta_data[put_properties.meta_data_count].name = name;
             put_properties.meta_data[put_properties.meta_data_count++].value = value;
@@ -5819,7 +5825,7 @@ static void test_modify_object_new(int argc, char **argv, int optindex)
 
     //read from local file to buffer
     put_object_callback_data data;
-    memset(&data, 0, sizeof(put_object_callback_data));
+    memset_s(&data,sizeof(data), 0, sizeof(put_object_callback_data));
 
     data.infile = 0;
     data.gb = 0;
@@ -5995,10 +6001,10 @@ int main(int argc, char **argv)
         }
     }
     
-    strcpy(ACCESS_KEY_ID, getenv("ACCESS_KEY_ID"));
-    strcpy(SECRET_ACCESS_KEY, getenv("SECRET_ACCESS_KEY"));      
-    strcpy(HOST_NAME, getenv("OBS_TEST_HOSTNAME")); 
-    strcpy(locationconstraint,"R1");   //location
+    strcpy_s(ACCESS_KEY_ID,sizeof(ACCESS_KEY_ID), getenv("ACCESS_KEY_ID"));
+    strcpy_s(SECRET_ACCESS_KEY, sizeof(SECRET_ACCESS_KEY),getenv("SECRET_ACCESS_KEY"));      
+    strcpy_s(HOST_NAME, sizeof(HOST_NAME),getenv("OBS_TEST_HOSTNAME")); 
+    strcpy_s(locationconstraint,sizeof(locationconstraint),"R1");   //location
     get_certificate_info(ca_info, sizeof(ca_info));
     
     /*--------------check argv-------------*/

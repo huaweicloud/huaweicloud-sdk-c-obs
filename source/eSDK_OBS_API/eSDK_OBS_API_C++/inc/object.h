@@ -39,7 +39,7 @@
 
 #define appendXmlDocument(fmt, ...)                             \
     do {                                                        \
-        *xmlDocumentLenReturn += snprintf_sec                     \
+        *xmlDocumentLenReturn += snprintf_s                     \
             (&(xmlDocument[*xmlDocumentLenReturn]),             \
              xmlDocumentBufferSize - *xmlDocumentLenReturn,     \
              xmlDocumentBufferSize - *xmlDocumentLenReturn - 1, \
@@ -369,7 +369,7 @@ typedef struct delete_object_data
 
 #define append(fmt, ...)                                                  \
     do {                                                                 \
-        *xmlDocumentLenReturn += snprintf_sec                              \
+        *xmlDocumentLenReturn += snprintf_s                              \
             (&(xmlDocument[*xmlDocumentLenReturn]), xmlDocumentBufferSize - *xmlDocumentLenReturn , \
              xmlDocumentBufferSize - *xmlDocumentLenReturn - 1,           \
              fmt, __VA_ARGS__);                                           \

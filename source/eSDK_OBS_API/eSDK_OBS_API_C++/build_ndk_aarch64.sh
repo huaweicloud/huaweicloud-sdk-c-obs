@@ -1,12 +1,12 @@
 #!/bin/bash
 #Usage: build.sh packageName release|debug
-#packageName Îª""Ê± ²»´ò°ü
+#packageName Îª""Ê± ï¿½ï¿½ï¿½ï¿½ï¿½
 
-# ©À©¤bin
-# ©À©¤include
-# ©¸©¤lib
+# ï¿½ï¿½ï¿½ï¿½bin
+# ï¿½ï¿½ï¿½ï¿½include
+# ï¿½ï¿½ï¿½ï¿½lib
 #----------------------- variables --------------------#
-#µ±Ç°½Å±¾ËùÔÚÂ·¾¶
+#ï¿½ï¿½Ç°ï¿½Å±ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½
 G_CWD=`dirname $0`
 pushd $G_CWD >/dev/null
 G_CWD=`pwd`
@@ -127,14 +127,14 @@ getThirdparty()
     tar xzf ${THIRDPARTY_DIR}/pcre-*.tar.gz -C ${THIRDPARTY_DIR}
 }
 
-#----------±àÒëthird_party_groupware------------
+#----------ï¿½ï¿½ï¿½ï¿½third_party_groupware------------
 #compileThirty L_THIRTY_DIR
 
 #cd ${G_BUILD_DIR}
 
 getThirdparty
 
-#----------±àÒëlibsecurec.so------------
+#----------ï¿½ï¿½ï¿½ï¿½libsecurec.so------------
 bash $L_THIRTY_DIR/build_logAPI.sh
 
 pushd $G_SECUREC_PATH/src >/dev/null
@@ -161,6 +161,14 @@ mkdir lib
 if [ "$G_BUILD_OPTION" == "debug" ];then
 g_PATH=build-debug
 fi
+
+bm --action download --name eSDK_LogAPI --version "2.1.10" --release latest --token ${bm_user_token} --output ${G_PLATFORM}
+bm --action download --name obs-sdk-c-third-lib --version "1.0.0" --release latest --token ${bm_user_token} --output ${G_THIRTY_DIR}
+
+tar xzf ${G_PLATFORM}/eSDK_LogAPI_*.tar -C ${G_PLATFORM}
+tar xzf ${G_THIRTY_DIR}/esdk-obs-c-third-lib.tar -C ${G_THIRTY_DIR}
+
+rm ${G_PLATFORM}/eSDK_LogAPI_*.tar ${G_THIRTY_DIR}/esdk-obs-c-third-lib.tar
 
 cp -f ${g_PATH}/include/* include
 cp -f ${g_PATH}/lib/*.so lib

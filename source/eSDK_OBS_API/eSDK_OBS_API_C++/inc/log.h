@@ -187,6 +187,9 @@ void itoa(int i, char*string);
 }
 #endif
 
+void NULLLOG();
+void CheckAndLogNoneZero(int, const char*, const char*, unsigned long);
+void CheckAndLogNeg(int, const char*, const char*, unsigned long);
 
 
 #endif

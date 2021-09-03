@@ -1,12 +1,12 @@
 #!/bin/bash
 #Usage: build.sh packageName release|debug
-#packageName Îª""Ê± ²»´ò°ü
+#packageName Îª""Ê± ï¿½ï¿½ï¿½ï¿½ï¿½
 
-# ©À©¤bin
-# ©À©¤include
-# ©¸©¤lib
+# ï¿½ï¿½ï¿½ï¿½bin
+# ï¿½ï¿½ï¿½ï¿½include
+# ï¿½ï¿½ï¿½ï¿½lib
 #----------------------- variables --------------------#
-#µ±Ç°½Å±¾ËùÔÚÂ·¾¶
+#ï¿½ï¿½Ç°ï¿½Å±ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½
 G_CWD=`dirname $0`
 pushd $G_CWD >/dev/null
 G_CWD=`pwd`
@@ -22,7 +22,7 @@ G_SECUREC_PATH=$G_CWD/../../../platform/huaweisecurec
 #THIRTY_DIRÄ¿Â¼
 G_THIRTY_DIR=$G_CWD/../../../build/script/Provider
 L_THIRTY_DIR=../../../build/script/Provider
-
+G_PLATFORM=$G_CWD/../../../platform/
 #----------------------- functions ---------------------#
 L_PACKAGE_NAME=$1
 L_PRODUCT_TYPE=`echo $2 | tr A-Z a-z`
@@ -33,14 +33,19 @@ if [ "debug" == "$2" ];then
 	export DEBUG=debug
 fi
 
-if [ "openssl-oldversion" == "$3" ];then
-export openssl_version=openssl-1.0.2r
-export curl_version=curl-7.64.1
-else
-export openssl_version=openssl-1.1.1d
-export curl_version=curl-7.66.0
-fi
+#if [ "openssl-oldversion" == "$3" ];then
+#export openssl_version=openssl-1.0.2r
+#export curl_version=curl-7.64.1
+#export pcre_version=pcre-8.39
+#export iconv_version=iconv-1.15
+#export libxml2_version=libxml2-2.9.9
+#else
+export openssl_version=openssl-1.1.1k
+export curl_version=curl-7.78.0
+export pcre_version=pcre-8.45
+export iconv_version=iconv-1.15
 export libxml2_version=libxml2-2.9.9
+#fi
 #export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #
 # Function Name: ifFailExitAndPrint
@@ -101,19 +106,28 @@ compileThirty()
     cd ${G_BUILD_DIR}
 }
 
-#----------±àÒëthird_party_groupware------------
+#----------ï¿½ï¿½ï¿½ï¿½third_party_groupware------------
 #compileThirty L_THIRTY_DIR
 
 #cd ${G_BUILD_DIR}
 
-#----------±àÒëlibsecurec.so------------
-pushd $G_SECUREC_PATH/src >/dev/null
-make clean
+#----------ï¿½ï¿½ï¿½ï¿½libsecurec.so------------
+#pushd $G_SECUREC_PATH/src >/dev/null
+#make clean
 
-make
+# make
 popd >/dev/null
+
 make clean
-make
+mkdir cmake-build
+cd cmake-build
+mkdir cmake
+cd cmake
+cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=Release
+make 
+cd ../../
+#make clean
+#make
 
 if [ -d demo ];then
     rm -rf demo
@@ -136,17 +150,19 @@ if [ "$G_BUILD_OPTION" == "debug" ];then
 g_PATH=build-debug
 fi
 
-cp -f ${g_PATH}/include/* include
-cp -f ${g_PATH}/lib/*.so lib
+
+
+cp -f inc/eSDKOBS.h include
+cp -f cmake-build/cmake/lib/*.so lib
 cp -f ./../../../platform/huaweisecurec/include/* include
-cp -f ./../../../platform/huaweisecurec/lib/libsecurec.so lib
+cp -f ./../../../platform/huaweisecurec/lib/linux/libsecurec.so lib
 cp -af ./../../../platform/eSDK_LogAPI_V2.1.10/C/linux_64/libeSDKLogAPI.so lib
 cp -af ./../../../platform/eSDK_LogAPI_V2.1.10/C/linux_64/liblog4cpp* lib 
 cp -af ./../../../build/script/Provider/build/linux/${curl_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/linux/${libxml2_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/linux/${openssl_version}/lib/* lib 
-cp -af ./../../../build/script/Provider/build/linux/pcre-8.39/lib/* lib 
-cp -af ./../../../build/script/Provider/build/linux/iconv-1.15/lib/* lib 
+cp -af ./../../../build/script/Provider/build/linux/${pcre_version}/lib/* lib 
+cp -af ./../../../build/script/Provider/build/linux/${iconv_version}/lib/* lib 
 #cp -f ./../../../build/script/Provider/build/linux/${nghttp2_version}/lib/* lib 
 cp -f Makefile_obs demo/Makefile
 cp -f OBS.ini lib

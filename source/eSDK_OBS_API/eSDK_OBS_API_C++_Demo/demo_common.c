@@ -162,24 +162,24 @@ void common_error_handle(const obs_error_details *error)
 {
     int len = 0;
     if (error && error->message) {
-        len += snprintf(&(errorDetailsG[len]), sizeof(errorDetailsG) - len,
+        len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1 ,
                         "  Message: %s\n", error->message);
     }
     if (error && error->resource) {
-        len += snprintf(&(errorDetailsG[len]), sizeof(errorDetailsG) - len,
+        len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1,
                         "  Resource: %s\n", error->resource);
     }
     if (error && error->further_details) {
-        len += snprintf(&(errorDetailsG[len]), sizeof(errorDetailsG) - len,
+        len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1,
                         "  Further Details: %s\n", error->further_details);
     }
     if (error && error->extra_details_count) {
-        len += snprintf(&(errorDetailsG[len]), sizeof(errorDetailsG) - len,
+        len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1,
                         "%s", "  Extra Details:\n");
         int i;
         for (i = 0; i < error->extra_details_count; i++) {
-            len += snprintf(&(errorDetailsG[len]), 
-                            sizeof(errorDetailsG) - len, "    %s: %s\n", 
+            len += snprintf_s(&(errorDetailsG[len]), 
+                            sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1,"    %s: %s\n",
                             error->extra_details[i].name,
                             error->extra_details[i].value);
         }
@@ -258,7 +258,7 @@ void print_grant_info(int acl_grant_count,obs_acl_grant *acl_grants)
             break;
         case OBS_GRANTEE_TYPE_CANONICAL_USER:
             type = "UserID";
-            snprintf(composedId, sizeof(composedId),
+            snprintf_s(composedId, sizeof(composedId), sizeof(composedId)-1,
                     "%s (%s)", grant->grantee.canonical_user.id,
                     grant->grantee.canonical_user.display_name);
             id = composedId;
@@ -334,8 +334,8 @@ obs_status get_bucket_tagging_callback(int tagging_count, obs_name_value *taggin
     { 
         for(tag_num=0;tag_num<tagging_count;tag_num++)
         {
-            memcpy(tag_info->taglist[tag_num].key,(&tagging_list[tag_num])->name,strlen((&tagging_list[tag_num])->name)+1);
-            memcpy(tag_info->taglist[tag_num].value,(&tagging_list[tag_num])->value,strlen((&tagging_list[tag_num])->value)+1);
+            memcpy_s(tag_info->taglist[tag_num].key,sizeof(tag_info->taglist[tag_num].key),(&tagging_list[tag_num])->name,strlen((&tagging_list[tag_num])->name)+1);
+            memcpy_s(tag_info->taglist[tag_num].value, sizeof(tag_info->taglist[tag_num].value),(&tagging_list[tag_num])->value,strlen((&tagging_list[tag_num])->value)+1);
         }
     }
     printTagInfo(tag_info);
@@ -457,7 +457,7 @@ obs_status list_objects_callback(int is_truncated, const char *next_marker,
         next_marker = contents[contents_count - 1].key;
     }
     if (next_marker) {
-        snprintf(data->next_marker, sizeof(data->next_marker), "%s", 
+        snprintf_s(data->next_marker, sizeof(data->next_marker), sizeof(data->next_marker)-1, "%s",
                 next_marker);
     }
     else {
@@ -478,26 +478,26 @@ obs_status list_objects_callback(int is_truncated, const char *next_marker,
                 gmtime(&t));
         char sizebuf[16] = {0};
         if (content->size < 100000) {
-            sprintf(sizebuf, "%5llu", (unsigned long long) content->size);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%5llu", (unsigned long long) content->size);
         }
         else if (content->size < (1024 * 1024)) {
-            sprintf(sizebuf, "%4lluK", 
+            sprintf_s(sizebuf, sizeof(sizebuf), "%4lluK",
                     ((unsigned long long) content->size) / 1024ULL);
         }
         else if (content->size < (10 * 1024 * 1024)) {
             float f = content->size;
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fM", f);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%1.2fM", f);
         }
         else if (content->size < (1024 * 1024 * 1024)) {
-            sprintf(sizebuf, "%4lluM", 
+            sprintf_s(sizebuf, sizeof(sizebuf), "%4lluM",
                     ((unsigned long long) content->size) / 
                     (1024ULL * 1024ULL));
         }
         else {
             float f = (content->size / 1024);
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fG", f);
+            sprintf_s(sizebuf, sizeof(sizebuf), "%1.2fG", f);
         }
         printf("%-50s  %s  %s", content->key, timebuf, sizebuf);
         if (data->allDetails) {
@@ -562,7 +562,7 @@ obs_status listVersionsCallback(int is_truncated, const char *next_key_marker, c
         next_key_marker = list_versions->versions[list_versions->versions_count - 1].key;
     }
     if (next_key_marker) {
-        snprintf(data->next_key_marker, sizeof(data->next_key_marker), "%s", 
+        snprintf_s(data->next_key_marker, sizeof(data->next_key_marker), sizeof(data->next_key_marker)-1,"%s", 
                 next_key_marker);
     }
     else {
@@ -573,7 +573,7 @@ obs_status listVersionsCallback(int is_truncated, const char *next_key_marker, c
         next_versionId_marker = list_versions->versions[list_versions->versions_count - 1].version_id;
     }
     if (next_versionId_marker) {
-        snprintf(data->next_versionId_marker, sizeof(data->next_versionId_marker), "%s", 
+        snprintf_s(data->next_versionId_marker, sizeof(data->next_versionId_marker), sizeof(data->next_versionId_marker)-1, "%s",
                 next_versionId_marker);
     }
     else {
@@ -616,32 +616,32 @@ obs_status listVersionsCallback(int is_truncated, const char *next_key_marker, c
                 gmtime(&t));
         char sizebuf[16] = {0};
         if (version->size < 100000) {
-            sprintf(sizebuf, "%5llu", (unsigned long long) version->size);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%5llu", (unsigned long long) version->size);
         }
         else if (version->size < (1024 * 1024)) {
-            sprintf(sizebuf, "%4lluK", 
+            sprintf_s(sizebuf, sizeof(sizebuf),"%4lluK", 
                     ((unsigned long long) version->size) / 1024ULL);
         }
         else if (version->size < (10 * 1024 * 1024)) {
             float f = version->size;
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fM", f);
+            sprintf_s(sizebuf, sizeof(sizebuf), "%1.2fM", f);
         }
         else if (version->size < (1024 * 1024 * 1024)) {
-            sprintf(sizebuf, "%4lluM", 
+            sprintf_s(sizebuf, sizeof(sizebuf), "%4lluM",
                     ((unsigned long long) version->size) / 
                     (1024ULL * 1024ULL));
         }
         else {
             float f = (version->size / 1024);
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fG", f);
+            sprintf_s(sizebuf, sizeof(sizebuf), "%1.2fG", f);
         }
         printf("%-30s  %s  %s  %s", version->key, timebuf, sizebuf, version->version_id);
         if(i == 0)
-            strncpy(OBJECT_VER[0], version->version_id, 255);
+            strncpy_s(OBJECT_VER[0],sizeof(OBJECT_VER[0]), version->version_id, 255);
         else if(i == 1)
-            strncpy(OBJECT_VER[1], version->version_id, 255);
+            strncpy_s(OBJECT_VER[1], sizeof(OBJECT_VER[1]), version->version_id, 255);
         if (data->allDetails) {
             printf("  %-34s  %-32s  %-12s",
                     version->etag, 
@@ -812,7 +812,7 @@ int put_buffer_data_callback(int buffer_size, char *buffer, void *callback_data)
     if (data->buffer_size) {
         toRead = ((data->buffer_size > (unsigned) buffer_size) ?
                     (unsigned) buffer_size : data->buffer_size);
-        memcpy(buffer, data->put_buffer + data->cur_offset, toRead);
+        memcpy_s(buffer,sizeof(buffer) ,data->put_buffer + data->cur_offset, toRead);
     }
     
     uint64_t originalContentLength = data->buffer_size;
@@ -1196,41 +1196,41 @@ obs_status listPartsCallbackEx(obs_uploaded_parts_total_info* uploadedParts,
                 gmtime(&t));
         char sizebuf[16] = {0};
         if (part->size < 100000) {
-            sprintf(sizebuf, "%5llu", (unsigned long long) part->size);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%5llu", (unsigned long long) part->size);
         }
         else if (part->size < (1024 * 1024)) {
-            sprintf(sizebuf, "%4lluK", 
+            sprintf_s(sizebuf, sizeof(sizebuf),"%4lluK",
                     ((unsigned long long) part->size) / 1024ULL);
         }
         else if (part->size < (10 * 1024 * 1024)) {
             float f = part->size;
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fM", f);
+            sprintf_s(sizebuf, sizeof(sizebuf), "%1.2fM", f);
         }
         else if (part->size < (1024 * 1024 * 1024)) {
-            sprintf(sizebuf, "%4lluM", 
+            sprintf_s(sizebuf, sizeof(sizebuf), "%4lluM",
                     ((unsigned long long) part->size) / 
                     (1024ULL * 1024ULL));
         }
         else {
             float f = (part->size / 1024);
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fG", f);
+            sprintf_s(sizebuf, sizeof(sizebuf), "%1.2fG", f);
         }
         printf("-----------------------------------RESULT BEG------------------------------\n");
         printf("PartNumber : %u\n", part->part_number);
         printf("LastModified : %s\n", timebuf);
         printf("ETag : %s\n", part->etag);
         if(i == 0)
-            strncpy(UPLOAD_ETAG[0], part->etag, 255);
+            strncpy_s(UPLOAD_ETAG[0], sizeof(UPLOAD_ETAG[0]),part->etag, 255);
         else if(i == 1)
-            strncpy(UPLOAD_ETAG[1], part->etag, 255);
+            strncpy_s(UPLOAD_ETAG[1], sizeof(UPLOAD_ETAG[1]), part->etag, 255);
         printf("Size : %s\n", sizebuf);
         printf("-----------------------------------RESULT END------------------------------\n");
         printf("\n");   
         if(fp)
         {
-           sprintf(buffToWrite,"%u/%s\n",part->part_number,part->etag);
+           sprintf_s(buffToWrite,sizeof(buffToWrite),"%u/%s\n",part->part_number,part->etag);
            fputs(buffToWrite,fp);
         }
     }
@@ -1278,7 +1278,7 @@ obs_status listMultiPartUploadsCallback(int is_truncated, const char *next_marke
     for(i = 0; i < uploads_count; i++) {
         printf("uploads_count[%d] : %s\n", i, uploads[i].upload_id);
         if(i == 0)
-            strncpy(UPLOAD_ID, uploads[i].upload_id, 2047);
+            strncpy_s(UPLOAD_ID, sizeof(UPLOAD_ID),uploads[i].upload_id, 2047);
         printf("key[%d] : %s\n", i, uploads[i].key);
     }
     printf("common_prefixes_count : %d\n", common_prefixes_count);
@@ -1351,7 +1351,7 @@ obs_status concurrent_response_properties_callback(
     } while (0)
     if(properties->etag)
     {
-        strcpy(concurrent_callback_data->etag,properties->etag);
+        strcpy_s(concurrent_callback_data->etag,sizeof(concurrent_callback_data->etag),properties->etag);
     }
     print_nonnull("ETag", etag);
     print_nonnull("expiration", expiration);

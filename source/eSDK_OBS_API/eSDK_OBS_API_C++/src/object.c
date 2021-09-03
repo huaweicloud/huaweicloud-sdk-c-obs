@@ -18,6 +18,7 @@
 #include "request.h"
 #include "securec.h"
 #include "object.h"
+#include "request_util.h"
 #include <openssl/md5.h> 
 
 #include <fcntl.h>
@@ -82,11 +83,14 @@ void obs_head_object(const obs_options *options, char *key, obs_response_handler
         (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
         return;
     }
+    errno_t err = EOK;
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_head;
     params.key = key;
@@ -127,11 +131,14 @@ void get_object_metadata(const obs_options *options, obs_object_info *object_inf
         safe_append_with_interface_log("versionId", object_info->version_id,
             handler->complete_callback);
     }
+    errno_t err = EOK;
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_head;
@@ -184,26 +191,28 @@ void set_object_metadata(const obs_options *options, obs_object_info *object_inf
 		safe_append_with_interface_log("versionId", object_info->version_id,
 			handler->complete_callback);
 	}
-
+    errno_t err = EOK;
 	memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-	memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+	err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
 		sizeof(obs_bucket_context));
-	memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
 		sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
-	params.temp_auth = options->temp_auth;
-	params.httpRequestType = http_request_type_put;
-	params.key = object_info->key;
-	params.put_properties = put_properties;
-	params.queryParams = queryParams[0] ? queryParams : 0;
-	params.encryption_params = encryption_params;
-	params.properties_callback = handler->properties_callback;
-	params.complete_callback = handler->complete_callback;
-	params.callback_data = callback_data;
-	params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
-	params.storageClassFormat   = no_need_storage_class;
-	params.subResource = "metadata";
-	params.use_api = use_api;
+    params.temp_auth = options->temp_auth;
+    params.httpRequestType = http_request_type_put;
+    params.key = object_info->key;
+    params.put_properties = put_properties;
+    params.queryParams = queryParams[0] ? queryParams : 0;
+    params.encryption_params = encryption_params;
+    params.properties_callback = handler->properties_callback;
+    params.complete_callback = handler->complete_callback;
+    params.callback_data = callback_data;
+    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.storageClassFormat   = no_need_storage_class;
+    params.subResource = "metadata";
+    params.use_api = use_api;
 
 	request_perform(&params);
 	COMMLOG(OBS_LOGINFO, "Leave set_object_metadata successfully !");
@@ -227,10 +236,13 @@ void put_object(const obs_options *options, char *key, uint64_t content_length,
     }
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_put;
@@ -276,10 +288,13 @@ void append_object(const obs_options *options, char *key, uint64_t content_lengt
     }
         
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_post;
@@ -318,13 +333,17 @@ void modify_object(const obs_options *options, char *key, uint64_t content_lengt
         (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
         return;
     }
-    snprintf_sec(strToAppend, sizeof(strToAppend),_TRUNCATE, "%lu", position);   
+    int ret = snprintf_s(strToAppend, sizeof(strToAppend),_TRUNCATE, "%lu", position);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     safe_append("position", strToAppend, handler->response_handler.complete_callback);
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_put;
     params.queryParams = queryParams[0] ? queryParams : 0;
@@ -364,14 +383,18 @@ void truncate_object(const obs_options *options, char *key, uint64_t object_leng
         return;
     }
 
-    snprintf_sec(strToAppend,sizeof(strToAppend),_TRUNCATE,"%lu",object_length);   
+    int ret = snprintf_s(strToAppend,sizeof(strToAppend),_TRUNCATE,"%lu",object_length);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     safe_append("length", strToAppend, handler->complete_callback);
         
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_put;
@@ -411,10 +434,13 @@ void rename_object(const obs_options *options, char *key, char *new_object_name,
     safe_append("name", new_object_name, handler->complete_callback);
         
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_post;
@@ -459,39 +485,46 @@ void get_object(const obs_options *options, obs_object_info *object_info,
 
     if(get_conditions && get_conditions->image_process_config)
     {
-         char strToAppend[1024] = {0};
-         int isImageProcModeValid = 0;
+        char strToAppend[1024] = {0};
+        int isImageProcModeValid = 0;
+        int ret = 0;
                     
-            if(get_conditions->image_process_config->image_process_mode == obs_image_process_cmd)
-            {
-                snprintf_sec(strToAppend,sizeof(strToAppend),_TRUNCATE,"image%s","/");      
-                isImageProcModeValid = 1;
-            }
-            else if(get_conditions->image_process_config->image_process_mode == obs_image_process_style)
-            {
-                snprintf_sec(strToAppend,sizeof(strToAppend),_TRUNCATE,"style%s","/");
-                isImageProcModeValid = 1;
-            }
-            else
-            {
-                COMMLOG(OBS_LOGWARN, "Image Process Mode is Not valid !");
-                 isImageProcModeValid = 0;
-            }
+        if(get_conditions->image_process_config->image_process_mode == obs_image_process_cmd)
+        {
+            ret = snprintf_s(strToAppend,sizeof(strToAppend),_TRUNCATE,"image%s","/");
+            CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
+            isImageProcModeValid = 1;
+        }
+        else if(get_conditions->image_process_config->image_process_mode == obs_image_process_style)
+        {
+            ret = snprintf_s(strToAppend,sizeof(strToAppend),_TRUNCATE,"style%s","/");
+            CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
+            isImageProcModeValid = 1;
+        }
+        else
+        {
+            COMMLOG(OBS_LOGWARN, "Image Process Mode is Not valid !");
+                isImageProcModeValid = 0;
+        }
 
-            if(isImageProcModeValid == 1)
-            {
-                snprintf_sec(strToAppend,sizeof(strToAppend),_TRUNCATE,
-                    "%s%s",strToAppend,get_conditions->image_process_config->cmds_stylename);
+        if(isImageProcModeValid == 1)
+        {
+            ret = snprintf_s(strToAppend,sizeof(strToAppend),_TRUNCATE,
+                "%s%s",strToAppend,get_conditions->image_process_config->cmds_stylename);
+            CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
                 
-                safe_append("x-image-process",strToAppend,handler->response_handler.complete_callback);
-            }
+            safe_append("x-image-process",strToAppend,handler->response_handler.complete_callback);
+        }
     }
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_get;
@@ -534,10 +567,13 @@ void delete_object(const obs_options *options, obs_object_info *object_info,
     }
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_delete;
@@ -607,7 +643,7 @@ static obs_status deleteObjectXmlCallback(const char *elementPath, const char *d
 {
     delete_object_data *doData = (delete_object_data *) callback_data;
 
-    int fit;
+    int fit = 1;
     if (data) {
         if (!strcmp(elementPath, "DeleteResult/Deleted/Key")) {
             delete_object_contents *contents =
@@ -657,7 +693,10 @@ static obs_status deleteObjectXmlCallback(const char *elementPath, const char *d
                 (&(doData->contents[doData->contents_count]));
         }
     }
-    (void) fit;
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -675,8 +714,8 @@ static int deleteObjectDataToObsCallback(int buffer_size, char *buffer,
     }
     
 	
-	errno_t err = EOK;  
-	err = memcpy_s(buffer, buffer_size,  &(doData->doc[doData->docBytesWritten]), toCopy);
+    errno_t err = EOK;  
+    err = memcpy_s(buffer, buffer_size,  &(doData->doc[doData->docBytesWritten]), toCopy);
 	
     if (err != EOK)
     {
@@ -715,7 +754,10 @@ static void deleteObjectCompleteCallback(obs_status requestStatus,
     COMMLOG(OBS_LOGINFO, "Enter %s successfully !", __FUNCTION__);
     delete_object_data *doData = (delete_object_data *) callback_data;
     if (doData->contents_count) {
-        make_del_Object_callback(doData);
+        obs_status ret = make_del_Object_callback(doData);
+        if (ret != OBS_STATUS_OK) {
+            COMMLOG(OBS_LOGDEBUG, "Failed to call make_del_Object_callback, status: %d.", ret);
+        }  
     }
     (*(doData->responseCompleteCallback))
         (requestStatus, s3ErrorDetails, doData->callback_data);
@@ -813,6 +855,8 @@ void batch_delete_objects(const obs_options *options, obs_object_info *object_in
     doData->docBytesWritten = 0;
     if(OBS_STATUS_OK != compose_del_xml(object_info, delobj,handler, doData ,callback_data))
     {
+        free(doData);
+        doData = NULL;
         return;
     }
     
@@ -823,10 +867,13 @@ void batch_delete_objects(const obs_options *options, obs_object_info *object_in
     properties.md5 = base64_md5;
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_post;
@@ -871,8 +918,9 @@ void upload_part(const obs_options *options, char *key, obs_upload_part_info *up
     }
     int amp = 0;
     char part_number_string[64] = {0};
-    snprintf_sec(part_number_string, sizeof(part_number_string), _TRUNCATE, "%u",
+    int ret = snprintf_s(part_number_string, sizeof(part_number_string), _TRUNCATE, "%u",
                 upload_part_info->part_number);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     safe_append_with_interface_log("partNumber", part_number_string,
                 handler->response_handler.complete_callback);
     
@@ -881,10 +929,13 @@ void upload_part(const obs_options *options, char *key, obs_upload_part_info *up
             handler->response_handler.complete_callback);
     }
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_put;
@@ -910,12 +961,14 @@ static obs_status initiate_multi_part_upload_xml_callback(const char *elementPat
 {
     initiate_multi_part_upload_data *imuData = (initiate_multi_part_upload_data *) callback_data;
 
-    int fit;
+    int fit = 1;
     if (data && !strcmp(elementPath, "InitiateMultipartUploadResult/UploadId")) {
         string_buffer_append(imuData->uploadID, data, dataLen, fit);
     }
-    (void) fit;
-
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -950,9 +1003,10 @@ static void initiate_multi_part_upload_complete_callback(obs_status requestStatu
 
     initiate_multi_part_upload_data *imuData = (initiate_multi_part_upload_data *) callback_data;
 
-    snprintf_sec(imuData->upload_id_return, sizeof(imuData->uploadID),
+    int ret = snprintf_s(imuData->upload_id_return, sizeof(imuData->uploadID),
              imuData->upload_id_return_size, "%s",
              imuData->uploadID);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
     (void)(*(imuData->responseCompleteCallback))
         (requestStatus, s3ErrorDetails, imuData->callback_data);
@@ -972,6 +1026,8 @@ void initiate_multi_part_upload(const obs_options *options, char *key,int upload
                                 obs_response_handler *handler, void *callback_data)
 {
     request_params params;
+    obs_use_api use_api = OBS_USE_API_S3;
+    set_use_api_switch(options, &use_api);
     COMMLOG(OBS_LOGINFO, "Enter initiate_multi_part_upload successfully !");
     if ( !options->bucket_options.bucket_name )
     {
@@ -1007,10 +1063,13 @@ void initiate_multi_part_upload(const obs_options *options, char *key,int upload
     string_buffer_initialize(imuData->uploadID);
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_post;
@@ -1024,6 +1083,7 @@ void initiate_multi_part_upload(const obs_options *options, char *key,int upload
     params.callback_data = imuData;
     params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
     params.storageClassFormat   = storage_class;
+    params.use_api = use_api;
 
     request_perform(&params);
     COMMLOG(OBS_LOGINFO, "Leave initiate_multi_part_upload successfully !");
@@ -1034,7 +1094,7 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
 {
     complete_multi_part_upload_data *cmuData = (complete_multi_part_upload_data *) callback_data;
 
-    int fit;
+    int fit = 1;
     if (!data) 
     {
         return OBS_STATUS_OK;
@@ -1049,7 +1109,7 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
             return OBS_STATUS_InternalError;
         }
         memset_s(strTmpSource, sizeof(char) * (dataLen + 1), 0, dataLen + 1);
-        strncpy_sec(strTmpSource, dataLen+1, data, dataLen);
+        strncpy_s(strTmpSource, dataLen+1, data, dataLen);
         char* strTmpOut = UTF8_To_String(strTmpSource);
         string_buffer_append(cmuData->location, strTmpOut, strlen(strTmpOut), fit);
         CHECK_NULL_FREE(strTmpSource);
@@ -1070,7 +1130,7 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
             return OBS_STATUS_InternalError;
         }
         memset_s(strTmpSource, sizeof(char) * (dataLen + 1), 0, dataLen + 1);
-        strncpy_sec(strTmpSource, dataLen+1, data, dataLen);
+        strncpy_s(strTmpSource, dataLen+1, data, dataLen);
         char* strTmpOut = UTF8_To_String(strTmpSource);
         string_buffer_append(cmuData->key, strTmpOut, strlen(strTmpOut), fit);
         CHECK_NULL_FREE(strTmpSource);
@@ -1083,7 +1143,10 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
         string_buffer_append(cmuData->etag, data, dataLen, fit);
     }
     
-    (void) fit;
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -1102,7 +1165,7 @@ static void compose_complete_multi_part_upload_data(complete_multi_part_upload_d
         }
         (void)add_xml_element_in_bufflen(cmuData->doc, &cmuData->docLen, "Part",
             NULL,NOT_NEED_FORMALIZE,ADD_HEAD_ONLY, buffer_len);
-        cmuData->docLen += snprintf_sec(cmuData->doc + cmuData->docLen, 
+        cmuData->docLen += snprintf_s(cmuData->doc + cmuData->docLen,
                 256 * part_number - cmuData->docLen, _TRUNCATE,
                 "<PartNumber>%u</PartNumber>", complete_upload_Info[uiIdx].part_number);
         (void)add_xml_element_in_bufflen(cmuData->doc, &cmuData->docLen, "ETag", complete_upload_Info[uiIdx].etag,
@@ -1131,7 +1194,7 @@ static int complete_multi_part_upload_data_to_obs_callback(int buffer_size, char
         return 0;
     }
 	
-	errno_t err = EOK;
+    errno_t err = EOK;
     err = memcpy_s(buffer, buffer_size, &(cmuData->doc[cmuData->docBytesWritten]), toCopy);
     if (err != EOK)
     {
@@ -1243,10 +1306,13 @@ void complete_multi_part_upload(const obs_options *options, char *key, const cha
     compose_complete_multi_part_upload_data(cmuData, part_number, complete_upload_Info, 
                 256 * part_number);
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_post;
@@ -1343,7 +1409,7 @@ static void initialize_list_parts_data(list_parts_data *lpData)
 void parse_xmlnode_list_parts(list_parts_data *lpData, const char *elementPath, 
                 const char *data, int dataLen)
 {
-    int fit;
+    int fit = 1;
     if(!strcmp(elementPath, "ListPartsResult/Initiator/ID")) {
         string_buffer_append(lpData->initiator_id, data, dataLen, fit);
     }
@@ -1386,7 +1452,10 @@ void parse_xmlnode_list_parts(list_parts_data *lpData, const char *elementPath,
         string_buffer_append(parts->size, data, dataLen, fit);
     }
 
-    (void) fit;
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return ;
 }
 
@@ -1445,7 +1514,10 @@ static void ListPartsCompleteCallback(obs_status requestStatus,
 
     list_parts_data *lpData = (list_parts_data *) callback_data;
     if (lpData->parts_count) {
-        make_list_parts_callback(lpData);
+        obs_status ret = make_list_parts_callback(lpData);
+        if (ret != OBS_STATUS_OK) {
+            COMMLOG(OBS_LOGDEBUG, "Failed to call make_list_parts_callback, status: %d.", ret);
+        }
     }
 
     (*(lpData->responseCompleteCallback))
@@ -1492,14 +1564,16 @@ void list_parts (const obs_options *options, char *key, list_part_info *listpart
     }
     
     char max_parts_string[64] = {0};
-    snprintf_sec(max_parts_string, sizeof(max_parts_string), _TRUNCATE, "%u",
+    int ret = snprintf_s(max_parts_string, sizeof(max_parts_string), _TRUNCATE, "%u",
                 listpart->max_parts);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     safe_append_with_interface_log("max-parts",max_parts_string,
             handler->response_handler.complete_callback);
     
     char part_number_string[64] = {0};
-    snprintf_sec(part_number_string, sizeof(part_number_string), _TRUNCATE, "%u",
+    ret = snprintf_s(part_number_string, sizeof(part_number_string), _TRUNCATE, "%u",
                 listpart->part_number_marker);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     safe_append_with_interface_log("part-number-marker", part_number_string,
             handler->response_handler.complete_callback);
 
@@ -1528,10 +1602,13 @@ void list_parts (const obs_options *options, char *key, list_part_info *listpart
     initialize_list_parts_data(lpData);
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_get;
@@ -1576,10 +1653,13 @@ void abort_multi_part_upload(const obs_options *options, char *key, const char *
     }
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_delete;
@@ -1626,7 +1706,7 @@ static obs_status copyObjectXmlCallback(const char *elementPath,
                                       void *callback_data)
 {
     copy_object_data *coData = (copy_object_data *) callback_data;
-    int fit;
+    int fit = 1;
     if (!data)
     {
         return OBS_STATUS_OK;
@@ -1638,7 +1718,7 @@ static obs_status copyObjectXmlCallback(const char *elementPath,
     else if (!strcmp(elementPath, "CopyObjectResult/ETag")) {
         if (coData->etag_return_size && coData->etag_return) {
             coData->eTagReturnLen +=
-                snprintf_sec(&(coData->etag_return[coData->eTagReturnLen]), 
+                snprintf_s(&(coData->etag_return[coData->eTagReturnLen]),
                          coData->etag_return_size - coData->eTagReturnLen,
                          coData->etag_return_size -
                          coData->eTagReturnLen - 1,
@@ -1648,8 +1728,10 @@ static obs_status copyObjectXmlCallback(const char *elementPath,
             }
         }
     }
-    (void) fit;
-    
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
     return OBS_STATUS_OK;
 }
 
@@ -1753,15 +1835,19 @@ void copy_object(const obs_options *options, char *key, const char *version_id,
     char versionkey[1024] = {0};
     if(object_info->version_id)
     {
-        snprintf_sec(versionkey,sizeof(versionkey), _TRUNCATE,
+        int ret = snprintf_s(versionkey,sizeof(versionkey), _TRUNCATE,
             "%s?version_id=%s",key, version_id);
+        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     }
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.httpRequestType = http_request_type_copy;
     params.key = object_info->destination_key;
@@ -1848,7 +1934,7 @@ obs_status parse_xml_convert_acl(convert_acl_data_info *caData, const char *elem
     int fit = 1;
     if (!strcmp(elementPath, "AccessControlPolicy/Owner/ID")) {
          caData->ownerIdLen +=
-                snprintf_sec(&(caData->owner_id[caData->ownerIdLen]),
+             snprintf_s(&(caData->owner_id[caData->ownerIdLen]),
                 OBS_MAX_GRANTEE_USER_ID_SIZE + 1 - caData->ownerIdLen,
                 OBS_MAX_GRANTEE_USER_ID_SIZE - caData->ownerIdLen - 1,
                 "%.*s", dataLen, data);
@@ -1858,7 +1944,7 @@ obs_status parse_xml_convert_acl(convert_acl_data_info *caData, const char *elem
     }
     else if (!strcmp(elementPath, "AccessControlPolicy/Owner/DisplayName")) {
         caData->ownerDisplayNameLen +=
-                snprintf_sec(&(caData->owner_display_name[caData->ownerDisplayNameLen]),
+            snprintf_s(&(caData->owner_display_name[caData->ownerDisplayNameLen]),
                 OBS_MAX_GRANTEE_DISPLAY_NAME_SIZE + 1 - caData->ownerDisplayNameLen,
                 OBS_MAX_GRANTEE_DISPLAY_NAME_SIZE - caData->ownerDisplayNameLen - 1,
                     "%.*s", dataLen, data);
@@ -1915,16 +2001,17 @@ static obs_status convert_acl_xml_callback_s3(const char *elementPath,
 
         obs_acl_grant *grant = &(caData->acl_grants[*(caData->acl_grant_count_return)]);
 
+        errno_t err = EOK;
         if (caData->email_address[0]) {
             grant->grantee_type = OBS_GRANTEE_TYPE_HUAWEI_CUSTOMER_BYEMAIL;
-            strcpy_s(grant->grantee.huawei_customer_by_email.email_address,
+            err = strcpy_s(grant->grantee.huawei_customer_by_email.email_address,
                     sizeof(grant->grantee.huawei_customer_by_email.email_address),
                     caData->email_address);
         }
         else if (caData->userId[0] && caData->userDisplayName[0]) {
             grant->grantee_type = OBS_GRANTEE_TYPE_CANONICAL_USER;
-            strcpy_s(grant->grantee.canonical_user.id, sizeof(grant->grantee.canonical_user.id), caData->userId);
-            strcpy_s(grant->grantee.canonical_user.display_name,
+            err = strcpy_s(grant->grantee.canonical_user.id, sizeof(grant->grantee.canonical_user.id), caData->userId);
+            err = strcpy_s(grant->grantee.canonical_user.display_name,
                     sizeof(grant->grantee.canonical_user.display_name),
                     caData->userDisplayName);
         }   
@@ -1934,6 +2021,8 @@ static obs_status convert_acl_xml_callback_s3(const char *elementPath,
         else {
             return OBS_STATUS_BadGrantee;
         }
+
+        CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
 
         grant->permission = convert_obs_permission_str(caData->permission);
         (*(caData->acl_grant_count_return))++;
@@ -1962,7 +2051,7 @@ static obs_status convert_acl_xml_callback_obs(const char *elementPath,
     if (data) {
         if (!strcmp(elementPath, "AccessControlPolicy/Owner/ID")) {
             caData->ownerIdLen +=
-                snprintf_sec(&(caData->owner_id[caData->ownerIdLen]),
+                snprintf_s(&(caData->owner_id[caData->ownerIdLen]),
                 OBS_MAX_GRANTEE_USER_ID_SIZE + 1 - caData->ownerIdLen,
                 OBS_MAX_GRANTEE_USER_ID_SIZE - caData->ownerIdLen - 1,
                 "%.*s", dataLen, data);
@@ -2000,7 +2089,8 @@ static obs_status convert_acl_xml_callback_obs(const char *elementPath,
 
         if (caData->userId[0]) {
             grant->grantee_type = OBS_GRANTEE_TYPE_CANONICAL_USER;
-            strcpy_s(grant->grantee.canonical_user.id, sizeof(grant->grantee.canonical_user.id), caData->userId);
+            errno_t err = strcpy_s(grant->grantee.canonical_user.id, sizeof(grant->grantee.canonical_user.id), caData->userId);
+            CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
         }   
         else if (caData->groupUri[0]) {
             grant->grantee_type  = OBS_GRANTEE_TYPE_ALL_USERS;
@@ -2160,10 +2250,13 @@ void get_object_acl(const obs_options *options, manager_acl_info *aclinfo, obs_r
     gaData->use_api= use_api;
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_get;
@@ -2244,7 +2337,7 @@ static obs_status generate_acl_xml_document_obs(const char *owner_id,
     *xmlDocumentLenReturn = 0; 
 #define append(fmt, ...)                                                  \
     do {                                                                 \
-        *xmlDocumentLenReturn += snprintf_sec                              \
+        *xmlDocumentLenReturn += snprintf_s                              \
             (&(xmlDocument[*xmlDocumentLenReturn]), xmlDocumentBufferSize - *xmlDocumentLenReturn , \
              xmlDocumentBufferSize - *xmlDocumentLenReturn - 1,           \
              fmt, __VA_ARGS__);                                           \
@@ -2329,7 +2422,7 @@ static int setAclDataCallback(int buffer_size, char *buffer, void *callback_data
         return 0;
     }
 
-	errno_t err = EOK;  
+    errno_t err = EOK;  
 	err = memcpy_s(buffer, toCopy, &(paData->aclXmlDocument
                      [paData->aclXmlDocumentBytesWritten]), toCopy); 
     if (err != EOK)
@@ -2385,16 +2478,16 @@ void set_common_acl(const obs_options *options, manager_acl_info *aclinfo, obs_t
         COMMLOG(OBS_LOGERROR, "Input param aclGrantCount is greater than S3_MAX_ACL_GRANT_COUNT(100) !");
         return;
     }
-    set_acl_data *data = (set_acl_data *) malloc(sizeof(set_acl_data));
+    if (aclinfo->object_info.version_id) {
+        safe_append("versionId", aclinfo->object_info.version_id, handler->complete_callback);
+    }
+    set_acl_data *data = (set_acl_data *)malloc(sizeof(set_acl_data));
     if (!data) {
         (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         COMMLOG(OBS_LOGERROR, "Malloc SetAclData failed !");
         return;
     }
-    memset_s(data, sizeof(set_acl_data ), 0 , sizeof(set_acl_data ));
-    if (aclinfo->object_info.version_id) {
-        safe_append("versionId", aclinfo->object_info.version_id, handler->complete_callback);
-    }
+    memset_s(data, sizeof(set_acl_data), 0, sizeof(set_acl_data));
     obs_status status = generate_acl_xml_document(aclinfo->owner_id, aclinfo->owner_display_name, aclinfo->object_delivered,
                                             *(aclinfo->acl_grant_count_return), aclinfo->acl_grants,
                                                 &(data->aclXmlDocumentLen), data->aclXmlDocument,
@@ -2412,10 +2505,13 @@ void set_common_acl(const obs_options *options, manager_acl_info *aclinfo, obs_t
     data->aclXmlDocumentBytesWritten = 0;
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_put;
@@ -2458,10 +2554,13 @@ void set_object_acl_by_head(const obs_options *options, obs_object_info *object_
     properties.canned_acl = canned_acl;
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_put;
@@ -2485,7 +2584,7 @@ static obs_status CopyPartXmlCallback(const char *elementPath,
 {
     copy_object_data *cpData = (copy_object_data *) callback_data;
 
-    int fit;
+    int fit = 1;
     if (!data)
     {
         return OBS_STATUS_OK;
@@ -2497,7 +2596,7 @@ static obs_status CopyPartXmlCallback(const char *elementPath,
     else if (!strcmp(elementPath, "CopyPartResult/ETag")) {
         if (cpData->etag_return_size && cpData->etag_return) {
             cpData->eTagReturnLen +=
-                snprintf_sec(&(cpData->etag_return[cpData->eTagReturnLen]), 
+                snprintf_s(&(cpData->etag_return[cpData->eTagReturnLen]),
                            cpData->etag_return_size - cpData->eTagReturnLen,
                            cpData->etag_return_size - cpData->eTagReturnLen - 1,
                            "%.*s", dataLen, data);
@@ -2507,7 +2606,10 @@ static obs_status CopyPartXmlCallback(const char *elementPath,
         }
     }
 
-    (void) fit;
+    //(void) fit;
+    if (!fit) {
+        COMMLOG(OBS_LOGDEBUG, "%s: fit is 0.", __FUNCTION__);
+    }
 
     return OBS_STATUS_OK;
 }
@@ -2571,7 +2673,8 @@ void copy_part(const obs_options *options, char *key, obs_copy_destination_objec
     int amp = 0;
     if (copypart->part_number > 0) {
         char part_number_string[64] = {0};
-        snprintf_sec(part_number_string, sizeof(part_number_string), _TRUNCATE, "%u", copypart->part_number);
+        int ret = snprintf_s(part_number_string, sizeof(part_number_string), _TRUNCATE, "%u", copypart->part_number);
+        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         safe_append_with_interface_log("partNumber",
             part_number_string, handler->complete_callback);
     }
@@ -2614,10 +2717,13 @@ void copy_part(const obs_options *options, char *key, obs_copy_destination_objec
 
     
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth =options->temp_auth;
     params.httpRequestType = http_request_type_copy;
@@ -2808,7 +2914,7 @@ void restore_object(const obs_options *options, obs_object_info *object_info, co
         return;
     }
 						   
-	obs_status status;
+    obs_status status;
 	if (options->request_options.auth_switch == OBS_OBS_TYPE)
 	{
 	    status = generateRestoreXmlDocument_obs(days, tier,
@@ -2837,10 +2943,13 @@ void restore_object(const obs_options *options, obs_object_info *object_info, co
     data->salXmlDocumentBytesWritten = 0;
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     
     params.temp_auth =options->temp_auth;
     params.httpRequestType = http_request_type_post;
@@ -2901,10 +3010,13 @@ void obs_options_obj_or_bucket(const obs_options *options, int is_bucket, char* 
     }
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
+    errno_t err = EOK;
+    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options, 
         sizeof(obs_bucket_context));
-    memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options, 
         sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth =options->temp_auth;
     params.httpRequestType = http_request_type_options;
@@ -2992,7 +3104,7 @@ int isXmlFileValid(const char * file_name,exml_root xmlRootIn)
         retVal = 1;  
     }
 
-     if ((!xmlStrcmp(curNode->name, BAD_CAST "downloadinfo")) && (xmlRootIn == DOWNLOAD_FILE_INFO) )  
+    if ((!xmlStrcmp(curNode->name, BAD_CAST "downloadinfo")) && (xmlRootIn == DOWNLOAD_FILE_INFO) )  
     {       
         retVal = 1;  
     }
@@ -3085,7 +3197,8 @@ int set_check_pointFile_with_null(const char * uploadFileName, char * checkPoint
     int isxmlValid = -1;
     int file_size =0;
     
-    sprintf_sec(checkPointFileName,1024,"%s%s",uploadFileName,".xmltmp");
+    int ret = sprintf_s(checkPointFileName,ARRAY_LENGTH_1024,"%s%s",uploadFileName,".xmltmp");
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
     while (ret_stat == 0)
     {
         fd = open_file(checkPointFileName, &ret_stat, &file_size);
@@ -3114,7 +3227,7 @@ int set_check_pointFile_with_null(const char * uploadFileName, char * checkPoint
             break;
         }           
 
-        retVal = strcat_s(checkPointFileName,1024,".xmltmp");
+        retVal = strcat_s(checkPointFileName,ARRAY_LENGTH_1024,".xmltmp");
         if(retVal != 0)
         {
             retVal =  -1;
@@ -3236,44 +3349,44 @@ void parse_xmlnode_fileinfo(upload_file_summary * pstUploadFileSummary, xmlNodeP
 {
     while(fileinfoNode != NULL)          
     {             
-         xmlChar *nodeContent = xmlNodeGetContent(fileinfoNode);  
-		 errno_t err = EOK;
+        xmlChar *nodeContent = xmlNodeGetContent(fileinfoNode);  
+		errno_t err = EOK;
 
-         if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"filesize"))
-         {
-             pstUploadFileSummary->fileSize = parseUnsignedInt((char*)nodeContent);
-         }
-         else if(!xmlStrcmp((xmlChar *)fileinfoNode->name,(xmlChar *)"lastmodify"))
-         {
-             pstUploadFileSummary->lastModify = parseUnsignedInt((char*)nodeContent);
-         }
-         else if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"md5"))
-         {
-         }
-         else if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"checksum"))
-         {
-             pstUploadFileSummary->fileCheckSum = (int)parseUnsignedInt((char*)nodeContent);
-         }
-         else if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"uploadid"))
-         {
-             err = memcpy_s(pstUploadFileSummary->upload_id,MAX_SIZE_UPLOADID,nodeContent,strlen((char*)nodeContent)+1);
-         }
-         else if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"bucketname"))
-         {
-             err = memcpy_s(pstUploadFileSummary->bucket_name,MAX_BKTNAME_SIZE,nodeContent,strlen((char*)nodeContent)+1);
-         }
-         else if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"key"))
-         {
-             err = memcpy_s(pstUploadFileSummary->key,MAX_KEY_SIZE,nodeContent,strlen((char*)nodeContent)+1);
-         }
+        if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"filesize"))
+        {
+            pstUploadFileSummary->fileSize = parseUnsignedInt((char*)nodeContent);
+        }
+        else if(!xmlStrcmp((xmlChar *)fileinfoNode->name,(xmlChar *)"lastmodify"))
+        {
+            pstUploadFileSummary->lastModify = parseUnsignedInt((char*)nodeContent);
+        }
+        else if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"md5"))
+        {
+        }
+        else if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"checksum"))
+        {
+            pstUploadFileSummary->fileCheckSum = (int)parseUnsignedInt((char*)nodeContent);
+        }
+        else if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"uploadid"))
+        {
+            err = memcpy_s(pstUploadFileSummary->upload_id,MAX_SIZE_UPLOADID,nodeContent,strlen((char*)nodeContent)+1);
+        }
+        else if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"bucketname"))
+        {
+            err = memcpy_s(pstUploadFileSummary->bucket_name,MAX_BKTNAME_SIZE,nodeContent,strlen((char*)nodeContent)+1);
+        }
+        else if(!xmlStrcmp(fileinfoNode->name,(xmlChar *)"key"))
+        {
+            err = memcpy_s(pstUploadFileSummary->key,MAX_KEY_SIZE,nodeContent,strlen((char*)nodeContent)+1);
+        }
 		 
-		 if (err != EOK)
-		 {
-			 COMMLOG(OBS_LOGWARN, "parse_xmlnode_fileinfo: memcpy_s failed !");
-		 }
+        if (err != EOK)
+        {
+            COMMLOG(OBS_LOGWARN, "parse_xmlnode_fileinfo: memcpy_s failed !");
+        }
 		 
-         xmlFree(nodeContent);             
-         fileinfoNode = fileinfoNode->next;          
+        xmlFree(nodeContent);             
+        fileinfoNode = fileinfoNode->next;          
     }  
     
     return;
@@ -3282,7 +3395,7 @@ void parse_xmlnode_fileinfo(upload_file_summary * pstUploadFileSummary, xmlNodeP
 int parse_xmlnode_partsinfo(upload_file_part_info ** uploadPartList, xmlNodePtr partNode, int *partCount)
 {
     upload_file_part_info * pstUploadPart = NULL;
-    upload_file_part_info * uploadPartNode;
+    upload_file_part_info * uploadPartNode = NULL;
     int partCountTmp = 0;
     xmlNodePtr partinfoNode = NULL;
     *uploadPartList = NULL;
@@ -3318,12 +3431,14 @@ int parse_xmlnode_partsinfo(upload_file_part_info ** uploadPartList, xmlNodePtr 
            }
            else if(!xmlStrcmp(partinfoNode->name,(xmlChar *)"etag"))
            {
-                memset(uploadPartNode->etag,0,MAX_SIZE_ETAG);
+			   memset_s(uploadPartNode->etag, MAX_SIZE_ETAG, 0, MAX_SIZE_ETAG);
+
 			    errno_t err = EOK;  
 				err = memcpy_s(uploadPartNode->etag, MAX_SIZE_ETAG, nodeContent, strlen((char*)nodeContent));
 				if (err != EOK)
 				{
 					COMMLOG(OBS_LOGWARN, "parse_xmlnode_partsinfo: memcpy_s failed!\n");
+                    free(uploadPartNode);
 					return -1;
 				}
            }
@@ -3569,7 +3684,8 @@ int setPartList(upload_file_summary *pstUploadFileSummaryNew, uint64_t uploadPar
     int i = 0;
 
     upload_file_summary stUploadFileSummaryOld;
-    memset(&stUploadFileSummaryOld,0,sizeof(upload_file_summary));
+	memset_s(&stUploadFileSummaryOld, sizeof(upload_file_summary), 0, sizeof(upload_file_summary));
+
     // read the content from the check point file, and get the  parts list to upload this time
     if(!isFirstTime)
     {
@@ -3599,7 +3715,8 @@ int setPartList(upload_file_summary *pstUploadFileSummaryNew, uint64_t uploadPar
         pstuploadPartListTemp->part_num = i;
         pstuploadPartListTemp->start_byte = uploadPartsize*i;
         pstuploadPartListTemp->part_size = uploadPartsize;
-        memset(pstuploadPartListTemp->etag,0,sizeof(pstuploadPartListTemp->etag));
+		memset_s(pstuploadPartListTemp->etag, sizeof(pstuploadPartListTemp->etag), 0, sizeof(pstuploadPartListTemp->etag));
+
         pstuploadPartListTemp->uploadStatus = UPLOAD_NOTSTART;
         if(i==0)
         {
@@ -3636,7 +3753,8 @@ int setPartList(upload_file_summary *pstUploadFileSummaryNew, uint64_t uploadPar
         pstuploadPartListTemp->part_num = i;
         pstuploadPartListTemp->start_byte = uploadPartsize*i;
         pstuploadPartListTemp->part_size = lastPartSize;
-        memset(pstuploadPartListTemp->etag,0,sizeof(pstuploadPartListTemp->etag));
+		memset_s(pstuploadPartListTemp->etag, sizeof(pstuploadPartListTemp->etag), 0, sizeof(pstuploadPartListTemp->etag));
+
         pstuploadPartListTemp->uploadStatus = UPLOAD_NOTSTART;
         pstuploadPartListTemp->next = NULL;
         *partCount = partCountTemp + 1;
@@ -3658,7 +3776,7 @@ int writeCheckpointFile(upload_file_summary * pstUploadFileSummary,
     char contentBuff[64];
     int i=0;  
     int nRel = -1;
-    upload_file_part_info * ptrUploadPart;
+    upload_file_part_info * ptrUploadPart = NULL;
 
     //create the root node    
     xmlNodePtr root_node = xmlNewNode(NULL,BAD_CAST"uploadinfo");   
@@ -3669,16 +3787,19 @@ int writeCheckpointFile(upload_file_summary * pstUploadFileSummary,
     xmlDocSetRootElement(doc,root_node);    
     //add <fileinfo> and <partsinfo> under <uploadinfo>    
                
-    sprintf_sec(str_content,512,"%llu",(long long unsigned int)pstUploadFileSummary->fileSize);           
+    int ret = sprintf_s(str_content,ARRAY_LENGTH_512,"%llu",(long long unsigned int)pstUploadFileSummary->fileSize);
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
     
     //add <fileinfo> node under <uploadinfo>    
     xmlAddChild(root_node,node_fileinfo);  
     //add <filesize> under <fileinfo>    
-    sprintf_sec(str_content,512,"%llu",(long long unsigned int)pstUploadFileSummary->fileSize);    
+    ret = sprintf_s(str_content,ARRAY_LENGTH_512,"%llu",(long long unsigned int)pstUploadFileSummary->fileSize);
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
     xmlNewTextChild(node_fileinfo, NULL, BAD_CAST "filesize", BAD_CAST str_content); 
     
     //add <lastmodify> under <fileinfo>    
-    sprintf_sec(str_content,512,"%llu",(long long unsigned int)pstUploadFileSummary->lastModify);    
+    ret = sprintf_s(str_content,ARRAY_LENGTH_512,"%llu",(long long unsigned int)pstUploadFileSummary->lastModify);
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
     xmlNewTextChild(node_fileinfo, NULL, BAD_CAST "lastmodify", BAD_CAST str_content);   
     
     //add <fileMd5> under <fileinfo>    
@@ -3686,11 +3807,13 @@ int writeCheckpointFile(upload_file_summary * pstUploadFileSummary,
     xmlNewTextChild(node_fileinfo, NULL, BAD_CAST "md5",BAD_CAST "");  
     
     //add <fileMd5> under <fileinfo>    
-    sprintf_sec(str_content,512,"%d",pstUploadFileSummary->fileCheckSum);    
+    ret = sprintf_s(str_content,ARRAY_LENGTH_512,"%d",pstUploadFileSummary->fileCheckSum);
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
     xmlNewTextChild(node_fileinfo, NULL, BAD_CAST "checksum",BAD_CAST str_content);   
     
     //add <uploadid> under <fileinfo>    
-    sprintf_sec(str_content,512,"%s",pstUploadFileSummary->upload_id);    
+    ret = sprintf_s(str_content,ARRAY_LENGTH_512,"%s",pstUploadFileSummary->upload_id);
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
     xmlNewTextChild(node_fileinfo, NULL, BAD_CAST "uploadid",BAD_CAST str_content); 
 
     // add <bucketname> under <fileinfo>   
@@ -3713,28 +3836,34 @@ int writeCheckpointFile(upload_file_summary * pstUploadFileSummary,
     for(i=0;i<partCount;i++)         
     {
         xmlNodePtr partNode = NULL;
-        sprintf_sec(contentBuff,16,"part%d",i+1);            
+        ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"part%d",i+1);
+        CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         partNode =  xmlNewNode(NULL,BAD_CAST contentBuff);//here  contentBuff indicat the name of the xml node
         
-        sprintf_sec(contentBuff,16,"%d",i+1);            
+        ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"%d",i+1);
+        CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         xmlNewChild(partNode,NULL,BAD_CAST "partNum",BAD_CAST contentBuff);
 
         if(ptrUploadPart!=NULL)
         {
-            sprintf_sec(contentBuff,64,"%s",ptrUploadPart->etag);
+            ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"%s",ptrUploadPart->etag);
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             xmlNewChild(partNode,NULL,BAD_CAST "etag",BAD_CAST contentBuff); 
 
-            sprintf_sec(contentBuff,64,"%llu",(long long unsigned int)ptrUploadPart->start_byte);
+            ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"%llu",(long long unsigned int)ptrUploadPart->start_byte);
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             xmlNewChild(partNode,NULL,BAD_CAST "startByte",BAD_CAST contentBuff);    
 
-            sprintf_sec(contentBuff,64,"%llu",(long long unsigned int)ptrUploadPart->part_size);
+            ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"%llu",(long long unsigned int)ptrUploadPart->part_size);
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             xmlNewChild(partNode,NULL,BAD_CAST "partSize",BAD_CAST contentBuff); 
 
-            sprintf_sec(contentBuff,64,"%s",g_uploadStatus[ptrUploadPart->uploadStatus]);
+            ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"%s",g_uploadStatus[ptrUploadPart->uploadStatus]);
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             xmlNewChild(partNode,NULL,BAD_CAST "uploadStatus",BAD_CAST contentBuff);  
+            ptrUploadPart = ptrUploadPart->next;
         }
-        xmlAddChild(node_partsinfo,partNode);         
-        ptrUploadPart = ptrUploadPart->next;
+        xmlAddChild(node_partsinfo,partNode);             
     }
 
     
@@ -3873,7 +4002,8 @@ int updateCheckPoint(char * elementPath, const char * content, const char * file
 
     char* p=strtok(strToParse, "/");
     while (p != NULL && strNum < MAX_XML_DEPTH){
-        strncpy_sec(strArry[strNum], 32, p, strlen(p)+1);
+        int ret = strncpy_s(strArry[strNum],ARRAY_LENGTH_32, p, strlen(p)+1);
+        CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
         p = strtok(NULL,"/");
         strNum++;
     }
@@ -3987,7 +4117,8 @@ static obs_status uploadPartCompletePropertiesCallback
 
     if(properties->etag)
     {
-        strcpy_s(cbd->stUploadFilePartInfo->etag,MAX_SIZE_ETAG,properties->etag);
+        errno_t err = strcpy_s(cbd->stUploadFilePartInfo->etag,MAX_SIZE_ETAG,properties->etag);
+        CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
     }
 
 
@@ -3997,7 +4128,8 @@ static obs_status uploadPartCompletePropertiesCallback
 
         if(properties->etag)
         {
-            sprintf_sec(pathToUpdate,1024,"%s%d/%s","uploadinfo/partsinfo/part",cbd->part_num + 1,"etag");
+            int ret = sprintf_s(pathToUpdate,ARRAY_LENGTH_1024,"%s%d/%s","uploadinfo/partsinfo/part",cbd->part_num + 1,"etag");
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
 #if defined(WIN32)
             EnterCriticalSection(&g_csThreadCheckpoint);
 #endif
@@ -4005,7 +4137,10 @@ static obs_status uploadPartCompletePropertiesCallback
 #if defined __GNUC__ || defined LINUX
                      pthread_mutex_lock(&g_mutexThreadCheckpoint);
 #endif
-            updateCheckPoint(pathToUpdate, properties->etag, cbd->checkpointFilename);
+            ret = updateCheckPoint(pathToUpdate, properties->etag, cbd->checkpointFilename);
+            if (ret == -1) {
+                COMMLOG(OBS_LOGWARN, "Failed to update checkpoint in function: %s.", __FUNCTION__);
+            }
 #if defined(WIN32)
             LeaveCriticalSection(&g_csThreadCheckpoint);
 #endif
@@ -4044,14 +4179,17 @@ static void  uploadPartCompleteCallback(obs_status status,
         char pathToUpdate[1024];
         char contentToSet[32];
 
-        sprintf_sec(pathToUpdate,1024,"%s%d/%s","uploadinfo/partsinfo/part",cbd->part_num + 1,"uploadStatus");
+        int ret = sprintf_s(pathToUpdate,ARRAY_LENGTH_1024,"%s%d/%s","uploadinfo/partsinfo/part",cbd->part_num + 1,"uploadStatus");
+        CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         if(status == OBS_STATUS_OK)
         {
-            sprintf_sec(contentToSet,32,"%s","UPLOAD_SUCCESS");
+            ret = sprintf_s(contentToSet,ARRAY_LENGTH_32,"%s","UPLOAD_SUCCESS");
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         }
         else
         {
-            sprintf_sec(contentToSet,32,"%s","UPLOAD_FAILED");
+            ret = sprintf_s(contentToSet,ARRAY_LENGTH_32,"%s","UPLOAD_FAILED");
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         }
 #if defined(WIN32)
         EnterCriticalSection(&g_csThreadCheckpoint);
@@ -4061,7 +4199,10 @@ static void  uploadPartCompleteCallback(obs_status status,
                      pthread_mutex_lock(&g_mutexThreadCheckpoint);
 #endif
 
-        updateCheckPoint(pathToUpdate, contentToSet, cbd->checkpointFilename);
+        ret = updateCheckPoint(pathToUpdate, contentToSet, cbd->checkpointFilename);
+        if (ret == -1) {
+            COMMLOG(OBS_LOGWARN, "Failed to update checkpoint in function: %s.", __FUNCTION__);
+        }
 #if defined(WIN32)
         LeaveCriticalSection(&g_csThreadCheckpoint);
 #endif
@@ -4112,7 +4253,7 @@ unsigned __stdcall UploadThreadProc_win32(void* param)
     uint64_t start_byte = pstPara->stUploadFilePartInfo->start_byte;
     uint64_t part_size = pstPara->stUploadFilePartInfo->part_size;
     int part_num = pstPara->stUploadFilePartInfo->part_num;
-    server_side_encryption_params * pstEncrypParam;
+    server_side_encryption_params * pstEncrypParam = NULL;
     char *szUpload = NULL;
     
     int fd = -1;
@@ -4140,8 +4281,8 @@ unsigned __stdcall UploadThreadProc_win32(void* param)
         curPos =  _lseeki64(fd,start_byte,SEEK_SET);
         
         szUpload =   pstPara->stUploadParams->upload_id;
-        
-        memset(&data,0,sizeof(upload_file_callback_data));
+		memset_s(&data, sizeof(upload_file_callback_data), 0, sizeof(upload_file_callback_data));
+
 
         data.bytesRemaining = pstPara->stUploadFilePartInfo->part_size;
         data.totalBytes = pstPara->stUploadFilePartInfo->part_size;
@@ -4160,13 +4301,13 @@ unsigned __stdcall UploadThreadProc_win32(void* param)
             char pathToUpdate[2014];
             char contentToSet[64];
 
-            sprintf_sec(pathToUpdate,1024,"%s%u/%s","uploadinfo/partsinfo/part",part_num+1,"uploadStatus");
-            sprintf_sec(contentToSet,32,"%s","UPLOADING");
+            sprintf_s(pathToUpdate,ARRAY_LENGTH_2014,"%s%u/%s","uploadinfo/partsinfo/part",part_num+1,"uploadStatus");
+            sprintf_s(contentToSet,ARRAY_LENGTH_64,"%s","UPLOADING");
             EnterCriticalSection(&g_csThreadCheckpoint);
             updateCheckPoint(pathToUpdate, contentToSet, pstPara->stUploadParams->fileNameCheckpoint);
             LeaveCriticalSection(&g_csThreadCheckpoint);
         }
-        memset(&stPutProperties,0,sizeof(obs_put_properties));
+		memset_s(&stPutProperties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
 
         stPutProperties.expires = -1;
         stPutProperties.canned_acl = OBS_CANNED_ACL_PUBLIC_READ_WRITE;
@@ -4177,7 +4318,8 @@ unsigned __stdcall UploadThreadProc_win32(void* param)
             pstEncrypParam = NULL;
         }
         obs_upload_part_info upload_part_info;
-        memset(&upload_part_info,0,sizeof(obs_upload_part_info));
+		memset_s(&upload_part_info, sizeof(obs_upload_part_info), 0, sizeof(obs_upload_part_info));
+
         upload_part_info.part_number = part_num + 1;
         upload_part_info.upload_id = szUpload;
         upload_part(pstPara->stUploadParams->options, pstPara->stUploadParams->objectName, 
@@ -4200,7 +4342,7 @@ void *UploadThreadProc_linux(void* param)
     uint64_t start_byte = pstPara->stUploadFilePartInfo->start_byte;
     uint64_t part_size = pstPara->stUploadFilePartInfo->part_size;
     int part_num = pstPara->stUploadFilePartInfo->part_num;
-    server_side_encryption_params * pstEncrypParam;
+    server_side_encryption_params * pstEncrypParam = NULL;
     char *szUpload = NULL;
     
     int fd = -1;
@@ -4245,14 +4387,15 @@ void *UploadThreadProc_linux(void* param)
             char pathToUpdate[1024];
             char contentToSet[32];
 
-            sprintf_sec(pathToUpdate,1024,"%s%d/%s","uploadinfo/partsinfo/part",part_num,"uploadStatus");
-            sprintf_sec(contentToSet,32,"%s","UPLOADING");            
+            sprintf_s(pathToUpdate,ARRAY_LENGTH_1024,"%s%d/%s","uploadinfo/partsinfo/part",part_num,"uploadStatus");
+            sprintf_s(contentToSet,ARRAY_LENGTH_32,"%s","UPLOADING");
             pthread_mutex_lock(&g_mutexThreadCheckpoint);
             updateCheckPoint(pathToUpdate, contentToSet, pstPara->stUploadParams->fileNameCheckpoint);
             pthread_mutex_unlock(&g_mutexThreadCheckpoint);
             
         }
-        memset(&stPutProperties,0,sizeof(obs_put_properties));
+		memset_s(&stPutProperties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
+
     
         stPutProperties.expires = -1;
         stPutProperties.canned_acl = OBS_CANNED_ACL_PUBLIC_READ_WRITE;
@@ -4263,7 +4406,8 @@ void *UploadThreadProc_linux(void* param)
             pstEncrypParam = NULL;
         }
         obs_upload_part_info upload_part_info;
-        memset(&upload_part_info,0,sizeof(obs_upload_part_info));
+		memset_s(&upload_part_info, sizeof(obs_upload_part_info), 0, sizeof(obs_upload_part_info));
+
         upload_part_info.part_number = part_num + 1;
         upload_part_info.upload_id = szUpload;
         upload_part(pstPara->stUploadParams->options, pstPara->stUploadParams->objectName, 
@@ -4288,11 +4432,15 @@ void startUploadThreads(upload_params * pstUploadParams,
     upload_file_proc_data * uploadFileProcDataList = (upload_file_proc_data *)malloc(sizeof(upload_file_proc_data)*partCount);
     if (uploadFileProcDataList == NULL)
     {
-		COMMLOG(OBS_LOGWARN, "startUploadThreads: uploadFileProcDataList malloc failed!\n");
+        COMMLOG(OBS_LOGWARN, "startUploadThreads: uploadFileProcDataList malloc failed!\n");
+        if (pstUploadParams->response_handler->complete_callback) {
+            (pstUploadParams->response_handler->complete_callback)(OBS_STATUS_InternalError, 0, callback_data);
+        }
+        return;
     }
 	
 	
-	upload_file_proc_data * pstUploadFileProcData = uploadFileProcDataList;
+    upload_file_proc_data * pstUploadFileProcData = uploadFileProcDataList;
 
     upload_file_part_info *pstOnePartInfo = uploadFilePartInfoList;
 #ifdef WIN32
@@ -4306,10 +4454,15 @@ void startUploadThreads(upload_params * pstUploadParams,
 	if (arrThread == NULL)
 	{
 		COMMLOG(OBS_LOGWARN, "startUploadThreads: pthread_t malloc failed!\n");
+        if (pstUploadParams->response_handler->complete_callback) {
+            (pstUploadParams->response_handler->complete_callback)(OBS_STATUS_InternalError, 0, callback_data);
+        }
+        return;
 	}
     int err;
 #endif
-    memset(uploadFileProcDataList,0,sizeof(upload_file_proc_data)*partCount);
+	memset_s(uploadFileProcDataList, sizeof(upload_file_proc_data)*partCount, 0, sizeof(upload_file_proc_data)*partCount);
+
 
     for(i=0;i<partCount;i++)
     {
@@ -4318,7 +4471,7 @@ void startUploadThreads(upload_params * pstUploadParams,
         pstUploadFileProcData->callBackData = callback_data;
 
         pstOnePartInfo = pstOnePartInfo->next;
-        pstUploadFileProcData ++;
+        pstUploadFileProcData++;
     }
     pstOnePartInfo = uploadFilePartInfoList;    
 #ifdef WIN32    
@@ -4416,11 +4569,11 @@ int isAllPartsComplete(upload_file_part_info * uploadPartNode,int * isAllSuccess
             *isAllSuccess = 0;
         }
 
-         if (   (ptrUploadPartNext->uploadStatus != UPLOAD_SUCCESS)
-           &&(ptrUploadPartNext->uploadStatus != UPLOAD_FAILED))
-           {
-               return 0;
-           }
+        if (   (ptrUploadPartNext->uploadStatus != UPLOAD_SUCCESS)
+        &&(ptrUploadPartNext->uploadStatus != UPLOAD_FAILED))
+        {
+            return 0;
+        }
         ptrUploadPartNext = ptrUploadPartNext->next;
     }
     return 1;
@@ -4441,7 +4594,7 @@ int completeUploadFileParts(upload_file_part_info * pstUploadInfoList,int partCo
                             const obs_options *options,  char * key, 
                             const char * upload_id, obs_response_handler *handler)
 {
-    obs_complete_upload_Info * pstUploadInfo;
+    obs_complete_upload_Info * pstUploadInfo = NULL;
     obs_complete_upload_Info * upInfoList =  NULL;
     int i = 0;
     
@@ -4453,7 +4606,8 @@ int completeUploadFileParts(upload_file_part_info * pstUploadInfoList,int partCo
     };
 
     obs_put_properties stPutProperties;
-    memset(&stPutProperties,0,sizeof(obs_put_properties));
+	memset_s(&stPutProperties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
+
     stPutProperties.expires = -1;
     stPutProperties.canned_acl = OBS_CANNED_ACL_PUBLIC_READ_WRITE;
 
@@ -4505,7 +4659,7 @@ int set_isFirstTime(const obs_options *options, char *key, obs_upload_file_confi
     if(upload_file_config->check_point_file)
     {
 		errno_t err = EOK;
-        err = memcpy_s(checkpointFilename,1024,upload_file_config->check_point_file,
+        err = memcpy_s(checkpointFilename,ARRAY_LENGTH_1024,upload_file_config->check_point_file,
                 strlen(upload_file_config->check_point_file)+1);
 		if (err != EOK)
 		{
@@ -4544,7 +4698,9 @@ int set_isFirstTime(const obs_options *options, char *key, obs_upload_file_confi
         else
         {
             isFirtTime = 0;
-            memcpy_s(pstUploadFileSum,sizeof(upload_file_summary),&stUploadFileSummaryOld,sizeof(upload_file_summary));
+            errno_t err = EOK;
+            err = memcpy_s(pstUploadFileSum,sizeof(upload_file_summary),&stUploadFileSummaryOld,sizeof(upload_file_summary));
+            CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
         }
     }      
 
@@ -4600,7 +4756,8 @@ int get_uploadId_for_uploadFile(const obs_options *options, char *key,
     {
         if(strlen(pstUploadParams->upload_id)!=0)
         {
-            strcpy_s(upload_id,MAX_SIZE_UPLOADID,pstUploadParams->upload_id);
+            errno_t err = strcpy_s(upload_id,MAX_SIZE_UPLOADID,pstUploadParams->upload_id);
+            CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
         }
     }
 
@@ -4691,7 +4848,7 @@ void upload_complete_handle(const obs_options *options, char *key, obs_upload_fi
         abortMultipartUploadAndFree(options,key, upload_id, NULL, DO_NOTHING);
     }
 
-    obs_upload_file_part_info * pstPartInfoRet;
+    obs_upload_file_part_info * pstPartInfoRet = NULL;
     resultInfo = (obs_upload_file_part_info*)malloc(sizeof(obs_upload_file_part_info)*partCount);
     if(resultInfo==NULL)
     {
@@ -4746,10 +4903,12 @@ void upload_file(const obs_options *options, char *key, server_side_encryption_p
     memset_s(&stUploadParams,sizeof(upload_params),0,sizeof(upload_params));
     memset_s(&stUploadFileSum,sizeof(upload_file_summary),0,sizeof(upload_file_summary));
 
+    errno_t err = EOK;
     if(upload_file_config->check_point_file)
     {
-        memcpy_s(checkpointFilename,1024,upload_file_config->check_point_file,
+        err = memcpy_s(checkpointFilename,ARRAY_LENGTH_1024,upload_file_config->check_point_file,
                     strlen(upload_file_config->check_point_file)+1);
+        CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     }
     //get the summary of the upload file 
     retVal = getUploadFileSummary(&stUploadFileSum,upload_file_config->upload_file);
@@ -4766,8 +4925,9 @@ void upload_file(const obs_options *options, char *key, server_side_encryption_p
 
     if(upload_file_config->check_point_file)
     {
-        memcpy_s(checkpointFilename,1024,upload_file_config->check_point_file,
+        err = memcpy_s(checkpointFilename,ARRAY_LENGTH_1024,upload_file_config->check_point_file,
             strlen(upload_file_config->check_point_file)+1);
+        CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     }
     is_ture = ((upload_file_config->part_size == 0)
                             ||(upload_file_config->part_size > MAX_PART_SIZE));
@@ -4784,13 +4944,19 @@ void upload_file(const obs_options *options, char *key, server_side_encryption_p
     {
         return;
     }
-    memcpy_s(stUploadFileSum.bucket_name,MAX_BKTNAME_SIZE,options->bucket_options.bucket_name,strlen(options->bucket_options.bucket_name)+1);
-    memcpy_s(stUploadFileSum.key,MAX_KEY_SIZE,key,strlen(key)+1);
-    memcpy_s(stUploadFileSum.upload_id,MAX_SIZE_UPLOADID,upload_id,strlen(upload_id)+1);
+    err = memcpy_s(stUploadFileSum.bucket_name,MAX_BKTNAME_SIZE,options->bucket_options.bucket_name,strlen(options->bucket_options.bucket_name)+1);
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(stUploadFileSum.key,MAX_KEY_SIZE,key,strlen(key)+1);
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(stUploadFileSum.upload_id,MAX_SIZE_UPLOADID,upload_id,strlen(upload_id)+1);
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     is_ture = ((upload_file_config->enable_check_point == 1) && (isFirtTime == 1));
     if(is_ture)
     {
-        writeCheckpointFile(&stUploadFileSum,pstUploadPartList,partCount,checkpointFilename);
+        int ret = writeCheckpointFile(&stUploadFileSum,pstUploadPartList,partCount,checkpointFilename);
+        if (ret == -1) {
+            COMMLOG(OBS_LOGWARN, "Failed to write checkpoint file.");
+        }
     }
     stUploadParams.fileNameCheckpoint = checkpointFilename;
     stUploadParams.enable_check_point = upload_file_config->enable_check_point;
@@ -4985,7 +5151,7 @@ void parse_download_xmlnode_objectinfo(xmlNodePtr curNode,
         xmlChar *nodeContent = xmlNodeGetContent(objectinfoNode);  
 		errno_t err = EOK; 
 		
-		if(!xmlStrcmp(objectinfoNode->name,(xmlChar *)"ContentLength"))
+        if(!xmlStrcmp(objectinfoNode->name,(xmlChar *)"ContentLength"))
         {
             pstDownLoadSummary->objectLength = parseUnsignedInt((char*)nodeContent);
         }
@@ -5010,10 +5176,10 @@ void parse_download_xmlnode_objectinfo(xmlNodePtr curNode,
             err = memcpy_s(pstDownLoadSummary->key,MAX_KEY_SIZE,nodeContent,strlen((char*)nodeContent)+1);
         }
 
-		if (err != EOK)
-		{
-			COMMLOG(OBS_LOGWARN, "parse_download_xmlnode_objectinfo: memcpy_s failed!\n");
-		}
+        if (err != EOK)
+        {
+            COMMLOG(OBS_LOGWARN, "parse_download_xmlnode_objectinfo: memcpy_s failed!\n");
+        }
 		
         xmlFree(nodeContent);             
         objectinfoNode = objectinfoNode->next;          
@@ -5026,7 +5192,7 @@ int parse_download_xmlnode_partsinfo(xmlNodePtr curNode,
                 download_file_part_info **downloadPartList,
                 int *partCount)
 {        
-    download_file_part_info * downloadPartNode;
+    download_file_part_info * downloadPartNode = NULL;
     download_file_part_info * pstDownloadPart = NULL;
     int partCountTmp = 0;
     
@@ -5064,13 +5230,15 @@ int parse_download_xmlnode_partsinfo(xmlNodePtr curNode,
             }
             else if(!xmlStrcmp(partinfoNode->name,(xmlChar *)"etag"))
             {
-                memset(downloadPartNode->etag,0,MAX_SIZE_ETAG);
+				memset_s(downloadPartNode->etag, MAX_SIZE_ETAG, 0, MAX_SIZE_ETAG);
                 
 				errno_t err = EOK;  
 				err = memcpy_s(downloadPartNode->etag, MAX_SIZE_ETAG, nodeContent, strlen((char*)nodeContent)+1);
 				if (err != EOK)
 				{
 					COMMLOG(OBS_LOGWARN, "parse_download_xmlnode_partsinfo: memcpy_s failed!\n");
+                    free(downloadPartNode);
+                    downloadPartNode = NULL;
 					return -1;
 				}
             }
@@ -5170,7 +5338,7 @@ void removeTempFiles(const char * fileName, download_file_part_info * downloadPa
         return;
     } 
 
-     if(removeAll)
+    if(removeAll)
     {
         remove(fileName);
     }
@@ -5186,7 +5354,8 @@ void removeTempFiles(const char * fileName, download_file_part_info * downloadPa
 #endif
             if(partNode->downloadStatus != COMBINE_SUCCESS)
             {
-                sprintf_sec(fileNameTemp,1024,"%s.%d",fileName,partNode->part_num);
+                int ret = sprintf_s(fileNameTemp,ARRAY_LENGTH_1024,"%s.%d",fileName,partNode->part_num);
+                CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
                 remove(fileNameTemp);
             }
         partNode = partNode->next;
@@ -5282,7 +5451,7 @@ int writeCheckpointFile_Download(download_file_summary * pstDownloadFileSummary,
     int i=0;  
     int nRel = -1;
 
-    download_file_part_info * ptrDownloadPart;
+    download_file_part_info * ptrDownloadPart = NULL;
 
     xmlNodePtr root_node = xmlNewNode(NULL,BAD_CAST"downloadinfo");   
 
@@ -5297,11 +5466,13 @@ int writeCheckpointFile_Download(download_file_summary * pstDownloadFileSummary,
 
     
     //add <filesize> under <object_info>    
-    sprintf_sec(str_content,512,"%llu",(long long unsigned int)pstDownloadFileSummary->objectLength);    
+    int ret = sprintf_s(str_content,ARRAY_LENGTH_512,"%llu",(long long unsigned int)pstDownloadFileSummary->objectLength);
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
     xmlNewTextChild(node_objectinfo, NULL, BAD_CAST "ContentLength", BAD_CAST str_content); 
     
     //add <lastmodify> under <object_info>    
-    sprintf_sec(str_content,512,"%llu",(long long unsigned int)pstDownloadFileSummary->lastModify);    
+    ret = sprintf_s(str_content,ARRAY_LENGTH_512,"%llu",(long long unsigned int)pstDownloadFileSummary->lastModify);
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
     xmlNewTextChild(node_objectinfo, NULL, BAD_CAST "lastmodify", BAD_CAST str_content);   
     
     //add <etag> under <object_info>    
@@ -5310,7 +5481,8 @@ int writeCheckpointFile_Download(download_file_summary * pstDownloadFileSummary,
     xmlNewTextChild(node_objectinfo, NULL, BAD_CAST "etag",BAD_CAST pstDownloadFileSummary->etag);  
     
     //add <storageclass> under <object_info>    
-    sprintf_sec(str_content,512,"%s",g_storageClass[pstDownloadFileSummary->storage_class]); 
+    ret = sprintf_s(str_content,ARRAY_LENGTH_512,"%s",g_storageClass[pstDownloadFileSummary->storage_class]);
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
     xmlNewTextChild(node_objectinfo, NULL, BAD_CAST "storageclass",BAD_CAST str_content);   
 
     // add <bucketname> under <object_info>   
@@ -5331,28 +5503,34 @@ int writeCheckpointFile_Download(download_file_summary * pstDownloadFileSummary,
     for(i=0;i<partCount;i++)         
     {
         xmlNodePtr partNode = NULL;
-        sprintf_sec(contentBuff,16,"part%d",i+1);            
+        ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"part%d",i+1);
+        CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         partNode =  xmlNewNode(NULL,BAD_CAST contentBuff);//here  contentBuff indicat the name of the xml node
         
-        sprintf_sec(contentBuff,16,"%d",i+1);            
+        ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"%d",i+1);
+        CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         xmlNewChild(partNode,NULL,BAD_CAST "partNum",BAD_CAST contentBuff);
 
         if(ptrDownloadPart!=NULL)
         {
-            sprintf_sec(contentBuff,64,"%s",ptrDownloadPart->etag);
+            ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"%s",ptrDownloadPart->etag);
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             xmlNewChild(partNode,NULL,BAD_CAST "etag",BAD_CAST contentBuff); 
 
-            sprintf_sec(contentBuff,64,"%llu",(long long unsigned int)ptrDownloadPart->start_byte);
+            ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"%llu",(long long unsigned int)ptrDownloadPart->start_byte);
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             xmlNewChild(partNode,NULL,BAD_CAST "startByte",BAD_CAST contentBuff);    
 
-            sprintf_sec(contentBuff,64,"%llu",(long long unsigned int)ptrDownloadPart->part_size);
+            ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"%llu",(long long unsigned int)ptrDownloadPart->part_size);
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             xmlNewChild(partNode,NULL,BAD_CAST "partSize",BAD_CAST contentBuff); 
 
-            sprintf_sec(contentBuff,64,"%s",g_downloadStatus[ptrDownloadPart->downloadStatus]);
+            ret = sprintf_s(contentBuff,ARRAY_LENGTH_64,"%s",g_downloadStatus[ptrDownloadPart->downloadStatus]);
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             xmlNewChild(partNode,NULL,BAD_CAST "downloadStatus",BAD_CAST contentBuff);  
+            ptrDownloadPart = ptrDownloadPart->next;
         }
         xmlAddChild(node_partsinfo,partNode);         
-        ptrDownloadPart = ptrDownloadPart->next;
     }
 
     
@@ -5537,15 +5715,17 @@ static obs_status DownloadPartCompletePropertiesCallback
 
     if(properties->etag)
     {
-        strcpy_s(cbd->pstDownloadFilePartInfo->etag,MAX_SIZE_ETAG,properties->etag);
+        errno_t err = strcpy_s(cbd->pstDownloadFilePartInfo->etag,MAX_SIZE_ETAG,properties->etag);
+        CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
     }
     if(cbd->enableCheckPoint)
     {
         char pathToUpdate[1024];
         if(properties->etag)
         {
-            sprintf_sec(pathToUpdate,1024,"%s%d/%s","downloadinfo/partsinfo/part",
+            int ret = sprintf_s(pathToUpdate,ARRAY_LENGTH_1024,"%s%d/%s","downloadinfo/partsinfo/part",
                 cbd->pstDownloadFilePartInfo->part_num + 1,"etag");
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
 #if defined(WIN32)
             EnterCriticalSection((CRITICAL_SECTION *)cbd->xmlWriteMutex);
 #endif
@@ -5553,7 +5733,10 @@ static obs_status DownloadPartCompletePropertiesCallback
 #if defined __GNUC__ || defined LINUX
             pthread_mutex_lock((pthread_mutex_t *)cbd->xmlWriteMutex);
 #endif
-            updateCheckPoint(pathToUpdate, properties->etag, cbd->checkpointFilename);
+            ret = updateCheckPoint(pathToUpdate, properties->etag, cbd->checkpointFilename);
+            if (ret == -1) {
+                COMMLOG(OBS_LOGWARN, "Failed to update checkpoint file in function: %s.", __FUNCTION__);
+            }
 #if defined(WIN32)
             LeaveCriticalSection((CRITICAL_SECTION *)cbd->xmlWriteMutex);
 #endif
@@ -5591,15 +5774,18 @@ static void  downloadPartCompleteCallback(obs_status status,
         char pathToUpdate[1024];
         char contentToSet[32];
 
-        sprintf_sec(pathToUpdate,1024,"%s%d/%s","downloadinfo/partsinfo/part",
+        int ret = sprintf_s(pathToUpdate,ARRAY_LENGTH_1024,"%s%d/%s","downloadinfo/partsinfo/part",
             cbd->pstDownloadFilePartInfo->part_num + 1,"downloadStatus");
+        CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         if(status == OBS_STATUS_OK)
         {
-            sprintf_sec(contentToSet,32,"%s","DOWNLOAD_SUCCESS");
+            ret = sprintf_s(contentToSet,ARRAY_LENGTH_32,"%s","DOWNLOAD_SUCCESS");
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         }
         else
         {
-            sprintf_sec(contentToSet,32,"%s","DOWNLOAD_FAILED");
+            ret = sprintf_s(contentToSet,ARRAY_LENGTH_32,"%s","DOWNLOAD_FAILED");
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         }
 
         //must ensure do close tempfile before updateCheckPoint
@@ -5617,7 +5803,10 @@ static void  downloadPartCompleteCallback(obs_status status,
         pthread_mutex_lock((pthread_mutex_t *)cbd->xmlWriteMutex);
 #endif
 
-        updateCheckPoint(pathToUpdate, contentToSet, cbd->checkpointFilename);
+        ret = updateCheckPoint(pathToUpdate, contentToSet, cbd->checkpointFilename);
+        if (ret == -1) {
+            COMMLOG(OBS_LOGWARN, "Failed to update checkpoint file in function: %s.", __FUNCTION__);
+        }
 #if defined(WIN32)
         LeaveCriticalSection((CRITICAL_SECTION *)cbd->xmlWriteMutex);
 #endif
@@ -5643,7 +5832,7 @@ static obs_status getObjectPartDataCallback(int buffer_size, const char *buffer,
 
     int fd = cbd->fdStorefile;
 
-    size_t wrote = write(fd,buffer,buffer_size);
+    size_t wrote = write(fd, buffer, buffer_size);
     
     return ((wrote < (size_t) buffer_size) ? 
             OBS_STATUS_AbortedByCallback : OBS_STATUS_OK);
@@ -5656,9 +5845,10 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
     char * storeFileName = pstPara->pstDownloadParams->fileNameStore;
     uint64_t part_size = pstPara->pstDownloadFilePartInfo->part_size;
     int part_num = pstPara->pstDownloadFilePartInfo->part_num;
-    server_side_encryption_params * pstEncrypParam;
+    server_side_encryption_params * pstEncrypParam = NULL;
     char strPartNum[16] = {0};
     download_file_callback_data  data;
+    data.fdStorefile = -1;
     int fd = -1;
     char * fileNameTemp = (char*)malloc(1024);
 	
@@ -5667,7 +5857,8 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
 		COMMLOG(OBS_LOGWARN, "DownloadThreadProc_win32: malloc failed!\n");
 	}
 	
-    sprintf_sec(fileNameTemp,1024,"%s.%d",storeFileName,part_num);
+    int ret = sprintf_s(fileNameTemp,1024,"%s.%d",storeFileName,part_num);
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
 
     (void)_sopen_s( &fd, fileNameTemp, _O_BINARY |  _O_RDWR | _O_CREAT,
                   _SH_DENYNO, _S_IREAD | _S_IWRITE );
@@ -5688,8 +5879,9 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
             &getObjectPartDataCallback 
         };
         
-        sprintf_sec(strPartNum,16,"%d",part_num+1);
-        memset(&data,0,sizeof(download_file_callback_data));
+        sprintf_s(strPartNum,ARRAY_LENGTH_16,"%d",part_num+1);
+		memset_s(&data, sizeof(download_file_callback_data), 0, sizeof(download_file_callback_data));
+
         data.bytesRemaining = part_size;
         data.totalBytes = part_size;
         data.callbackDataIn = pstPara->callBackData;
@@ -5699,6 +5891,7 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
         data.respHandler = pstPara->pstDownloadParams->response_handler;
         data.taskHandler = 0;
         data.pstDownloadFilePartInfo = pstPara->pstDownloadFilePartInfo;
+        data.xmlWriteMutex = pstPara->xmlWriteMutex;
 
      pstEncrypParam = pstPara->pstDownloadParams->pstServerSideEncryptionParams;
         
@@ -5707,15 +5900,18 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
             char pathToUpdate[1024];
             char contentToSet[32];
 
-            sprintf_sec(pathToUpdate,1024,"%s%s/%s","downloadinfo/partsinfo/part",strPartNum,"downloadStatus");
-            sprintf_sec(contentToSet,32,"%s","DOWNLOADING");            
+            ret = sprintf_s(pathToUpdate,ARRAY_LENGTH_1024,"%s%s/%s","downloadinfo/partsinfo/part",strPartNum,"downloadStatus");
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
+            ret = sprintf_s(contentToSet,ARRAY_LENGTH_32,"%s","DOWNLOADING");
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             EnterCriticalSection((CRITICAL_SECTION *)pstPara->xmlWriteMutex);
             updateCheckPoint(pathToUpdate, contentToSet, pstPara->pstDownloadParams->fileNameCheckpoint);
             LeaveCriticalSection((CRITICAL_SECTION *)pstPara->xmlWriteMutex);
             
         }
         obs_object_info object_info;
-        memset(&object_info,0,sizeof(obs_object_info));
+		memset_s(&object_info, sizeof(obs_object_info), 0, sizeof(obs_object_info));
+
         object_info.key = pstPara->pstDownloadParams->objectName;
         object_info.version_id = pstPara->pstDownloadParams->version_id;
         pstPara->pstDownloadFilePartInfo->downloadStatus = DOWNLOADING;
@@ -5747,6 +5943,7 @@ void * DownloadThreadProc_linux(void* param)
     int part_num = pstPara->pstDownloadFilePartInfo->part_num;
     char strPartNum[16] = {0};
     download_file_callback_data  data;
+    data.fdStorefile = -1;
     int fd = -1;
     char * fileNameTemp = (char*)malloc(1024);
 	
@@ -5755,7 +5952,8 @@ void * DownloadThreadProc_linux(void* param)
 		COMMLOG(OBS_LOGWARN, "DownloadThreadProc_linux: malloc failed!\n");
 	}
 	
-    sprintf_sec(fileNameTemp,1024,"%s.%d",storeFileName,part_num);
+    int ret = sprintf_s(fileNameTemp,1024,"%s.%d",storeFileName,part_num);
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
                   
     fd = open(fileNameTemp,O_WRONLY |O_CREAT |O_TRUNC, S_IRUSR|S_IWUSR);
     free(fileNameTemp);
@@ -5775,9 +5973,8 @@ void * DownloadThreadProc_linux(void* param)
             &getObjectPartDataCallback 
         };
         
-        sprintf_sec(strPartNum,16,"%d",part_num+1);
-        
-        memset(&data,0,sizeof(download_file_callback_data));
+        ret = sprintf_s(strPartNum,ARRAY_LENGTH_16,"%d",part_num+1);
+		memset_s(&data, sizeof(download_file_callback_data), 0, sizeof(download_file_callback_data));
 
         data.bytesRemaining = part_size;
         data.totalBytes = part_size;
@@ -5796,8 +5993,10 @@ void * DownloadThreadProc_linux(void* param)
             char pathToUpdate[1024];
             char contentToSet[32];
 
-            sprintf_sec(pathToUpdate,1024,"%s%s/%s","downloadinfo/partsinfo/part",strPartNum,"downloadStatus");
-            sprintf_sec(contentToSet,32,"%s","DOWNLOADING");            
+            ret = sprintf_s(pathToUpdate,ARRAY_LENGTH_1024,"%s%s/%s","downloadinfo/partsinfo/part",strPartNum,"downloadStatus");
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
+            ret = sprintf_s(contentToSet,ARRAY_LENGTH_32,"%s","DOWNLOADING");
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             pthread_mutex_lock((pthread_mutex_t *)pstPara->xmlWriteMutex);
             updateCheckPoint(pathToUpdate, contentToSet, pstPara->pstDownloadParams->fileNameCheckpoint);
             pthread_mutex_unlock((pthread_mutex_t *)pstPara->xmlWriteMutex);
@@ -5805,7 +6004,8 @@ void * DownloadThreadProc_linux(void* param)
         }
 
         obs_object_info object_info;
-        memset(&object_info,0,sizeof(obs_object_info));
+		memset_s(&object_info, sizeof(obs_object_info), 0, sizeof(obs_object_info));
+
         object_info.key = pstPara->pstDownloadParams->objectName;
         object_info.version_id = pstPara->pstDownloadParams->version_id;
         pstPara->pstDownloadFilePartInfo->downloadStatus = DOWNLOADING;
@@ -5840,6 +6040,10 @@ void startDownloadThreads(download_params * pstDownloadParams,
 	if (downloadFileProcDataList == NULL)
 	{
 		COMMLOG(OBS_LOGWARN, "startDownloadThreads: downloadFileProcDataList malloc failed\n");
+        if (pstDownloadParams->response_handler->complete_callback) {
+            (pstDownloadParams->response_handler->complete_callback)(OBS_STATUS_InternalError, 0, callback_data);
+        }
+        return;
 	}
 	
     download_file_proc_data * pstDownloadFileProcData = downloadFileProcDataList;
@@ -5857,11 +6061,15 @@ void startDownloadThreads(download_params * pstDownloadParams,
 	if (arrThread == NULL)
 	{
 		COMMLOG(OBS_LOGWARN, "startDownloadThreads: arrThread malloc failed\n",i);
+        if (pstDownloadParams->response_handler->complete_callback) {
+            (pstDownloadParams->response_handler->complete_callback)(OBS_STATUS_InternalError, 0, callback_data);
+        }
+        return;
 	}
 	
     int err;
 #endif
-    memset(downloadFileProcDataList,0,sizeof(download_file_proc_data)*partCount);
+	memset_s(downloadFileProcDataList, sizeof(download_file_proc_data)*partCount, 0, sizeof(download_file_proc_data)*partCount);
 
     for(i=0;i<partCount;i++)
     {
@@ -5870,7 +6078,7 @@ void startDownloadThreads(download_params * pstDownloadParams,
         pstDownloadFileProcData->callBackData = callback_data;
         pstDownloadFileProcData->xmlWriteMutex = xmlwrite_mutex;
         pstOnePartInfo = pstOnePartInfo->next;
-        pstDownloadFileProcData ++;
+        pstDownloadFileProcData++;
     }
     pstOnePartInfo = downloadFilePartInfoList;    
 #ifdef WIN32    
@@ -6018,21 +6226,26 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
         if(partNode->downloadStatus == COMBINE_SUCCESS)
         {
 #ifdef WIN32
-           if(_lseeki64(fdDest, (long long int)partNode->part_size, SEEK_CUR)==-1)
-           {
-               return -1;
-           }
-#else
-           if(lseek(fdDest, (long long int)partNode->part_size, SEEK_CUR)==-1)
-           {
-               return -1;
-           }
-#endif
-            partNode = partNode->next;
-            continue;
+        if(_lseeki64(fdDest, (long long int)partNode->part_size, SEEK_CUR)==-1)
+        {
+            free(buff);
+            buff = NULL;
+            return -1;
         }
+#else
+        if(lseek(fdDest, (long long int)partNode->part_size, SEEK_CUR)==-1)
+        {
+            free(buff);
+            buff = NULL;
+            return -1;
+        }
+#endif
+        partNode = partNode->next;
+        continue;
+    }
         
-        sprintf_sec(fileNameTemp,1024,"%s.%d",fileName,partNode->part_num);
+        int ret = sprintf_s(fileNameTemp,ARRAY_LENGTH_1024,"%s.%d",fileName,partNode->part_num);
+        CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         
 #if defined WIN32
         Sleep(0);
@@ -6089,8 +6302,10 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
             partNode->downloadStatus = COMBINE_SUCCESS;
             if(check_point_file)
             {
-                sprintf_sec(pathToUpdate,1024,"%s%d/%s","downloadinfo/partsinfo/part",partNode->part_num + 1,"downloadStatus");
-                sprintf_sec(contentToSet,32,"%s","COMBINE_SUCCESS");
+                ret = sprintf_s(pathToUpdate,ARRAY_LENGTH_1024,"%s%d/%s","downloadinfo/partsinfo/part",partNode->part_num + 1,"downloadStatus");
+                CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
+                ret = sprintf_s(contentToSet,ARRAY_LENGTH_32,"%s","COMBINE_SUCCESS");
+                CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
 
 #if defined(WIN32)
                 EnterCriticalSection((CRITICAL_SECTION *)xmlwrite_mutex);
@@ -6099,7 +6314,10 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
 #if defined __GNUC__ || defined LINUX
                 pthread_mutex_lock((pthread_mutex_t *)xmlwrite_mutex);
 #endif
-                updateCheckPoint(pathToUpdate, contentToSet, check_point_file);
+                ret = updateCheckPoint(pathToUpdate, contentToSet, check_point_file);
+                if (ret == -1) {
+                    COMMLOG(OBS_LOGWARN, "Failed to update checkpoint point in function: %s.", __FUNCTION__);
+                }
 #if defined(WIN32)
                 LeaveCriticalSection((CRITICAL_SECTION *)xmlwrite_mutex);
 #endif
@@ -6223,16 +6441,15 @@ static int get_download_isfirst_time(obs_download_file_configuration * download_
                     ||(!strlen(download_file_config->downLoad_file)));
     if (is_true)
     {
-        memcpy_s(storeFile,1024,key,strlen(key)+1);
+        errno_t err = EOK;
+        err = memcpy_s(storeFile,ARRAY_LENGTH_1024,key,strlen(key)+1);
+        CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     }
     else 
     {
 		errno_t err = EOK; 
-        err = memcpy_s(storeFile,1024,download_file_config->downLoad_file,strlen(download_file_config->downLoad_file)+1);
-		if (err != EOK)
-		{
-			COMMLOG(OBS_LOGWARN, "get_download_isfirst_time: memcpy_s failed!\n");
-		}
+        err = memcpy_s(storeFile,ARRAY_LENGTH_1024,download_file_config->downLoad_file,strlen(download_file_config->downLoad_file)+1);
+        CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     }
 
     is_true = ((download_file_config->check_point_file!=NULL)
@@ -6240,16 +6457,13 @@ static int get_download_isfirst_time(obs_download_file_configuration * download_
     if (is_true)
     {
         errno_t err = EOK;  
-		err = memcpy_s(checkpointFile,1024,download_file_config->check_point_file,
+		err = memcpy_s(checkpointFile,ARRAY_LENGTH_1024,download_file_config->check_point_file,
                         strlen(download_file_config->check_point_file)+1);
-		if (err != EOK)
-		{
-			COMMLOG(OBS_LOGWARN, "get_download_isfirst_time: memcpy_s failed!\n");
-		}
+        CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     }
     else
     {
-        memset_s(checkpointFile,1024,0,1024);
+        memset_s(checkpointFile,ARRAY_LENGTH_1024,0,1024);
     }
 
     if (download_file_config->enable_check_point)
@@ -6317,7 +6531,8 @@ void download_complete_handle(download_file_part_info * pstPartInfoListDone,
         if(retVal == 0)
         {
             char strReturn[1024] = {0};
-            sprintf_sec(strReturn,100,"DownloadFile %s success\n",storeFile);
+            int ret = sprintf_s(strReturn,ARRAY_LENGTH_1024,"DownloadFile %s success\n",storeFile);
+            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             COMMLOG(OBS_LOGINFO, "DownloadFile combine success\n");
             if(handler->download_file_callback)
             {
@@ -6486,8 +6701,11 @@ void download_file(const obs_options *options, char *key, char* version_id,
     
     while(pstPartInfoListNotDone)
     {
-        GetDownloadPartListToProcess(&pstPartInfoListDone,&pstPartInfoListNotDone,
+        int ret = GetDownloadPartListToProcess(&pstPartInfoListDone,&pstPartInfoListNotDone,
             partCountToProc,&partCountToProc,download_file_config->task_num);
+        if (ret < 0) {
+            COMMLOG(OBS_LOGWARN, "GetDownloadPartListToProcess returns %d.", ret);
+        }
         if(partCountToProc > 0)
         {
             startDownloadThreads(&stDownloadParams,pstPartInfoListNotDone,partCountToProc,callback_data, &mutexThreadCheckpoint); 

@@ -25,7 +25,8 @@ int prefix_cmp(const char *header, const char* prefix, int namelen)
 
 void response_headers_handler_initialize(response_headers_handler *handler)
 {
-    memset(&handler->responseProperties, 0, sizeof(obs_response_properties));
+	memset_s(&handler->responseProperties, sizeof(obs_response_properties), 0, sizeof(obs_response_properties));
+
     handler->responseProperties.last_modified = -1;
     handler->done = 0;
     string_multibuffer_initialize(handler->responsePropertyStrings);

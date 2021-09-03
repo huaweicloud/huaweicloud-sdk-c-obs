@@ -41,6 +41,14 @@ extern "C" {
 #define OBS_MAX_DELETE_OBJECT_NUMBER  1000
 #define OBS_MAX_DELETE_OBJECT_DOC 1024000
 
+#define ARRAY_LENGTH_4 4
+#define ARRAY_LENGTH_16 16
+#define ARRAY_LENGTH_32 32
+#define ARRAY_LENGTH_50 50
+#define ARRAY_LENGTH_64 64
+#define ARRAY_LENGTH_512 512
+#define ARRAY_LENGTH_1024 1024
+#define ARRAY_LENGTH_2014 2014
 
 typedef enum
 {
@@ -1437,7 +1445,7 @@ eSDK_OBS_API void truncate_object(const obs_options *options, char *key, uint64_
 eSDK_OBS_API void rename_object(const obs_options *options, char *key, char *new_object_name,
                    obs_response_handler *handler, void *callback_data);
 
-eSDK_OBS_API void compute_md5(const char *buffer, int64_t buffer_size, char *outbuffer);
+eSDK_OBS_API void compute_md5(const char *buffer, int64_t buffer_size, char *outbuffer, int64_t max_out_put_buffer_size);
 
 eSDK_OBS_API int set_obs_log_path(const char *log_path);
 

@@ -1,12 +1,12 @@
 #!/bin/bash
 #Usage: build.sh packageName release|debug
-#packageName Îª""Ê± ²»´ò°ü
+#packageName Îª""Ê± ï¿½ï¿½ï¿½ï¿½ï¿½
 
-# ©À©¤bin
-# ©À©¤include
-# ©¸©¤lib
+# ï¿½ï¿½ï¿½ï¿½bin
+# ï¿½ï¿½ï¿½ï¿½include
+# ï¿½ï¿½ï¿½ï¿½lib
 #----------------------- variables --------------------#
-#µ±Ç°½Å±¾ËùÔÚÂ·¾¶
+#ï¿½ï¿½Ç°ï¿½Å±ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½
 G_CWD=`dirname $0`
 pushd $G_CWD >/dev/null
 G_CWD=`pwd`
@@ -41,7 +41,6 @@ export openssl_version=openssl-1.1.1d
 export curl_version=curl-7.66.0
 fi
 export libxml2_version=libxml2-2.9.9
-#export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #
 # Function Name: ifFailExitAndPrint
 # Description: 
@@ -79,41 +78,33 @@ compileThirty()
 		
         bash build_pcre.sh
         ifFailExitAndPrint $? "make failed."
-#       read -p "Press any key to continue."
     
         bash build_openssl.sh
         ifFailExitAndPrint $? "make failed."
-#       read -p "Press any key to continue."
 
         bash build_iconv.sh
         ifFailExitAndPrint $? "make failed."
-#       read -p "Press any key to continue."  
 	   	
         bash build_libxml2.sh
         ifFailExitAndPrint $? "make failed."
-#       read -p "Press any key to continue."
-
-#        bash build_nghttp2.sh
-#		ifFailExitAndPrint $? "make failed."
 
         bash build_curl.sh
         ifFailExitAndPrint $? "make failed."
-#       read -p "Press any key to continue."
 	fi	     
     cd ${G_BUILD_DIR}
 }
 
-#----------±àÒëthird_party_groupware------------
+#----------ï¿½ï¿½ï¿½ï¿½third_party_groupware------------
 #compileThirty L_THIRTY_DIR
 
-#cd ${G_BUILD_DIR}
-
-#----------±àÒëlibsecurec.so------------
+#----------ï¿½ï¿½ï¿½ï¿½libsecurec.so------------
 pushd $G_SECUREC_PATH/src >/dev/null
 make -f Makefile.Macos clean
 
 make -f Makefile.Macos
 popd >/dev/null
+
+
 make clean
 make
 
@@ -138,6 +129,7 @@ if [ "$G_BUILD_OPTION" == "debug" ];then
 g_PATH=build-debug
 fi
 
+
 cp -f ${g_PATH}/include/* include
 cp -f ${g_PATH}/lib/*.dylib lib
 cp -f ./../../../platform/huaweisecurec/include/* include
@@ -156,28 +148,6 @@ cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/demo_common.h" demo/
 cp -f cert/client.pem demo/client.pem
 cp -f cert/client.pem lib/client.pem
 tar zcvf ${L_PACKAGE_NAME}.tgz demo include lib readme.txt
-
-#cp -f ${g_PATH}/include/* include_static
-#cp -f ${g_PATH}/lib/*.a lib_static
-#cp -f ./../../../platform/huaweisecurec/include/* include_static
-#cp -f ./../../../platform/huaweisecurec/src/libsecurec.a lib_static
-#cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/eSDKLogAPI/libeSDKLogAPI.a lib_static
-#cp -f /usr/local/log4cpp/lib/*.a lib_static
-#cp -f ./../../../build/script/Provider/build/linux/${curl_version}/static_package/lib/* lib_static
-#cp -f ./../../../build/script/Provider/build/linux/${libxml2_version}/static_package/lib/* lib_static
-#cp -f ./../../../build/script/Provider/build/linux/${openssl_version}/static_package/lib/* lib_static
-#cp -f ./../../../build/script/Provider/build/linux/pcre-8.39/static_package/lib/* lib_static 
-#cp -f ./../../../build/script/Provider/build/linux/iconv-1.15/static_package/lib/* lib_static 
-#cp -f ./../../../build/script/Provider/build/linux/${nghttp2_version}/static_package/lib/* lib_static 
-#cp -f Makefile_static demo_static/Makefile
-#cp -f OBS.ini lib_static
-#cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/object_test.c" demo_static/object_test.c
-#cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/demo.c" demo_static/demo.c
-#cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/demo_common.c" demo_static/demo_common.c
-#cp -f "./../../../source/eSDK_OBS_API/eSDK_OBS_API_C++_Demo/demo_common.h" demo_static/demo_common.h
-#cp -f cert/client.pem demo_static/client.pem
-#cp -f cert/client.pem lib_static/client.pem
-#tar zcvf ${L_PACKAGE_NAME}_STATIC.tgz demo_static include_static lib_static readme.txt
 
 rm -rf {demo,include,lib,"Log Collection Statement.txt"}
 rm -rf {demo_static,include_static,lib_static,"Log Collection Statement.txt"}

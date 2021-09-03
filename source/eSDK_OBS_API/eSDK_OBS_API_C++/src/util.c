@@ -1,19 +1,34 @@
-/*********************************************************************************
-* Copyright 2019 Huawei Technologies Co.,Ltd.
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-* this file except in compliance with the License.  You may obtain a copy of the
-* License at
-* 
-* http://www.apache.org/licenses/LICENSE-2.0
-* 
-* Unless required by applicable law or agreed to in writing, software distributed
-* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-* CONDITIONS OF ANY KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations under the License.
-**********************************************************************************
-*/
+/** **************************************************************************
+ *
+ * Copyright 2008 Bryan Ischo <bryan@ischo.com>
+ *
+ * This file is part of libs3.
+ *
+ * libs3 is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation, version 3 of the License.
+ *
+ * In addition, as a special exception, the copyright holders give
+ * permission to link the code of this library and its programs with the
+ * OpenSSL library, and distribute linked combinations including the two.
+ *
+ * libs3 is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * version 3 along with libs3, in a file named COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ ************************************************************************** **/
+
+/*lint -e506*/ 
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
+#include <openssl/bio.h>
+#include <openssl/pem.h>
+
 #include <ctype.h>
 #include <string.h>
 #include "util.h"
@@ -31,20 +46,30 @@
 
 #define OVECCOUNT 100
 
-static int checkString(const char *str, const char *format)
+static int checkString(const char *str, const char *format) 
 {
-    while (*format) {
-        if (*format == 'd') {
-            if (!isdigit(*str)) {
-                return 0;
-            }
-        }
-        else if (*str != *format) {
-            return 0;
-        }
-        str++, format++;
-    }
-    return 1;
+	if (format == NULL || str == NULL) {
+        COMMLOG(OBS_LOGERROR, "input of checkString is NULL.");
+		return 0;
+	}
+	while (*format) {
+		char s = *str;
+		char f = *format;
+		if (!s) {
+			return 0;
+		}
+		if (f == 'd') {
+			if (!isdigit(s)) {
+				return 0;
+			}
+		}
+		else if (s != f) {
+			return 0;
+		}
+		++str;
+		++format;
+	}
+	return 1;
 }
 
 #ifdef WIN32
@@ -147,7 +172,7 @@ char* string_To_UTF8(const char* pSource)
     }
 
     retsize = iconv(cd, (char**)&pSource, &i_length, (char**)&pmbs, &o_length);
-    if((size_t)-1 == retsize) { 
+    if((size_t)-1 == retsize) {
         perror("iconv error"); 
         free(pmbs);
         pmbs = NULL;
@@ -185,7 +210,7 @@ char* UTF8_To_String(const char* pSource)
     }
 
     retsize = iconv(cd, (char**)&pSource, &i_length, (char**)&pmbs, &o_length);
-    if((size_t)-1 == retsize) { 
+    if((size_t)-1 == retsize) {
         perror("iconv error"); 
         free(pmbs);
         pmbs = NULL;
@@ -200,14 +225,20 @@ char* UTF8_To_String(const char* pSource)
 
 void changeTimeFormat(const char* strInTime, char* strOutTime)
 {
+    int ret = 0;
     if (!checkString(strInTime, "ddddddddT")) {
-        sprintf_sec(strOutTime, 50, "%s", strInTime);
+        ret = sprintf_s(strOutTime,ARRAY_LENGTH_50, "%s", strInTime);
+        CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         return;
     }
 
     struct tm tmTool;
-    sscanf_s(strInTime, "%4d%2d%2dT", &tmTool.tm_year, &tmTool.tm_mon, &tmTool.tm_mday);
-    sprintf_sec(strOutTime, 50, "%04d-%02d-%02dT00:00:00Z", tmTool.tm_year, tmTool.tm_mon, tmTool.tm_mday);
+    ret = sscanf_s(strInTime, "%4d%2d%2dT", &tmTool.tm_year, &tmTool.tm_mon, &tmTool.tm_mday);
+    if (ret != 3) {
+        COMMLOG(OBS_LOGWARN, "sscanf_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+    }
+    ret = sprintf_s(strOutTime,ARRAY_LENGTH_50, "%04d-%02d-%02dT00:00:00Z", tmTool.tm_year, tmTool.tm_mon, tmTool.tm_mday);
+    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
 
     return;
 }
@@ -253,27 +284,34 @@ int getTimeZone()
 
 int urlEncode(char *dest, const char *src, int maxSrcSize, char ignoreChar)
 {
-    static const char *hex = "0123456789ABCDEF";
+    if (dest == NULL) {
+        COMMLOG(OBS_LOGERROR, "dest for urlEncode is NULL.");
+        return -1;
+    }
+    if (src == NULL) {
+        COMMLOG(OBS_LOGWARN, "src for urlEncode is NULL.");
+        *dest = 0;
+        return 1;
+    }
     int len = 0;
-
-    if (src) while (*src) {
+    while (*src) {
         if (++len > maxSrcSize) {
             *dest = 0;
             return 0;
         }
         unsigned char c = *src;
-        if (isalnum(c) || (c == '.')  ||(c == '-')
-                     || (c == '_')  ||(c == '~')
-                     || (c == ignoreChar) ) 
+        if (isalnum(c) || (c == '.') || (c == '-')
+            || (c == '_') || (c == '~')
+            || (c == ignoreChar))
         {
             *dest++ = c;
         }
         else {
             *dest++ = '%';
-            *dest++ = hex[c >> 4];
-            *dest++ = hex[c & 15];
+            *dest++ = "0123456789ABCDEF"[c >> 4];
+            *dest++ = "0123456789ABCDEF"[c & 15];
         }
-        src++;
+        ++src;
     }
 
     *dest = 0;
@@ -294,9 +332,16 @@ int urlDecode(char *dest, const char *src, int maxSrcSize)
         unsigned char c = *src;
         if(c=='%'){
             src ++;
-            memmove_s(strOne,4,src,2);
-            sscanf_s(strOne, "%02x",&charGot);
-            memset_s(strOne,4,0,4);
+            errno_t err = memmove_s(strOne,ARRAY_LENGTH_4,src,2);
+            if (err != EOK)
+            {
+                COMMLOG(OBS_LOGWARN, "%s(%d): memmove_s failed!(%d)", __FUNCTION__, __LINE__, err);
+            }
+            int ret = sscanf_s(strOne, "%02x",&charGot);
+            if (ret != 1) {
+                COMMLOG(OBS_LOGWARN, "%s(%d): sscanf_s failed!(%d)", __FUNCTION__, __LINE__);
+            }
+            memset_s(strOne,ARRAY_LENGTH_4,0,4);
             src ++;
 
             *dest++ = (char)charGot;            
@@ -315,353 +360,172 @@ int urlDecode(char *dest, const char *src, int maxSrcSize)
 
 int64_t parseIso8601Time(const char *str)
 {
-    if (!checkString(str, "dddd-dd-ddTdd:dd:dd")) {
-        return -1;
-    }
+	if (!checkString(str, "dddd-dd-ddTdd:dd:dd")) {
+		return -1;
+	}
 
-#define nextnum() (((*str - '0') * 10) + (*(str + 1) - '0'))
+#define getnum() (*str - '0')
 
-    struct tm stm;
-    memset_s(&stm, sizeof(stm), 0, sizeof(stm));
-    stm.tm_year = (nextnum() - 19) * 100;
-    str += 2;
-    stm.tm_year += nextnum();
-    str += 3;
-    stm.tm_mon = nextnum() - 1;
-    str += 3;
-    stm.tm_mday = nextnum();
-    str += 3;
-    stm.tm_hour = nextnum();
-    str += 3;
-    stm.tm_min = nextnum();
-    str += 3;
-    stm.tm_sec = nextnum();
-    str += 2;
-    stm.tm_isdst = -1;
-    int64_t ret = mktime(&stm);
+	struct tm stm;
+	memset_s(&stm, sizeof(stm), 0, sizeof(stm));
+	stm.tm_year = getnum() * 1000;
+	++str;
+	stm.tm_year += getnum() * 100;
+	++str;
+	stm.tm_year += getnum() * 10;
+	++str;
+	stm.tm_year += getnum() - 1900;
+	str += 2;
+	
+	stm.tm_mon = getnum() * 10;
+	++str;
+	stm.tm_mon += getnum() - 1;
+	str += 2;
 
-    if (*str == '.') {
-        str++;
-        while (isdigit(*str)) {
-            str++;
-        }
-    }
-    
-    if (checkString(str, "-dd:dd") || checkString(str, "+dd:dd")) {
-        int sign = (*str++ == '-') ? -1 : 1;
-        int hours = nextnum();
-        str += 3;
-        int minutes = nextnum();
-        ret += (-sign * (((hours * 60) + minutes) * 60));
-    }
+	stm.tm_mday = getnum() * 10;
+	++str;
+	stm.tm_mday += getnum();
+	str += 2;
 
-    return ret;
+	stm.tm_hour = getnum() * 10;
+	++str;
+	stm.tm_hour += getnum();
+	str += 2;
+
+	stm.tm_min = getnum() * 10;
+	++str;
+	stm.tm_min += getnum();
+	str += 2;
+
+	stm.tm_sec = getnum() * 10;
+	++str;
+	stm.tm_sec += getnum();
+	++str;
+
+	stm.tm_isdst = -1;
+	int64_t ret = mktime(&stm);
+
+	if (*str == '.') {
+		str++;
+		while (isdigit(*str)) {
+			str++;
+		}
+	}
+
+	if (checkString(str, "-dd:dd") || checkString(str, "+dd:dd")) {
+		int flag = 1;
+		if (*str == '+') {
+			flag = -1;
+		}
+		++str;
+
+		int hours = getnum() * 10;
+		++str;
+		hours += getnum();
+		str += 2;
+
+		int minutes = getnum() * 10;
+		++str;
+		minutes += getnum();
+		ret += (flag * (((hours * 60) + minutes) * 60));
+	}
+
+	return ret;
 }
 
 uint64_t parseUnsignedInt(const char *str)
 {
-    while (is_blank(*str)) {
-        str++;
-    }
-    uint64_t ret = 0;
+	uint64_t ret = 0;
 
-    while (isdigit(*str)) {
-        ret *= 10;
-        ret += (*str++ - '0');
-    }
-    return ret;
+	while (is_blank(*str)) {
+		++str;
+	}
+
+	while (isdigit(*str)) {
+		ret *= 10;
+		ret += (*str - '0');
+		++str;
+	}
+	return ret;
 }
 
 
 int base64Encode(const unsigned char *in, int inLen, char *out)
 {
-    static const char *ENC = 
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	BIO * bmem = NULL;
+	BIO * b64 = NULL;
+	BUF_MEM * bptr = NULL;
 
-    char *original_out = out;
-    while (inLen) {
-        *out++ = ENC[*in >> 2];
-        if (!--inLen) {
-            *out++ = ENC[(*in & 0x3) << 4];
-            *out++ = '=';
-            *out++ = '=';
-            break;
-        }
-        *out++ = ENC[((*in & 0x3) << 4) | (*(in + 1) >> 4)];
-        in++;
-        if (!--inLen) {
-            *out++ = ENC[(*in & 0xF) << 2];
-            *out++ = '=';
-            break;
-        }
-        *out++ = ENC[((*in & 0xF) << 2) | (*(in + 1) >> 6)];
-        in++;
-        *out++ = ENC[*in & 0x3F];
-        in++, inLen--;
+	b64 = BIO_new(BIO_f_base64());
+	BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+	bmem = BIO_new(BIO_s_mem());
+	b64 = BIO_push(b64, bmem);
+	BIO_write(b64, in, inLen);
+	(void)BIO_flush(b64);
+	BIO_get_mem_ptr(b64, &bptr);
+
+    errno_t err = EOK;
+    err = memcpy_s(out, bptr->length, bptr->data, bptr->length);
+    if (err != EOK)
+    {
+        COMMLOG(OBS_LOGWARN, "%s(%d): memcpy_s failed!", __FUNCTION__, __LINE__);
     }
-    return (out - original_out);
+    out[bptr->length] = 0;
+
+    size_t result = bptr->length;
+    BIO_free_all(b64);
+    return result;
 }
 
 char * base64Decode(const char *base64Char, const long base64CharSize, char *originChar, long originCharSize) 
 {
-    static const char *ENC = 
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    int toInt[128] = {-1};
-    int i=0;
-    while(i < 64) {
-        toInt[(int)ENC[i]] = i;
-        i++;
-    }
-    unsigned int int255 = 0xFF;
-    int index = 0;
-    i = 0;
-    while(i < base64CharSize) {
-        unsigned int c0 = toInt[(int)base64Char[i]];
-        unsigned int c1 = toInt[(int)base64Char[i + 1]];
-        originChar[index++] = (((c0 << 2) | (c1 >> 4)) & int255);
-        if (index >= originCharSize) {
-            return originChar;
-        }
-        unsigned int c2 = toInt[(int)base64Char[i + 2]];
-        originChar[index++] = (((c1 << 4) | (c2 >> 2)) & int255);
-        if (index >= originCharSize) {
-            return originChar;
-        }
-        unsigned int c3 = toInt[(int)base64Char[i + 3]];
-        originChar[index++] = (((c2 << 6) | c3) & int255);
-        i += 4;
-    }
-    return originChar;
+
+	BIO * b64 = NULL;
+	BIO * bmem = NULL;
+
+	b64 = BIO_new(BIO_f_base64());
+	BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+	bmem = BIO_new_mem_buf(base64Char, base64CharSize);
+	bmem = BIO_push(b64, bmem);
+	BIO_read(bmem, originChar, originCharSize);
+
+	BIO_free_all(bmem);
+
+	return originChar;
 }
 
-
-#define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
-#define blk0L(i) (block->l[i] = (rol(block->l[i], 24) & 0xFF00FF00)     \
-                  | (rol(block->l[i], 8) & 0x00FF00FF))
-
-#define blk0B(i) (block->l[i])
-#define blk(i) (block->l[i & 15] = rol(block->l[(i + 13) & 15] ^        \
-                                       block->l[(i + 8) & 15] ^         \
-                                       block->l[(i + 2) & 15] ^         \
-                                       block->l[i & 15], 1))
-
-#define R0_L(v, w, x, y, z, i)                                          \
-    z += ((w & (x ^ y)) ^ y) + blk0L(i) + 0x5A827999 + rol(v, 5);       \
-    w = rol(w, 30);
-#define R0_B(v, w, x, y, z, i)                                          \
-    z += ((w & (x ^ y)) ^ y) + blk0B(i) + 0x5A827999 + rol(v, 5);       \
-    w = rol(w, 30);
-#define R1(v, w, x, y, z, i)                                            \
-    z += ((w & (x ^ y)) ^ y) + blk(i) + 0x5A827999 + rol(v, 5);         \
-    w = rol(w, 30);
-#define R2(v, w, x, y, z, i)                                            \
-    z += (w ^ x ^ y) + blk(i) + 0x6ED9EBA1 + rol(v, 5);                 \
-    w = rol(w, 30);
-#define R3(v, w, x, y, z, i)                                            \
-    z += (((w | x) & y) | (w & x)) + blk(i) + 0x8F1BBCDC + rol(v, 5);   \
-    w = rol(w, 30);
-#define R4(v, w, x, y, z, i)                                            \
-    z += (w ^ x ^ y) + blk(i) + 0xCA62C1D6 + rol(v, 5);                 \
-    w = rol(w, 30);
-
-#define R0A_L(i) R0_L(a, b, c, d, e, i)
-#define R0B_L(i) R0_L(b, c, d, e, a, i)
-#define R0C_L(i) R0_L(c, d, e, a, b, i)
-#define R0D_L(i) R0_L(d, e, a, b, c, i)
-#define R0E_L(i) R0_L(e, a, b, c, d, i)
-
-#define R0A_B(i) R0_B(a, b, c, d, e, i)
-#define R0B_B(i) R0_B(b, c, d, e, a, i)
-#define R0C_B(i) R0_B(c, d, e, a, b, i)
-#define R0D_B(i) R0_B(d, e, a, b, c, i)
-#define R0E_B(i) R0_B(e, a, b, c, d, i)
-
-#define R1A(i) R1(a, b, c, d, e, i)
-#define R1B(i) R1(b, c, d, e, a, i)
-#define R1C(i) R1(c, d, e, a, b, i)
-#define R1D(i) R1(d, e, a, b, c, i)
-#define R1E(i) R1(e, a, b, c, d, i)
-
-#define R2A(i) R2(a, b, c, d, e, i)
-#define R2B(i) R2(b, c, d, e, a, i)
-#define R2C(i) R2(c, d, e, a, b, i)
-#define R2D(i) R2(d, e, a, b, c, i)
-#define R2E(i) R2(e, a, b, c, d, i)
-
-#define R3A(i) R3(a, b, c, d, e, i)
-#define R3B(i) R3(b, c, d, e, a, i)
-#define R3C(i) R3(c, d, e, a, b, i)
-#define R3D(i) R3(d, e, a, b, c, i)
-#define R3E(i) R3(e, a, b, c, d, i)
-
-#define R4A(i) R4(a, b, c, d, e, i)
-#define R4B(i) R4(b, c, d, e, a, i)
-#define R4C(i) R4(c, d, e, a, b, i)
-#define R4D(i) R4(d, e, a, b, c, i)
-#define R4E(i) R4(e, a, b, c, d, i)
-
-
-static void SHA1_transform(uint32_t state[5], const unsigned char buffer[64])
-{
-    uint32_t a, b, c, d, e;
-    typedef union {
-        unsigned char c[64];
-        uint32_t l[16];
-    } u;
-    unsigned char w[64];
-    u *block = (u *) w;
-    memcpy_s(block, 64, buffer, 64);
-    a = state[0];
-    b = state[1];
-    c = state[2];
-    d = state[3];
-    e = state[4];
-    static uint32_t endianness_indicator = 0x1;
-    if (((unsigned char *) &endianness_indicator)[0]) {
-        R0A_L( 0);
-        R0E_L( 1); R0D_L( 2); R0C_L( 3); R0B_L( 4); R0A_L( 5);
-        R0E_L( 6); R0D_L( 7); R0C_L( 8); R0B_L( 9); R0A_L(10);
-        R0E_L(11); R0D_L(12); R0C_L(13); R0B_L(14); R0A_L(15);
-    }
-    else {
-        R0A_B( 0);
-        R0E_B( 1); R0D_B( 2); R0C_B( 3); R0B_B( 4); R0A_B( 5);
-        R0E_B( 6); R0D_B( 7); R0C_B( 8); R0B_B( 9); R0A_B(10);
-        R0E_B(11); R0D_B(12); R0C_B(13); R0B_B(14); R0A_B(15);
-    }
-    R1E(16); R1D(17); R1C(18); R1B(19); R2A(20);
-    R2E(21); R2D(22); R2C(23); R2B(24); R2A(25);
-    R2E(26); R2D(27); R2C(28); R2B(29); R2A(30);
-    R2E(31); R2D(32); R2C(33); R2B(34); R2A(35);
-    R2E(36); R2D(37); R2C(38); R2B(39); R3A(40);
-    R3E(41); R3D(42); R3C(43); R3B(44); R3A(45);
-    R3E(46); R3D(47); R3C(48); R3B(49); R3A(50);
-    R3E(51); R3D(52); R3C(53); R3B(54); R3A(55);
-    R3E(56); R3D(57); R3C(58); R3B(59); R4A(60);
-    R4E(61); R4D(62); R4C(63); R4B(64); R4A(65);
-    R4E(66); R4D(67); R4C(68); R4B(69); R4A(70);
-    R4E(71); R4D(72); R4C(73); R4B(74); R4A(75);
-    R4E(76); R4D(77); R4C(78); R4B(79);
-    state[0] += a;
-    state[1] += b;
-    state[2] += c;
-    state[3] += d;
-    state[4] += e;
-}
-
-typedef struct
-{
-    uint32_t state[5];
-    uint32_t count[2];
-    unsigned char buffer[64];
-} SHA1Context;
-
-static void SHA1_init(SHA1Context *context)
-{
-    context->state[0] = 0x67452301;
-    context->state[1] = 0xEFCDAB89;
-    context->state[2] = 0x98BADCFE;
-    context->state[3] = 0x10325476;
-    context->state[4] = 0xC3D2E1F0;
-    context->count[0] = context->count[1] = 0;
-}
-
-static void SHA1_update(SHA1Context *context, const unsigned char *data,
-                        unsigned int len)
-{
-    uint32_t i, j;
-	errno_t err = EOK;
-    j = (context->count[0] >> 3) & 63;
-
-    if ((context->count[0] += len << 3) < (len << 3)) {
-        context->count[1]++;
-    }
-
-    context->count[1] += (len >> 29);
-
-    if ((j + len) > 63) {		
-		err = EOK;  
-		err = memcpy_s(&(context->buffer[j]), sizeof(context->buffer) - j, data, (i = 64 - j));
-		if (err != EOK)
-		{
-			COMMLOG(OBS_LOGWARN, "SHA1_update: memcpy_s failed!\n");
-		}
-		
-        SHA1_transform(context->state, context->buffer);
-        for ( ; (i + 63) < len; i += 64) {
-            SHA1_transform(context->state, &(data[i]));
-        }
-        j = 0;
-    }
-    else {
-        i = 0;
-    }
-
-	err = EOK;  
-	err = memcpy_s(&(context->buffer[j]), sizeof(context->buffer) - j, &(data[i]), len - i);
-	if (err != EOK)
-	{
-		COMMLOG(OBS_LOGWARN, "SHA1_update: memcpy_s failed!\n");
-	}
-}
-
-static void SHA1_final(unsigned char digest[20], SHA1Context *context)
-{
-    uint32_t i;
-    unsigned char finalcount[8] = {0};
-
-    for (i = 0; i < 8; i++) {
-        finalcount[i] = (unsigned char)
-            ((context->count[(i >= 4 ? 0 : 1)] >>
-              ((3 - (i & 3)) * 8)) & 255);
-    }
-    SHA1_update(context, (unsigned char *) "\200", 1);
-
-    while ((context->count[0] & 504) != 448) {
-        SHA1_update(context, (unsigned char *) "\0", 1);
-    }
-    SHA1_update(context, finalcount, 8);
-
-    for (i = 0; i < 20; i++) {
-        digest[i] = (unsigned char)
-            ((context->state[i >> 2] >> ((3 - (i & 3)) * 8)) & 255);
-    }
-    memset_s(context->buffer, sizeof(context->buffer), 0, 64);
-    memset_s(context->state, sizeof(context->state), 0, 20);
-    memset_s(context->count, sizeof(context->count), 0, 8);
-    memset_s(finalcount, sizeof(finalcount), 0, 8);
-    SHA1_transform(context->state, context->buffer);
-}
 
 void HMAC_SHA1(unsigned char hmac[20], const unsigned char *key, int key_len,
                const unsigned char *message, int message_len)
 {
-    unsigned char kopad[64] = {0};
-    unsigned char kipad[64] = {0};
-    int i;
-    if (key_len > 64) {
-        key_len = 64;
-    }
-    for (i = 0; i < key_len; i++) {
-        kopad[i] = key[i] ^ 0x5c;
-        kipad[i] = key[i] ^ 0x36;
-    }
-    for ( ; i < 64; i++) {
-        kopad[i] = 0 ^ 0x5c;
-        kipad[i] = 0 ^ 0x36;
-    }
-    unsigned char digest[20];
-    SHA1Context context;
-   
-    SHA1_init(&context);
-    SHA1_update(&context, kipad, 64);
-    SHA1_update(&context, message, message_len);
-    SHA1_final(digest, &context);
+	unsigned int resultLen = 20;
+	const EVP_MD* engine = NULL;
+	engine = EVP_sha1();
+	
 
-    SHA1_init(&context);
-    SHA1_update(&context, kopad, 64);
-    SHA1_update(&context, digest, 20);
-    SHA1_final(hmac, &context);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+	HMAC_CTX ctx;
+	HMAC_CTX_init(&ctx);
+
+	HMAC_Init_ex(&ctx, key, key_len, engine, NULL);
+	HMAC_Update(&ctx, message, message_len);
+	HMAC_Final(&ctx, hmac, &resultLen);
+	HMAC_CTX_cleanup(&ctx);
+#else
+	HMAC_CTX *ctx;
+	ctx = HMAC_CTX_new();
+	if (NULL == ctx)
+	{
+		COMMLOG(OBS_LOGERROR, "HMAC_CTX_new failed!");
+		return;
+	}
+	HMAC_CTX_reset(ctx);
+	HMAC_Init_ex(ctx, key, key_len, engine, NULL);
+	HMAC_Update(ctx, message, message_len);
+	HMAC_Final(ctx, hmac, &resultLen);
+	HMAC_CTX_free(ctx);
+#endif
+
 }
 
 void HMAC_SHA256(unsigned char hmac[32], const unsigned char *key, int key_len,
@@ -703,7 +567,7 @@ void HMAC_SHA256(unsigned char hmac[32], const unsigned char *key, int key_len,
     HMAC_CTX_free(ctx);
 #endif
 
-    memset_s(hmac, 32, 0, 32);
+    memset_s(hmac, ARRAY_LENGTH_32, 0, 32);
     unsigned int i;
     for(i=0; i<tempLength; i++)
     {
@@ -754,7 +618,7 @@ void SHA256Hash(unsigned char sha[32], const unsigned char *message, int message
     EVP_DigestFinal_ex(mdctx, temp, &tempLength);
     EVP_MD_CTX_free(mdctx);
 #endif
-    memset_s(sha, 32, 0, 32);
+    memset_s(sha,ARRAY_LENGTH_32, 0, 32);
     unsigned int i = 0;
     for(i = 0; i < tempLength; i++)
     {
@@ -764,103 +628,6 @@ void SHA256Hash(unsigned char sha[32], const unsigned char *message, int message
     temp = NULL;
 }
 
-#define rot(x,k) (((x) << (k)) | ((x) >> (32 - (k))))
-uint64_t hash(const unsigned char *k, int length)
-{
-    uint32_t a, b, c;
-    a = b = c = 0xdeadbeef + ((uint32_t) length);
-    static uint32_t endianness_indicator = 0x1;
-    if (((unsigned char *) &endianness_indicator)[0]) {
-        while (length > 12) {
-            a += k[0];
-            a += ((uint32_t) k[1]) << 8;
-            a += ((uint32_t) k[2]) << 16;
-            a += ((uint32_t) k[3]) << 24;
-            b += k[4];
-            b += ((uint32_t) k[5]) << 8;
-            b += ((uint32_t) k[6]) << 16;
-            b += ((uint32_t) k[7]) << 24;
-            c += k[8];
-            c += ((uint32_t) k[9]) << 8;
-            c += ((uint32_t) k[10]) << 16;
-            c += ((uint32_t) k[11]) << 24;
-            a -= c; a ^= rot(c, 4);  c += b;
-            b -= a; b ^= rot(a, 6);  a += c;
-            c -= b; c ^= rot(b, 8);  b += a;
-            a -= c; a ^= rot(c, 16);  c += b;
-            b -= a; b ^= rot(a, 19);  a += c;
-            c -= b; c ^= rot(b, 4);  b += a;
-            length -= 12;
-            k += 12;
-        }
-        switch(length) {
-            obscase 12: c += ((uint32_t) k[11]) << 24;
-            obscase 11: c += ((uint32_t) k[10]) << 16;
-            obscase 10: c += ((uint32_t) k[9]) << 8;
-            obscase 9 : c += k[8];
-            obscase 8 : b += ((uint32_t) k[7]) << 24;
-            obscase 7 : b += ((uint32_t) k[6]) << 16;
-            obscase 6 : b += ((uint32_t) k[5]) << 8;
-            obscase 5 : b += k[4];
-            obscase 4 : a += ((uint32_t) k[3]) << 24;
-            obscase 3 : a += ((uint32_t) k[2]) << 16;
-            obscase 2 : a += ((uint32_t) k[1]) << 8;
-            obscase 1 : a += k[0]; break;
-            obscase 0 : goto end;
-        }
-    }
-    else {
-        while (length > 12) {
-            a += ((uint32_t) k[0]) << 24;
-            a += ((uint32_t) k[1]) << 16;
-            a += ((uint32_t) k[2]) << 8;
-            a += ((uint32_t) k[3]);
-            b += ((uint32_t) k[4]) << 24;
-            b += ((uint32_t) k[5]) << 16;
-            b += ((uint32_t) k[6]) << 8;
-            b += ((uint32_t) k[7]);
-            c += ((uint32_t) k[8]) << 24;
-            c += ((uint32_t) k[9]) << 16;
-            c += ((uint32_t) k[10]) << 8;
-            c += ((uint32_t) k[11]);
-            a -= c; a ^= rot(c, 4);  c += b;
-            b -= a; b ^= rot(a, 6);  a += c;
-            c -= b; c ^= rot(b, 8);  b += a;
-            a -= c; a ^= rot(c, 16);  c += b;
-            b -= a; b ^= rot(a, 19);  a += c;
-            c -= b; c ^= rot(b, 4);  b += a;
-            length -= 12;
-            k += 12;
-        }
-
-        switch(length) {
-            obscase 12: c += k[11];
-            obscase 11: c += ((uint32_t) k[10]) << 8;
-            obscase 10: c += ((uint32_t) k[9]) << 16;
-            obscase 9 : c += ((uint32_t) k[8]) << 24;
-            obscase 8 : b += k[7];
-            obscase 7 : b += ((uint32_t) k[6]) << 8;
-            obscase 6 : b += ((uint32_t) k[5]) << 16;
-            obscase 5 : b += ((uint32_t) k[4]) << 24;
-            obscase 4 : a += k[3];
-            obscase 3 : a += ((uint32_t) k[2]) << 8;
-            obscase 2 : a += ((uint32_t) k[1]) << 16;
-            obscase 1 : a += ((uint32_t) k[0]) << 24; break;
-            obscase 0 : goto end;
-        }
-    }
-    
-    c ^= b; c -= rot(b, 14);
-    a ^= c; a -= rot(c, 11);
-    b ^= a; b -= rot(a, 25);
-    c ^= b; c -= rot(b, 16);
-    a ^= c; a -= rot(c, 4);
-    b ^= a; b -= rot(a, 14);
-    c ^= b; c -= rot(b, 24);
-
- end:
-    return ((((uint64_t) c) << 32) | b);
-}
 int is_blank(char c)
 {
     return ((c == ' ') || (c == '\t'));
@@ -895,6 +662,10 @@ int pcre_replace(const char* src,char ** destOut)
     int src_len = 0;
     int  erroffset = 0;
     int  ovector[OVECCOUNT]={0};
+    if (src == NULL) {
+        COMMLOG(OBS_LOGERROR, "src for pcre_replace is NULL.");
+        return 0;
+    }
     src_len = strlen(src);
     re = pcre_compile("[&\'\"<>]", 0, &error, &erroffset, NULL);
     if (re == NULL)
@@ -925,39 +696,57 @@ int pcre_replace(const char* src,char ** destOut)
     offset = 0;
     for(i = 0; i < count; i++)
     {
+        int retVal = 0;
         if(i == 0)
         {
-            strncpy_sec(dest + offset, src_len + count*6 - offset, src , ovector[i*2]);
+            int ret = strncpy_s(dest + offset, src_len + count*6 - offset, src , ovector[i*2]);
+            CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
             offset = ovector[i*2];
         }
         else
         {
-            strncpy_sec(dest + offset, src_len + count*6 - offset, src + ovector[i*2-1], ovector[i*2]-ovector[i*2-1]);
+            int ret = strncpy_s(dest + offset, src_len + count*6 - offset, src + ovector[i*2-1], ovector[i*2]-ovector[i*2-1]);
+            CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
             offset += ovector[i*2]-ovector[i*2-1];
         }
         if(src[ovector[i*2]] == '<')
         {
-            strcat_s(dest, sizeof(char)*(src_len + count*6), "&lt;");
+            retVal = strcat_s(dest, sizeof(char)*(src_len + count*6), "&lt;");
+            if (retVal != 0) {
+                COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+            }
             offset += 4;
         }
         if(src[ovector[i*2]] == '>')
         {
-            strcat_s(dest, sizeof(char)*(src_len + count*6), "&gt;");
+            retVal = strcat_s(dest, sizeof(char)*(src_len + count*6), "&gt;");
+            if (retVal != 0) {
+                COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+            }
             offset += 4;
         }
         if(src[ovector[i*2]] == '&')
         {
-            strcat_s(dest, sizeof(char)*(src_len + count*6), "&amp;");
+            retVal = strcat_s(dest, sizeof(char)*(src_len + count*6), "&amp;");
+            if (retVal != 0) {
+                COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+            }
             offset += 5;
         }
         if(src[ovector[i*2]] == '\'')
         {
-            strcat_s(dest, sizeof(char)*(src_len + count*6), "&apos;");
+            retVal = strcat_s(dest, sizeof(char)*(src_len + count*6), "&apos;");
+            if (retVal != 0) {
+                COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+            }
             offset += 6;
         }
         if(src[ovector[i*2]] == '\"')
         {
-            strcat_s(dest, sizeof(char)*(src_len + count*6), "&quot;");
+            retVal = strcat_s(dest, sizeof(char)*(src_len + count*6), "&quot;");
+            if (retVal != 0) {
+                COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+            }
             offset += 6;
         }
 
@@ -969,82 +758,7 @@ int pcre_replace(const char* src,char ** destOut)
 int add_xml_element(char * buffOut, int * lenth,const char * elementName, const char * content, 
         eFormalizeChoice needFormalize, xmlAddType addType)
 {
-    int mark = 0;
-    char*  afterFormalize = 0;
-    const char * pstrContent = NULL;
-    int tmplen = 0; 
-    int is_true = 0;
-
-    is_true = ((buffOut == NULL) || (elementName == NULL));
-    if(is_true)
-    {
-        return -1;
-    }
-
-    is_true = ((addType == ADD_HEAD_ONLY) || (addType == ADD_TAIL_ONLY));
-    if(is_true)
-    {
-        if(addType == ADD_HEAD_ONLY)
-        {
-            tmplen = snprintf_sec(buffOut + *lenth, MAX_XML_LEN - *lenth, 
-                                    _TRUNCATE, "<%s>", elementName);
-        }
-        else
-        {
-            tmplen = snprintf_sec(buffOut + *lenth, MAX_XML_LEN - *lenth, 
-                                           _TRUNCATE, "</%s>", elementName);
-        }
-
-        if(tmplen < 0)
-        {
-            COMMLOG(OBS_LOGERROR, "snprintf_sec error xmlElementName:%s!", elementName);
-            return -1;
-        }
-        *lenth += tmplen;
-    }
-    else if(addType  == ADD_NAME_CONTENT)
-    {
-        is_true = (content == NULL || '\0' == content[0]);
-        if(is_true)
-        {
-            COMMLOG(OBS_LOGERROR, "xml element content is NULL!");
-            return -1;
-        }
-
-        if(needFormalize == NEED_FORMALIZE)
-        {
-            mark = pcre_replace(content, &afterFormalize);
-            pstrContent = mark?afterFormalize:content;
-        }
-        else
-        {
-            pstrContent = content;
-        }
-
-        tmplen = snprintf_sec(buffOut + *lenth, MAX_XML_LEN - *lenth, _TRUNCATE, 
-                "<%s>%s</%s>", elementName, pstrContent, elementName);
-
-        if(tmplen < 0)
-        {
-            COMMLOG(OBS_LOGERROR, "snprintf_s error xmlElementName:%s, xmlElementContent:%s!",elementName,content);
-            return -1;
-        }
-
-        *lenth += tmplen;
-
-        if((needFormalize)&&(mark))
-        {
-            free(afterFormalize);
-            afterFormalize = NULL;
-        }          
-    }
-    else
-    {
-        COMMLOG(OBS_LOGERROR, "xml add type is invalid!");
-        return -1;
-    }      
-    
-    return 0;     
+    return add_xml_element_in_bufflen(buffOut, lenth, elementName, content, needFormalize, addType, MAX_XML_LEN);
 }
 
 int add_xml_element_in_bufflen(char * buffOut, int * lenth,const char * elementName, const char * content, 
@@ -1067,12 +781,12 @@ int add_xml_element_in_bufflen(char * buffOut, int * lenth,const char * elementN
     {
         if(addType == ADD_HEAD_ONLY)
         {
-            tmplen = snprintf_sec(buffOut + *lenth, buff_len - *lenth, 
+            tmplen = snprintf_s(buffOut + *lenth, buff_len - *lenth,
                                     _TRUNCATE, "<%s>", elementName);
         }
         else
         {
-            tmplen = snprintf_sec(buffOut + *lenth, buff_len - *lenth, 
+            tmplen = snprintf_s(buffOut + *lenth, buff_len - *lenth,
                                            _TRUNCATE, "</%s>", elementName);
         }
 
@@ -1102,7 +816,7 @@ int add_xml_element_in_bufflen(char * buffOut, int * lenth,const char * elementN
             pstrContent = content;
         }
 
-        tmplen = snprintf_sec(buffOut + *lenth, buff_len - *lenth, _TRUNCATE, 
+        tmplen = snprintf_s(buffOut + *lenth, buff_len - *lenth, _TRUNCATE,
                 "<%s>%s</%s>", elementName, pstrContent, elementName);
 
         if(tmplen < 0)
@@ -1127,6 +841,6 @@ int add_xml_element_in_bufflen(char * buffOut, int * lenth,const char * elementN
     
     return 0;     
 }
-
+/*lint restore*/
 
 

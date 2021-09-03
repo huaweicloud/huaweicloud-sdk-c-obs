@@ -258,15 +258,24 @@ obs_status init_certificate_by_path(obs_protocol protocol, obs_certificate_conf 
         strcat_s(ca_path, PATH_LENGTH, CERTIFICATE_NAME);
     #else
         GetModuleFileNameA(NULL,ca_path,MAX_MSG_SIZE-1);
-        if(NULL != strrchr(ca_path, '\\')){ 
-            *(strrchr(ca_path, '\\') + 1) = '\0'; 
+        char *chr = strrchr(ca_path, '\\');
+        if(NULL != chr){ 
+            *(chr + 1) = '\0'; 
         }
-        strcat_s(ca_path, PATH_LENGTH, "client.crt");
+        int ret = strcat_s(ca_path, PATH_LENGTH, "client.crt");
+        if (ret != 0) {
+            COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.", __FUNCTION__);
+        }
     #endif
     }
     else if ((OBS_DEFINED_CERTIFICATE == ca_conf) && path && (path_length > 0))
     {
-        memcpy_s(ca_path, sizeof(ca_path), path, path_length);
+        errno_t err = EOK;
+        err = memcpy_s(ca_path, sizeof(ca_path), path, path_length);
+        if (err != EOK)
+        {
+            COMMLOG(OBS_LOGWARN, "%s(%d): memcpy_s failed!", __FUNCTION__, __LINE__);
+        }
     }
     else
     {
@@ -309,7 +318,12 @@ obs_status init_certificate_by_buffer(const char *buffer, int buffer_length)
         return OBS_STATUS_InvalidArgument;
     }
     
-    memcpy_s(&g_ca_info, sizeof(g_ca_info), buffer, buffer_length);
+    errno_t err = EOK;
+    err = memcpy_s(&g_ca_info, sizeof(g_ca_info), buffer, buffer_length);
+    if (err != EOK)
+    {
+        COMMLOG(OBS_LOGWARN, "%s(%d): memcpy_s failed!", __FUNCTION__, __LINE__);
+    }
     g_protocol = OBS_PROTOCOL_HTTPS;
     return OBS_STATUS_OK;
 }
@@ -372,13 +386,17 @@ int obs_status_is_retryable(obs_status status) //lint !e578
     }
 }
 
-void compute_md5(const char *buffer, int64_t buffer_size, char *outbuffer)
+void compute_md5(const char *buffer, int64_t buffer_size, char *outbuffer, int64_t max_out_put_buffer_size)
 {
     unsigned char buffer_md5[16] = {0};
     char base64_md5[64] = {0};
     MD5((unsigned char*)buffer, (size_t)buffer_size, buffer_md5);
     base64Encode(buffer_md5, sizeof(buffer_md5), base64_md5);
-    strcpy(outbuffer,base64_md5);
+    errno_t err = strcpy_s(outbuffer, max_out_put_buffer_size, base64_md5);
+    if (err != EOK)
+    {
+        COMMLOG(OBS_LOGWARN, "%s(%d): strcpy_s failed(%d)!", __FUNCTION__, __LINE__, err);
+    }
 }
 
 obs_status set_online_request_max_count(uint32_t online_request_max)

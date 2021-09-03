@@ -44,9 +44,6 @@
 #define snprintf_s _snprintf_s
 #endif
 
-#ifdef _MSC_VER
-#define snprintf _snprintf
-#endif
 
 #define SSEC_KEY_MD5_LENGTH 64
 
@@ -605,7 +602,7 @@ void print_grant_info(int acl_grant_count,obs_acl_grant *acl_grants)
             break;
         case OBS_GRANTEE_TYPE_CANONICAL_USER:
             type = "UserID";
-            snprintf(composedId, sizeof(composedId),
+			snprintf_s(composedId, sizeof(composedId), sizeof(composedId) - 1,
                     "%s (%s)", grant->grantee.canonical_user.id,
                     grant->grantee.canonical_user.display_name);
             id = composedId;
@@ -649,7 +646,7 @@ static void test_set_object_metadata(char* bucket_name, char * key, char *versio
 	char *expires = NULL;
 
 	obs_object_info objectinfo;
-	memset(&objectinfo,0,sizeof(obs_object_info));
+	memset_s(&objectinfo,sizeof(objectinfo),0,sizeof(obs_object_info));
 	objectinfo.key=key;
 	objectinfo.version_id=version_id;
 	// init struct obs_option
@@ -673,7 +670,7 @@ static void test_set_object_metadata(char* bucket_name, char * key, char *versio
 
 
 	server_side_encryption_params encryption_params;
-	memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+	memset_s(&encryption_params, sizeof(encryption_params),0, sizeof(server_side_encryption_params));
 
 
 	obs_put_properties put_properties;
@@ -702,7 +699,7 @@ static void test_get_object_metadata(char * key, char *version_id)
 {
 
     obs_object_info objectinfo;
-    memset(&objectinfo,0,sizeof(obs_object_info));
+    memset_s(&objectinfo,sizeof(objectinfo),0,sizeof(obs_object_info));
     objectinfo.key=key;
     objectinfo.version_id=version_id;
     // init struct obs_option
@@ -791,7 +788,7 @@ static void test_create_bucket(int argc, char **argv, int optindex)
     obs_canned_acl canned_acl = OBS_CANNED_ACL_PRIVATE;
     temp_auth_configure tempauth;
     tempAuthResult  ptrResult;
-    memset(&ptrResult,0,sizeof(tempAuthResult));
+    memset_s(&ptrResult,sizeof(ptrResult),0,sizeof(tempAuthResult));
     obs_status status = OBS_STATUS_OK;
 
 	if (optindex == argc) {
@@ -888,7 +885,7 @@ static void test_delete_bucket(int argc, char **argv, int optindex)
     obs_canned_acl canned_acl = OBS_CANNED_ACL_PRIVATE;
     temp_auth_configure tempauth;
     tempAuthResult  ptrResult;
-    memset(&ptrResult,0,sizeof(tempAuthResult));
+    memset_s(&ptrResult,sizeof(ptrResult),0,sizeof(tempAuthResult));
     obs_status status = OBS_STATUS_OK;
 
     if (optindex == argc) {
@@ -1012,7 +1009,7 @@ void test_set_bucket_policy(char *bucket_name)
     };
 
     char bucket_policy[1024] = {0};
-    sprintf(bucket_policy, 
+    sprintf_s(bucket_policy,sizeof(bucket_policy), 
         "{\"Version\":\"2008-10-17\",\"Id\":\"111\","
         "\"Statement\":[{\"Sid\": \"AddPerm\", \"Action\": [\"s3:GetObject\" ]," 
         "\"Effect\": \"Allow\",\"Resource\": \"arn:aws:s3:::%s/*\",\"Principal\":\"*\"} ] }", 
@@ -1316,8 +1313,8 @@ obs_status get_bucket_tagging_callback(int tagging_count, obs_name_value *taggin
     { 
         for(tag_num=0;tag_num<tagging_count;tag_num++)
         {
-            memcpy(tag_info->taglist[tag_num].key,(&tagging_list[tag_num])->name,strlen((&tagging_list[tag_num])->name)+1);
-            memcpy(tag_info->taglist[tag_num].value,(&tagging_list[tag_num])->value,strlen((&tagging_list[tag_num])->value)+1);
+            memcpy_s(tag_info->taglist[tag_num].key, sizeof(tag_info->taglist[tag_num].key),(&tagging_list[tag_num])->name,strlen((&tagging_list[tag_num])->name)+1);
+            memcpy_s(tag_info->taglist[tag_num].value, sizeof(tag_info->taglist[tag_num].value),(&tagging_list[tag_num])->value,strlen((&tagging_list[tag_num])->value)+1);
         }
     }
     printTagInfo(tag_info);
@@ -1354,7 +1351,7 @@ void test_get_bucket_tagging(int argc, char** argv, int optindex)
     };
 
     TaggingInfo tagging_info;
-    memset(&tagging_info, 0, sizeof(TaggingInfo));
+    memset_s(&tagging_info, sizeof(tagging_info),0, sizeof(TaggingInfo));
     tagging_info.ret_status = OBS_STATUS_BUTT;
 
     get_bucket_tagging(&option, &response_handler, &tagging_info);
@@ -1426,13 +1423,17 @@ static void set_log_delivery_acl(char *bucket_name_target)
     memset_s(&aclinfo, sizeof(manager_acl_info), 0, sizeof(manager_acl_info));
     
     aclinfo.acl_grants = (obs_acl_grant*)malloc(sizeof(obs_acl_grant)*2);
-    strcpy(aclinfo.acl_grants->grantee.canonical_user.id, "userid1"); 
-    strcpy(aclinfo.acl_grants->grantee.canonical_user.display_name, "name1"); 
+    strcpy_s(aclinfo.acl_grants->grantee.canonical_user.id, 
+		sizeof(aclinfo.acl_grants->grantee.canonical_user.id),"userid1");
+    strcpy_s(aclinfo.acl_grants->grantee.canonical_user.display_name, 
+		sizeof(aclinfo.acl_grants->grantee.canonical_user.display_name),"name1");
     aclinfo.acl_grants->grantee_type = OBS_GRANTEE_TYPE_LOG_DELIVERY;
     aclinfo.acl_grants->permission = OBS_PERMISSION_WRITE ; 
 
-    strcpy((aclinfo.acl_grants + 1)->grantee.canonical_user.id, "userid1"); 
-    strcpy((aclinfo.acl_grants + 1)->grantee.canonical_user.display_name, "name1"); 
+    strcpy_s((aclinfo.acl_grants + 1)->grantee.canonical_user.id, 
+		sizeof((aclinfo.acl_grants + 1)->grantee.canonical_user.id),"userid1");
+    strcpy_s((aclinfo.acl_grants + 1)->grantee.canonical_user.display_name, 
+		sizeof((aclinfo.acl_grants + 1)->grantee.canonical_user.display_name),"name1");
     (aclinfo.acl_grants + 1)->grantee_type = OBS_GRANTEE_TYPE_LOG_DELIVERY;
     (aclinfo.acl_grants + 1)->permission = OBS_PERMISSION_READ_ACP ; 
 
@@ -1443,10 +1444,12 @@ static void set_log_delivery_acl(char *bucket_name_target)
     memset_s(aclinfo.owner_id,sizeof(aclinfo.owner_id),0,sizeof(aclinfo.owner_id));
     aclinfo.owner_display_name = (char *)malloc(sizeof(char)*100);
     memset_s(aclinfo.owner_display_name,sizeof(aclinfo.owner_display_name),0,sizeof(aclinfo.owner_display_name));
-    strcpy(aclinfo.owner_id, "domainiddomainiddomainiddo000400");   
-    strcpy(aclinfo.owner_display_name, "displayname");
+    strcpy_s(aclinfo.owner_id, 
+		sizeof(aclinfo.owner_id),"domainiddomainiddomainiddo000400");
+    strcpy_s(aclinfo.owner_display_name, 
+		sizeof(aclinfo.owner_display_name),"displayname");
     
-    memset(&aclinfo.object_info,0,sizeof(aclinfo.object_info));
+    memset_s(&aclinfo.object_info,sizeof(aclinfo.object_info),0,sizeof(aclinfo.object_info));
     set_object_acl(option, &aclinfo, &response_handler,0);
     
     if (statusG == OBS_STATUS_OK) {
@@ -1615,8 +1618,8 @@ static void test_set_bucket_website_conf(char *bucket_name)
     set_bucket_website_conf.key = "Error.html"; 
     set_bucket_website_conf.routingrule_count = 2; 
     bucket_website_routingrule temp[2];
-    memset(&temp[0], 0, sizeof(bucket_website_routingrule));
-    memset(&temp[1], 0, sizeof(bucket_website_routingrule));
+    memset_s(&temp[0], sizeof(temp[0]),0, sizeof(bucket_website_routingrule));
+    memset_s(&temp[1], sizeof(temp[1]),0, sizeof(bucket_website_routingrule));
     set_bucket_website_conf.routingrule_info = temp; 
     temp[0].key_prefix_equals = "key_prefix1"; 
     temp[0].replace_key_prefix_with = "replace_key_prefix1"; 
@@ -1801,13 +1804,13 @@ void init_acl_info(manager_acl_info *aclinfo)
     memset_s(aclinfo, sizeof(manager_acl_info), 0, sizeof(manager_acl_info));
 
     aclinfo->acl_grants = (obs_acl_grant*)malloc(sizeof(obs_acl_grant)*2);
-    strcpy(aclinfo->acl_grants->grantee.canonical_user.id, "userid1"); 
-    strcpy(aclinfo->acl_grants->grantee.canonical_user.display_name, "name1"); 
+    strcpy_s(aclinfo->acl_grants->grantee.canonical_user.id, sizeof(aclinfo->acl_grants->grantee.canonical_user.id),"userid1");
+    strcpy_s(aclinfo->acl_grants->grantee.canonical_user.display_name, sizeof(aclinfo->acl_grants->grantee.canonical_user.display_name),"name1");
     aclinfo->acl_grants->grantee_type = OBS_GRANTEE_TYPE_LOG_DELIVERY;
     aclinfo->acl_grants->permission = OBS_PERMISSION_WRITE ; 
 
-    strcpy((aclinfo->acl_grants + 1)->grantee.canonical_user.id, "userid1"); 
-    strcpy((aclinfo->acl_grants + 1)->grantee.canonical_user.display_name, "name1"); 
+	strcpy_s((aclinfo->acl_grants + 1)->grantee.canonical_user.id, sizeof(aclinfo->acl_grants + 1)->grantee.canonical_user.id,"userid1");
+	strcpy_s((aclinfo->acl_grants + 1)->grantee.canonical_user.display_name, sizeof(aclinfo->acl_grants + 1)->grantee.canonical_user.display_name,"name1");
     (aclinfo->acl_grants + 1)->grantee_type = OBS_GRANTEE_TYPE_CANONICAL_USER;
     (aclinfo->acl_grants + 1)->permission = OBS_PERMISSION_READ_ACP ; 
 
@@ -1818,10 +1821,10 @@ void init_acl_info(manager_acl_info *aclinfo)
     memset_s(aclinfo->owner_id,sizeof(aclinfo->owner_id),0,sizeof(aclinfo->owner_id));
     aclinfo->owner_display_name = (char *)malloc(sizeof(char)*100);
     memset_s(aclinfo->owner_display_name,sizeof(aclinfo->owner_display_name),0,sizeof(aclinfo->owner_display_name));
-    strcpy(aclinfo->owner_id, "domainiddomainiddomainiddo000400");   
-    strcpy(aclinfo->owner_display_name, "displayname");
+    strcpy_s(aclinfo->owner_id, sizeof(aclinfo->owner_id),"domainiddomainiddomainiddo000400");   
+    strcpy_s(aclinfo->owner_display_name, sizeof(aclinfo->owner_display_name),"displayname");
 
-    memset(&aclinfo->object_info,0,sizeof(aclinfo->object_info));
+    memset_s(&aclinfo->object_info,sizeof(aclinfo->object_info),0,sizeof(aclinfo->object_info));
 }
 
 void deinitialize_acl_info(manager_acl_info *aclinfo)
@@ -1862,13 +1865,13 @@ void test_set_bucket_acl(int argc, char** argv, int optindex)
         {
             aclinfo.owner_id = &(param[OWNERID_PREFIX_LEN]);
         }else if (!strncmp(param, OWNERID_DISPLAY_NAME_PREFIX, OWNERID_DISPLAY_NAME_PREFIX_LEN)){
-            strcpy(aclinfo.owner_display_name, &(param[OWNERID_DISPLAY_NAME_PREFIX_LEN]));
+            strcpy_s(aclinfo.owner_display_name, sizeof(aclinfo.owner_display_name),&(param[OWNERID_DISPLAY_NAME_PREFIX_LEN]));
         }else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)){
             option.bucket_options.protocol = get_protocol_from_argv(param);   
         }else if (!strncmp(param, user_id_str, user_id_str_length)){
-            strcpy(aclinfo.acl_grants->grantee.canonical_user.id, &(param[user_id_str_length]));
+            strcpy_s(aclinfo.acl_grants->grantee.canonical_user.id, sizeof(aclinfo.acl_grants->grantee.canonical_user.id),&(param[user_id_str_length]));
         }else if (!strncmp(param, display_name_str, display_name_length)){
-            strcpy(aclinfo.acl_grants->grantee.canonical_user.display_name, &(param[display_name_length]));
+            strcpy_s(aclinfo.acl_grants->grantee.canonical_user.display_name, &(param[display_name_length]));
         }else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)){
             option.bucket_options.protocol = get_protocol_from_argv(param);
         }else if (isdigit(param[0])){
@@ -2241,7 +2244,7 @@ static obs_status list_objects_callback(int is_truncated, const char *next_marke
         next_marker = contents[contents_count - 1].key;
     }
     if (next_marker) {
-        snprintf(data->next_marker, sizeof(data->next_marker), "%s", 
+        snprintf_s(data->next_marker, sizeof(data->next_marker), sizeof(data->next_marker)-1,"%s",
                 next_marker);
     }
     else {
@@ -2262,26 +2265,26 @@ static obs_status list_objects_callback(int is_truncated, const char *next_marke
                 gmtime(&t));
         char sizebuf[16] = {0};
         if (content->size < 100000) {
-            sprintf(sizebuf, "%5llu", (unsigned long long) content->size);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%5llu", (unsigned long long) content->size);
         }
         else if (content->size < (1024 * 1024)) {
-            sprintf(sizebuf, "%4lluK", 
+            sprintf_s(sizebuf, sizeof(sizebuf),"%4lluK", 
                     ((unsigned long long) content->size) / 1024ULL);
         }
         else if (content->size < (10 * 1024 * 1024)) {
             float f = (float)content->size;
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fM", f);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%1.2fM", f);
         }
         else if (content->size < (1024 * 1024 * 1024)) {
-            sprintf(sizebuf, "%4lluM", 
+            sprintf_s(sizebuf, sizeof(sizebuf),"%4lluM", 
                     ((unsigned long long) content->size) / 
                     (1024ULL * 1024ULL));
         }
         else {
             float f = (float)(content->size / 1024);
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fG", f);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%1.2fG", f);
         }
         printf("%-50s  %s  %s", content->key, timebuf, sizebuf);
         if (data->allDetails) {
@@ -2337,7 +2340,7 @@ static void test_list_bucket_objects(int argc, char **argv, int optindex)
     };
 
     list_bucket_callback_data data;
-    memset(&data, 0, sizeof(list_bucket_callback_data)); 
+    memset_s(&data, sizeof(data),0, sizeof(list_bucket_callback_data)); 
     list_bucket_objects(&option, NULL, data.next_marker,NULL, maxkeys, &list_bucket_objects_handler, &data); 
     if (OBS_STATUS_OK == data.ret_status) {
         printf("list bucket objects successfully. \n");
@@ -2398,8 +2401,8 @@ static obs_status listVersionsCallback(int is_truncated, const char *next_key_ma
         next_key_marker = list_versions->versions[list_versions->versions_count - 1].key;
     }
     if (next_key_marker) {
-        snprintf(data->next_key_marker, sizeof(data->next_key_marker), "%s", 
-                 next_key_marker);
+        snprintf_s(data->next_key_marker, sizeof(data->next_key_marker), 
+			sizeof(data->next_key_marker)-1,"%s",next_key_marker);
     }
     else {
         data->next_key_marker[0] = 0;
@@ -2409,8 +2412,8 @@ static obs_status listVersionsCallback(int is_truncated, const char *next_key_ma
         next_versionId_marker = list_versions->versions[list_versions->versions_count - 1].version_id;
     }
     if (next_versionId_marker) {
-        snprintf(data->next_versionId_marker, sizeof(data->next_versionId_marker), "%s", 
-                 next_versionId_marker);
+        snprintf_s(data->next_versionId_marker, sizeof(data->next_versionId_marker), 
+			sizeof(data->next_versionId_marker)-1,"%s",next_versionId_marker);
     }
     else {
         data->next_versionId_marker[0] = 0;
@@ -2452,26 +2455,26 @@ static obs_status listVersionsCallback(int is_truncated, const char *next_key_ma
                  gmtime(&t));
         char sizebuf[16] = {0};
         if (version->size < 100000) {
-            sprintf(sizebuf, "%5llu", (unsigned long long) version->size);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%5llu", (unsigned long long) version->size);
         }
         else if (version->size < (1024 * 1024)) {
-            sprintf(sizebuf, "%4lluK", 
+            sprintf_s(sizebuf, sizeof(sizebuf),"%4lluK", 
                     ((unsigned long long) version->size) / 1024ULL);
         }
         else if (version->size < (10 * 1024 * 1024)) {
             float f = version->size;
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fM", f);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%1.2fM", f);
         }
         else if (version->size < (1024 * 1024 * 1024)) {
-            sprintf(sizebuf, "%4lluM", 
+            sprintf_s(sizebuf, sizeof(sizebuf),"%4lluM", 
                     ((unsigned long long) version->size) / 
                     (1024ULL * 1024ULL));
         }
         else {
             float f = (version->size / 1024);
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fG", f);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%1.2fG", f);
         }
         printf("%-30s  %s  %s  %s", version->key, timebuf, sizebuf, version->version_id);
         if (data->allDetails) {
@@ -2526,7 +2529,7 @@ static void test_list_versions(char *bucket_name,char *version_id_marker)
     };
 
     list_versions_callback_data data;
-    memset(&data, 0, sizeof(list_bucket_callback_data)); 
+    memset_s(&data, sizeof(data),0, sizeof(list_bucket_callback_data)); 
     
     list_versions(&option, prefix, key_marker, delimiter, maxkeys, version_id_marker,
                 &list_versions_handler, &data); 
@@ -2610,7 +2613,7 @@ static void test_set_bucket_lifecycle_configuration()
     };
 
     obs_lifecycle_conf bucket_lifecycle_conf;
-    memset(&bucket_lifecycle_conf, 0, sizeof(obs_lifecycle_conf)); 
+    memset_s(&bucket_lifecycle_conf, sizeof(bucket_lifecycle_conf),0, sizeof(obs_lifecycle_conf)); 
 
     //Lifecycle rule id
     bucket_lifecycle_conf.id = "test1"; 
@@ -2657,7 +2660,7 @@ static void test_set_bucket_lifecycle_configuration2()
     };
 
     obs_lifecycle_conf bucket_lifecycle_conf;
-    memset(&bucket_lifecycle_conf, 0, sizeof(obs_lifecycle_conf)); 
+    memset_s(&bucket_lifecycle_conf, sizeof(bucket_lifecycle_conf),0, sizeof(obs_lifecycle_conf)); 
     
     //Lifecycle rule id
     bucket_lifecycle_conf.id = "test3"; 
@@ -2667,7 +2670,7 @@ static void test_set_bucket_lifecycle_configuration2()
     bucket_lifecycle_conf.status = "Enabled"; 
     
     obs_lifecycle_transtion transition;
-    memset(&transition, 0, sizeof(obs_lifecycle_transtion));
+    memset_s(&transition, sizeof(transition),0, sizeof(obs_lifecycle_transtion));
     // Specify that the object that satisfies the prefix is ??converted after 30 days of creation. 
     transition.days = "30";
     // Specify the storage type after the object is converted
@@ -2676,7 +2679,7 @@ static void test_set_bucket_lifecycle_configuration2()
     bucket_lifecycle_conf.transition_num = 1;
 
     obs_lifecycle_noncurrent_transtion noncurrent_transition;
-    memset(&noncurrent_transition, 0, sizeof(obs_lifecycle_noncurrent_transtion));
+    memset_s(&noncurrent_transition, sizeof(noncurrent_transition),0, sizeof(obs_lifecycle_noncurrent_transtion));
     // Specify a historical version of the object that satisfies the prefix to convert after 30 days 
     noncurrent_transition.noncurrent_version_days = "30";
     // Specifies the storage type of the historical version of the object that satisfies the prefix 
@@ -2823,7 +2826,7 @@ static void test_set_bucket_cors()
     // Attachment header field in response
     const char* exposeHeader_1[2]  = {"hello", "world"}; 
      
-    memset(&bucketCorsConf, 0, sizeof(obs_bucket_cors_conf)); 
+    memset_s(&bucketCorsConf, sizeof(bucketCorsConf),0, sizeof(obs_bucket_cors_conf)); 
     bucketCorsConf.id = id_1; 
     bucketCorsConf.max_age_seconds = max_age_seconds; 
     bucketCorsConf.allowed_method = allowedMethod_1; 
@@ -2970,7 +2973,7 @@ static void test_set_notification_configuration(char *bucket_name)
     topic_conf.filter_rule = &filter_rule; 
     topic_conf.filter_rule_num = 1; 
       
-    memset(&notification_conf, 0, sizeof(obs_smn_notification_configuration)); 
+    memset_s(&notification_conf, sizeof(notification_conf),0, sizeof(obs_smn_notification_configuration)); 
     notification_conf.topic_conf = &topic_conf; 
     notification_conf.topic_conf_num = 1;
 
@@ -3062,7 +3065,7 @@ static void test_close_notification_configuration(char *bucket_name)
         NULL, &response_complete_callback
     };
 
-    memset(&notification_conf, 0, sizeof(obs_smn_notification_configuration)); 
+    memset_s(&notification_conf, sizeof(notification_conf),0, sizeof(obs_smn_notification_configuration)); 
     set_notification_configuration(&option, &notification_conf, 
                     &response_handler, &ret_status);
     if (OBS_STATUS_OK == ret_status) {
@@ -3191,7 +3194,7 @@ static int put_buffer_data_callback(int buffer_size, char *buffer,
     if (data->buffer_size) {
         toRead = ((data->buffer_size > (unsigned) buffer_size) ?
                     (unsigned) buffer_size : data->buffer_size);
-        memcpy(buffer, data->put_buffer + data->cur_offset, toRead);
+        memcpy_s(buffer, sizeof(buffer),data->put_buffer + data->cur_offset, toRead);
     }
     
     uint64_t originalContentLength = data->buffer_size;
@@ -3262,7 +3265,7 @@ static void test_put_object_from_file(int argc, char **argv, int optindex)
 
     temp_auth_configure tempauth;
     tempAuthResult  ptrResult;
-    memset(&ptrResult,0,sizeof(tempAuthResult));
+    memset_s(&ptrResult,sizeof(ptrResult),0,sizeof(tempAuthResult));
 
     while (optindex < argc){
         char *param = argv[optindex++];
@@ -3301,21 +3304,21 @@ static void test_put_object_from_file(int argc, char **argv, int optindex)
     //Server encryption
     /*SSE-KMS encryption*/
     server_side_encryption_params encryption_params;
-    memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+    memset_s(&encryption_params, sizeof(encryption_params),0, sizeof(server_side_encryption_params));
     //encryption_params.use_kms = '1';
     //encryption_params.kms_server_side_encryption = "kms";
     //Do not set the system will generate a default encryption key
-    //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/4f1cd4de-ab64-4807-920a-47fc42e7f0d0";
+    //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/xxxxxxxxxxxxxxxxxx";
 
     /*SSE-C*/
-    /*char* buffer = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
+    /*char* buffer = "xxxxxxxxxxxxx";
     encryption_params.use_ssec = '1';
     encryption_params.ssec_customer_algorithm = "AES256";
     encryption_params.ssec_customer_key = buffer;*/
 
     // Initialize the structure that stores the uploaded data
     put_file_object_callback_data data;
-    memset(&data, 0, sizeof(put_file_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_file_object_callback_data));
     // Open the file and get the file length
     content_length = open_file_and_get_length(file_name, &data);
 	printf("content_length = %d\n",content_length);
@@ -3368,7 +3371,7 @@ static void test_put_object_from_buffer(int argc, char **argv, int optindex)
 
     temp_auth_configure tempauth;
     tempAuthResult  ptrResult;
-    memset(&ptrResult,0,sizeof(tempAuthResult));
+    memset_s(&ptrResult,sizeof(ptrResult),0,sizeof(tempAuthResult));
 
     while (optindex < argc){
         char *param = argv[optindex++];
@@ -3407,7 +3410,7 @@ static void test_put_object_from_buffer(int argc, char **argv, int optindex)
 
     //Initialize the structure that stores the uploaded data
     put_buffer_object_callback_data data;
-    memset(&data, 0, sizeof(put_buffer_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_buffer_object_callback_data));
     // Assign buffer to the uploaded data structure
     data.put_buffer = buffer;
     // Set buffersize
@@ -3477,7 +3480,7 @@ static void test_get_object(int argc, char **argv, int optindex)
 
     temp_auth_configure tempauth;
     tempAuthResult  ptrResult;
-    memset(&ptrResult,0,sizeof(tempAuthResult));
+    memset_s(&ptrResult,sizeof(ptrResult),0,sizeof(tempAuthResult));
 
     while (optindex < argc){
         char *param = argv[optindex++];
@@ -3500,19 +3503,19 @@ static void test_get_object(int argc, char **argv, int optindex)
 	//Server encryption
     /*SSE-KMS encryption*/
     server_side_encryption_params encryption_params;
-    memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+    memset_s(&encryption_params, sizeof(encryption_params),0, sizeof(server_side_encryption_params));
     //encryption_params.use_kms = '1';
     //encryption_params.kms_server_side_encryption = "aws:kms";
 	//This parameter can be left blank. The system has a default encryption key.
-    //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/4f1cd4de-ab64-4807-920a-47fc42e7f0d0";
+    //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/xxxxxxxxxxxxxxxxxxxxx";
 
     /*SSE-C*/
-    /*char* buffer = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
+    /*char* buffer = "xxxxxxxxxxxxx";
     encryption_params.use_ssec = '1';
     encryption_params.ssec_customer_algorithm = "AES256";
     encryption_params.ssec_customer_key = buffer;*/
 
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
     object_info.key =key;
     
     get_object_callback_data data;
@@ -3520,7 +3523,7 @@ static void test_get_object(int argc, char **argv, int optindex)
     data.outfile = write_to_file(file_name);
 
     obs_get_conditions getcondition;
-    memset(&getcondition, 0, sizeof(obs_get_conditions));
+    memset_s(&getcondition, sizeof(getcondition),0, sizeof(obs_get_conditions));
     init_get_properties(&getcondition);
     // The starting position of the reading
     getcondition.start_byte = 0;
@@ -3550,7 +3553,7 @@ static void test_delete_object(int argc, char **argv, int optindex)
 {
     obs_status ret_status = OBS_STATUS_BUTT;
     obs_object_info object_info;
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
     char *bucket_name = argv[optindex++];
     printf("Bucket's name is == %s \n", bucket_name);
     object_info.key = argv[optindex++];
@@ -3624,7 +3627,7 @@ static void test_batch_delete_objects(int argc, char **argv, int optindex)
     char tmp[1000][10];
     for (int i = 0; i < 1000; ++i)
     {
-        sprintf(tmp[i], "obj%d", i);
+        sprintf_s(tmp[i], sizeof(tmp[i]),"obj%d", i);
         objectinfo[i].key = tmp[i];
         objectinfo[i].version_id = 0;
     }
@@ -3700,20 +3703,20 @@ static void test_copy_object(int argc, char **argv, int optindex)
 	//Server encryption
     /*SSE-KMS encryption*/
     server_side_encryption_params encryption_params;
-    memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+    memset_s(&encryption_params, sizeof(encryption_params),0, sizeof(server_side_encryption_params));
     //encryption_params.use_kms = '1';
     //encryption_params.kms_server_side_encryption = "aws:kms";
     //This parameter can be NULL the default system key
-    //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/4f1cd4de-ab64-4807-920a-47fc42e7f0d0";
+    //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/xxxxxxxxxxxxxxxxxxxxxxxxxxx";
 
     /*SSE-C*/
-    /*char* buffer = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
+    /*char* buffer = "xxxxxxxxxxxxx";
     encryption_params.use_ssec = '1';
     encryption_params.ssec_customer_algorithm = "AES256";
     encryption_params.ssec_customer_key = buffer;
     
     //Decrypt source object parameters; used to copy one encrypted object to another object
-    char *des_key = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
+    char *des_key = "xxxxxxxxxxxxx";
     encryption_params.des_ssec_customer_algorithm = "AES256";
     encryption_params.des_ssec_customer_key = des_key;*/
 	
@@ -3748,7 +3751,7 @@ static void test_restore_object(int argc, char **argv, int optindex)
 {
 
     obs_object_info object_info;
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
 
     obs_status ret_status = OBS_STATUS_BUTT;
     obs_options option;
@@ -3926,7 +3929,7 @@ static void test_list_bucket()
     
     
     list_service_data data;
-    memset(&data, 0, sizeof(list_service_data));
+    memset_s(&data, sizeof(data),0, sizeof(list_service_data));
     
     obs_list_service_handler listHandler =
     { 
@@ -4083,7 +4086,7 @@ static void test_init_upload_part(char *key)
     if (OBS_STATUS_OK == ret_status)
     {
         printf("test init upload part successfully. uploadId= %s\n", upload_id);
-        strcpy(UPLOAD_ID, upload_id);
+        strcpy_s(UPLOAD_ID, sizeof(UPLOAD_ID),upload_id);
     }
     else
     {
@@ -4167,7 +4170,7 @@ static void test_upload_part(char *filename, char *key)
     init_put_properties(&putProperties);
 
     obs_upload_part_info uploadPartInfo;
-    memset(&uploadPartInfo, 0, sizeof(obs_upload_part_info));
+    memset_s(&uploadPartInfo, sizeof(uploadPartInfo),0, sizeof(obs_upload_part_info));
 
     obs_upload_handler Handler =
     { 
@@ -4177,7 +4180,7 @@ static void test_upload_part(char *filename, char *key)
     };
 
     test_upload_file_callback_data data;
-    memset(&data, 0, sizeof(test_upload_file_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(test_upload_file_callback_data));
     //read local file total size :uploadTotalLength
     filesize = get_file_info(filename,&data);
     data.noStatus = 1;
@@ -4338,8 +4341,8 @@ static obs_status listPartsCallbackEx(obs_uploaded_parts_total_info* uploadedPar
         nextPartNumberMarker = parts[partsCount - 1].part_number;
     }
     if (nextPartNumberMarker) {
-        snprintf(data->nextPartNumberMarker, sizeof(data->nextPartNumberMarker), "%s", 
-                nextPartNumberMarker);
+        snprintf_s(data->nextPartNumberMarker, sizeof(data->nextPartNumberMarker), 
+				sizeof(data->nextPartNumberMarker)-1,"%s",nextPartNumberMarker);
     }
     else {
         data->nextPartNumberMarker[0] = 0;
@@ -4363,26 +4366,26 @@ static obs_status listPartsCallbackEx(obs_uploaded_parts_total_info* uploadedPar
                 gmtime(&t));
         char sizebuf[16] = {0};
         if (part->size < 100000) {
-            sprintf(sizebuf, "%5llu", (unsigned long long) part->size);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%5llu", (unsigned long long) part->size);
         }
         else if (part->size < (1024 * 1024)) {
-            sprintf(sizebuf, "%4lluK", 
+            sprintf_s(sizebuf, sizeof(sizebuf),"%4lluK", 
                     ((unsigned long long) part->size) / 1024ULL);
         }
         else if (part->size < (10 * 1024 * 1024)) {
             float f = part->size;
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fM", f);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%1.2fM", f);
         }
         else if (part->size < (1024 * 1024 * 1024)) {
-            sprintf(sizebuf, "%4lluM", 
+            sprintf_s(sizebuf, sizeof(sizebuf),"%4lluM", 
                     ((unsigned long long) part->size) / 
                     (1024ULL * 1024ULL));
         }
         else {
             float f = (part->size / 1024);
             f /= (1024 * 1024);
-            sprintf(sizebuf, "%1.2fG", f);
+            sprintf_s(sizebuf, sizeof(sizebuf),"%1.2fG", f);
         }
     printf("-----------------------------------RESULT BEG------------------------------\n");
     printf("PartNumber : %u\n", part->part_number);
@@ -4393,7 +4396,7 @@ static obs_status listPartsCallbackEx(obs_uploaded_parts_total_info* uploadedPar
     printf("\n");   
         if(fp)
         {
-           sprintf(buffToWrite,"%u/%s\n",part->part_number,part->etag);
+           sprintf_s(buffToWrite,sizeof(buffToWrite),"%u/%s\n",part->part_number,part->etag);
            fputs(buffToWrite,fp);
         }
     }
@@ -4434,7 +4437,7 @@ static void test_list_parts(char *key)
     };
 
     list_parts_callback_data data;
-    memset(&data, 0, sizeof(list_parts_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(list_parts_callback_data));
     
     do{
         list_parts(&option,key,&listpart, &Handler,&data);
@@ -4471,20 +4474,20 @@ static void test_copy_part()
 	//Server encryption
     /*SSE-KMS encryption*/
     server_side_encryption_params encryption_params;
-    memset(&encryption_params, 0, sizeof(server_side_encryption_params));
+    memset_s(&encryption_params, sizeof(encryption_params),0, sizeof(server_side_encryption_params));
     /*encryption_params.use_kms = '1';
     encryption_params.kms_server_side_encryption = "aws:kms";
     //This parameter can be NULL the default system key
-    encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/4f1cd4de-ab64-4807-920a-47fc42e7f0d0";*/
+    encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/xxxxxxxxxxxxxxx";*/
 
     /*SSE-C*/
-    /*char* buffer = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
+    /*char* buffer = "xxxxxxxxxxxxx";
     encryption_params.use_ssec = '1';
     encryption_params.ssec_customer_algorithm = "AES256";
     encryption_params.ssec_customer_key = buffer;
     
     //Decrypt source object parameters; used to copy one encrypted object to another object
-    char *des_key = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
+    char *des_key = "xxxxxxxxxxxxx";
     encryption_params.des_ssec_customer_algorithm = "AES256";
     encryption_params.des_ssec_customer_key = des_key;*/
 
@@ -4492,14 +4495,14 @@ static void test_copy_part()
     init_put_properties(&putProperties);
 
     obs_copy_destination_object_info object_info;
-    memset(&object_info, 0, sizeof(obs_copy_destination_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_copy_destination_object_info));
     object_info.destination_bucket = "esdk-c-test";
     object_info.destination_key = "testXXX.txt";
     object_info.etag_return = etagreturn;
     object_info.etag_return_size = 256;
 
     obs_upload_part_info copypart;
-    memset(&copypart, 0, sizeof(obs_upload_part_info));
+    memset_s(&copypart, sizeof(copypart),0, sizeof(obs_upload_part_info));
 
     obs_response_handler responseHandler =
     { 
@@ -4753,7 +4756,7 @@ static obs_status concurrent_response_properties_callback(const obs_response_pro
     } while (0)
     if(properties->etag)
     {
-        strcpy(concurrent_callback_data->etag,properties->etag);
+        strcpy_s(concurrent_callback_data->etag,sizeof(concurrent_callback_data->etag),properties->etag);
     }
     print_nonnull("ETag", etag);
     print_nonnull("expiration", expiration);
@@ -4825,7 +4828,7 @@ static void start_upload_threads(test_upload_file_callback_data data,
      int i= 0;  
      for(i=0; i <partCount; i++)
      {
-        memset(concurrent_temp[i].etag, 0,sizeof(concurrent_temp[i].etag));
+        memset_s(concurrent_temp[i].etag, sizeof(concurrent_temp[i].etag),0,sizeof(concurrent_temp[i].etag));
         concurrent_temp[i].part_num = i + 1;
         concurrent_temp[i].infile = data.infile;
         concurrent_temp[i].upload_id = concurrent_upload_id;
@@ -4925,7 +4928,7 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     
     //Large file information: file pointer, file size, number of segments according to segment size
     test_upload_file_callback_data data;
-    memset(&data, 0, sizeof(test_upload_file_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(test_upload_file_callback_data));
     if (filesize == 0)
     {
         filesize = get_file_info(filename,&data);
@@ -4940,7 +4943,7 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     initiate_multi_part_upload(&option,key,upload_id_return_size,uploadIdReturn, &putProperties,0,&Handler, 0);
     if (statusG == OBS_STATUS_OK) {
         printf("test init upload part successfully. \n");
-        strcpy(concurrent_upload_id,uploadIdReturn);
+        strcpy_s(concurrent_upload_id,sizeof(concurrent_upload_id),uploadIdReturn);
     }
     else
     {
@@ -5008,7 +5011,7 @@ static void test_append_object_from_file(char *key, char *file_name, char * posi
     init_put_properties(&put_properties);
     //read from local file to buffer
     put_file_object_callback_data data;
-    memset(&data, 0, sizeof(put_file_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_file_object_callback_data));
     data.infile = 0;
     content_length = open_file_and_get_length(file_name, &data);
     printf("content_length ; = %d\n",content_length);
@@ -5082,7 +5085,7 @@ static void test_append_object_from_buffer(int argc, char **argv, int optindex)
 
     //Initialize the structure that stores the uploaded data
     put_buffer_object_callback_data data;
-    memset(&data, 0, sizeof(put_buffer_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_buffer_object_callback_data));
     // Assign buffer to the uploaded data structure
     data.put_buffer = buffer;
     // Set buffersize
@@ -5168,7 +5171,7 @@ static void test_gen_signed_url_put_object()
 
     // Initialize the structure that stores the uploaded data
     put_file_object_callback_data data;
-    memset(&data, 0, sizeof(put_file_object_callback_data));
+    memset_s(&data, sizeof(data),0, sizeof(put_file_object_callback_data));
     // Open the file and get the file length
     content_length = open_file_and_get_length(file_name, &data);
 
@@ -5205,7 +5208,7 @@ static void test_gen_signed_url_get_object(char *key, char *versionid)
 {
     char *file_name = "C:\\a.txt";
     obs_object_info object_info;
-    memset(&object_info, 0, sizeof(obs_object_info));
+    memset_s(&object_info, sizeof(object_info),0, sizeof(obs_object_info));
     object_info.key =key;
     object_info.version_id = versionid;
 
@@ -5224,7 +5227,7 @@ static void test_gen_signed_url_get_object(char *key, char *versionid)
     data.outfile = write_to_file(file_name);
 
     obs_get_conditions getcondition;
-    memset(&getcondition, 0, sizeof(obs_get_conditions));
+    memset_s(&getcondition, sizeof(getcondition),0, sizeof(obs_get_conditions));
     init_get_properties(&getcondition);
     getcondition.start_byte = 0;
     getcondition.byte_count = 100;
@@ -5269,9 +5272,9 @@ static void test_gen_signed_url_get_object(char *key, char *versionid)
 int main(int argc, char **argv)
 {
     int optind =1;
-    strcpy(ACCESS_KEY_ID,"xxxxxxxxxxxxxxxxx");  
-    strcpy(SECRET_ACCESS_KEY,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");   
-    strcpy(HOST_NAME,"xx.xx.xx.xx");  
+    strcpy_s(ACCESS_KEY_ID,sizeof(ACCESS_KEY_ID),"xxxxxxxxxxxxxxxxx");
+    strcpy_s(SECRET_ACCESS_KEY,sizeof(SECRET_ACCESS_KEY),"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");   
+    strcpy_s(HOST_NAME,sizeof(HOST_NAME),"xx.xx.xx.xx");  
  
     /*--------------check argv-------------*/
     if (optind == argc) {

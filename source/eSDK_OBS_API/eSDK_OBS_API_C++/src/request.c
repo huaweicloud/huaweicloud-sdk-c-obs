@@ -1,17 +1,28 @@
-/*********************************************************************************
-* Copyright 2019 Huawei Technologies Co.,Ltd.
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-* this file except in compliance with the License.  You may obtain a copy of the
-* License at
-* 
-* http://www.apache.org/licenses/LICENSE-2.0
-* 
-* Unless required by applicable law or agreed to in writing, software distributed
-* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-* CONDITIONS OF ANY KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations under the License.
-**********************************************************************************
-*/
+/** **************************************************************************
+ *
+ * Copyright 2008 Bryan Ischo <bryan@ischo.com>
+ *
+ * This file is part of libs3.
+ *
+ * libs3 is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation, version 3 of the License.
+ *
+ * In addition, as a special exception, the copyright holders give
+ * permission to link the code of this library and its programs with the
+ * OpenSSL library, and distribute linked combinations including the two.
+ *
+ * libs3 is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * version 3 along with libs3, in a file named COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ ************************************************************************** **/
+
 #include <ctype.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -28,6 +39,7 @@
 
 #define countof(array) (sizeof(array)/sizeof(array[0]))
 #define REQUEST_STACK_SIZE 100
+#define ARRAY_LENGTH_1024 1024
 
 int API_STACK_SIZE = 100;
 static char userAgentG[256];
@@ -92,7 +104,9 @@ void request_api_deinitialize()
     pthread_mutex_destroy(&use_api_mutex);
 #else
     CloseHandle(hmutex);
+    hmutex = NULL;
     CloseHandle(use_api_mutex);
+    use_api_mutex = NULL;
 #endif
     if(OBS_OPENSSL_CLOSE == g_switch_openssl)
     {
@@ -136,12 +150,13 @@ obs_status request_api_initialize(unsigned int flags)
 #if defined __GNUC__ || defined LINUX
     struct utsname utsn;
     if (uname(&utsn)) {
-        strncpy_sec(platform, sizeof(platform), "Unknown", sizeof("Unknown"));
+        strncpy_s(platform, sizeof(platform), "Unknown", sizeof("Unknown"));
         platform[sizeof(platform) - 1] = 0;
     }
     else {
-        snprintf_sec(platform, sizeof(platform), _TRUNCATE, "%s%s%s", utsn.sysname,
+        int ret = snprintf_s(platform, sizeof(platform), _TRUNCATE, "%s%s%s", utsn.sysname,
                  utsn.machine[0] ? " " : "", utsn.machine);
+        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     }
 #else
     OSVERSIONINFOEX os;
@@ -151,7 +166,8 @@ obs_status request_api_initialize(unsigned int flags)
     }
     else
     {
-        strncpy_sec(platform, sizeof(platform), "Unknown", sizeof("Unknown"));
+        int ret = strncpy_s(platform, sizeof(platform), "Unknown", sizeof("Unknown"));
+        CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
         platform[sizeof(platform) - 1] = 0;
     }
 
@@ -162,8 +178,9 @@ obs_status request_api_initialize(unsigned int flags)
         return OBS_STATUS_OutOfMemory;
     }
     use_api_index = -1;
-    snprintf_sec(userAgentG, sizeof(userAgentG),_TRUNCATE,
+    int ret = snprintf_s(userAgentG, sizeof(userAgentG),_TRUNCATE,
     "%s%s%s.%s",PRODUCT, "/",LIBOBS_VER_MAJOR, LIBOBS_VER_MINOR);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
     return OBS_STATUS_OK;
 }
@@ -291,7 +308,9 @@ static void canonicalize_resource(const request_params *params,
             if(params->queryParams && strstr(params->queryParams,"name") != NULL) 
             {   
                 append_request("?");
-                append_request(params->queryParams);
+                char decoded[3 * 1024];
+                urlDecode(decoded, params->queryParams, strlen(params->queryParams));
+                append_request(decoded);
                 append_request("&");
                 append_request(subResource);
             }
@@ -378,7 +397,7 @@ obs_status set_curl_easy_setopt_safe(http_request *request, const request_params
         default:
             break;
     }
-    
+
     return OBS_STATUS_OK;
 }
 
@@ -430,8 +449,9 @@ static obs_status setup_curl(http_request *request,
 
     if ((params->httpRequestType == http_request_type_put) || (params->httpRequestType == http_request_type_post)) {
         char header[256] = {0};
-        snprintf_sec(header, sizeof(header),_TRUNCATE, "Content-Length: %llu",
+        int ret = snprintf_s(header, sizeof(header),_TRUNCATE, "Content-Length: %llu",
                  (unsigned long long) params->toObsCallbackTotalSize);
+        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         request->headers = curl_slist_append(request->headers, header);
         request->headers = curl_slist_append(request->headers, "Transfer-Encoding:");
     }
@@ -490,9 +510,9 @@ static void release_token()
         current_request_cnt--;
     }
 #if defined __GNUC__ || defined LINUX
-        pthread_mutex_unlock(&requestStackMutexG);
+    pthread_mutex_unlock(&requestStackMutexG);
 #else
-        ReleaseMutex(hmutex);
+    ReleaseMutex(hmutex);
 #endif
 }
 
@@ -585,14 +605,15 @@ static obs_status request_get(const request_params *params,
 }
 
 
-static void set_query_params(const request_params *params, char *signbuf, 
+static obs_status set_query_params(const request_params *params, char *signbuf, 
             int *buf_now_len, int buf_len)
 {
     int len = *buf_now_len;
     const char* pos;
     char tmp[1024]={0};
+    int ret = 0;
 
-    if((pos=strstr(params->queryParams,"uploadId")) != NULL) 
+    if((pos=strstr(params->queryParams,"uploadId=")) != NULL) 
     {
         int len1 = pos - params->queryParams;
         if((pos = strstr(params->queryParams + len1,"&")) != NULL)
@@ -603,11 +624,12 @@ static void set_query_params(const request_params *params, char *signbuf,
         {
             len1 = strlen(params->queryParams);
         }
-        strncpy_sec(tmp, sizeof(tmp),params->queryParams,len1);
+        ret = strncpy_s(tmp, sizeof(tmp),params->queryParams,len1);
+        CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
         signbuf_append("?%s", tmp);
     }
     
-    if((pos=strstr(params->queryParams,"versionId")) != NULL) 
+    if((pos=strstr(params->queryParams,"versionId=")) != NULL) 
     {
         if(params->subResource) 
         {
@@ -619,7 +641,7 @@ static void set_query_params(const request_params *params, char *signbuf,
         }
     }
     
-    if((pos=strstr(params->queryParams,"position")) != NULL) 
+    if((pos=strstr(params->queryParams,"position=")) != NULL) 
     {
         if(params->subResource) 
         {
@@ -631,7 +653,7 @@ static void set_query_params(const request_params *params, char *signbuf,
         }
     }
     
-    if((pos=strstr(params->queryParams,"x-image-process")) != NULL) 
+    if((pos=strstr(params->queryParams,"x-image-process=")) != NULL) 
     {
         int len1 = pos - params->queryParams;
         const char * pos2 = NULL;
@@ -644,24 +666,27 @@ static void set_query_params(const request_params *params, char *signbuf,
         
         if(len2>0) 
         {
-            strncpy_sec(tmp, sizeof(tmp),params->queryParams,len2);
+            ret = strncpy_s(tmp, sizeof(tmp),params->queryParams,len2);
+            CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
             decodedStr = (char*)malloc(len2+1);
 			
 			if (decodedStr == NULL)
 			{
 				COMMLOG(OBS_LOGWARN, "set_query_params: malloc failed!\n");
+                return OBS_STATUS_InternalError;
 			}
 			
             memset_s(decodedStr,len2+1,0,len2+1);
             urlDecode(decodedStr,tmp,len2+1);
-            strncpy_sec(tmp, 1024, decodedStr, strlen(decodedStr)+1);
+            ret = strncpy_s(tmp, ARRAY_LENGTH_1024, decodedStr, strlen(decodedStr)+1);
+            CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
             CHECK_NULL_FREE(decodedStr);   
             signbuf_append("?%s", tmp); 
         }
     }
     
     *buf_now_len = len;
-    return ;
+    return OBS_STATUS_OK;
 }
 
 static obs_status compose_auth_header(const request_params *params,
@@ -682,7 +707,11 @@ static obs_status compose_auth_header(const request_params *params,
     signbuf_append("%s", values->canonicalizedAmzHeaders);
     signbuf_append("%s", values->canonicalizedResource);
     if( NULL != params->queryParams) {
-        set_query_params(params, signbuf, &len, buf_len);
+        obs_status ret_status = set_query_params(params, signbuf, &len, buf_len);
+        if (ret_status != OBS_STATUS_OK) {
+            COMMLOG(OBS_LOGERROR, "set_query_params return %d !", ret_status);
+            return ret_status;
+        }
     }
     
     unsigned char hmac[20] = {0};
@@ -713,23 +742,25 @@ static obs_status compose_auth_header(const request_params *params,
 
     if(params->use_api == OBS_USE_API_S3)
     {
-        snprintf_sec(values->authorizationHeader, sizeof(values->authorizationHeader),_TRUNCATE,
+        int ret = snprintf_s(values->authorizationHeader, sizeof(values->authorizationHeader),_TRUNCATE,
                  "Authorization: AWS %s:%.*s", params->bucketContext.access_key,
                  b64Len, b64);
+        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         COMMLOG(OBS_LOGINFO, "%s request_perform : Authorization: AWS %s:*****************", __FUNCTION__,params->bucketContext.access_key);
     }
     else
     {
-        snprintf_sec(values->authorizationHeader, sizeof(values->authorizationHeader),_TRUNCATE,
+        int ret = snprintf_s(values->authorizationHeader, sizeof(values->authorizationHeader),_TRUNCATE,
                  "Authorization: OBS %s:%.*s", params->bucketContext.access_key,
                  b64Len, b64);
+        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         COMMLOG(OBS_LOGINFO, "%s request_perform : Authorization: OBS %s:*****************", __FUNCTION__,params->bucketContext.access_key);
     }
 
     char * userAgent = USER_AGENT_VALUE;
     int strLen = (int)(strlen(userAgent));
-    snprintf_sec(values->userAgent, sizeof(values->userAgent),_TRUNCATE,"User-Agent: %.*s", strLen, userAgent);
-
+    int ret = snprintf_s(values->userAgent, sizeof(values->userAgent),_TRUNCATE,"User-Agent: %.*s", strLen, userAgent);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
     return OBS_STATUS_OK;
 }
@@ -770,6 +801,44 @@ static void request_release(http_request *request)
     }
 }
 
+void request_finish_log(struct curl_slist* tmp, OBS_LOGLEVEL logLevel) {
+    if (0 != strncmp(tmp->data, "Authorization:", 14)) {
+        if (0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key:", 42)) {
+            COMMLOG(logLevel, "x-amz-server-side-encryption-customer-key:***********");
+        }
+        else if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key:", 42)) {
+            COMMLOG(logLevel, "x-obs-server-side-encryption-customer-key:***********");
+        }
+        else if (0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key-md5:", 46)) {
+            COMMLOG(logLevel, "x-amz-server-side-encryption-customer-key-md5:**********");
+        }
+        else if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key-md5:", 46)) {
+            COMMLOG(logLevel, "x-obs-server-side-encryption-customer-key-md5:**********");
+        }
+        else if (0 == strncmp(tmp->data, "x-amz-copy-source-server-side-encryption-customer-key:", 54)) {
+            COMMLOG(logLevel, "x-amz-copy-source-server-side-encryption-customer-key:**********");
+        }
+        else if (0 == strncmp(tmp->data, "x-obs-copy-source-server-side-encryption-customer-key:", 54)) {
+            COMMLOG(logLevel, "x-obs-copy-source-server-side-encryption-customer-key:**********");
+        }
+        else if (0 == strncmp(tmp->data, "x-amz-copy-source-server-side-encryption-customer-key-md5:", 58)) {
+            COMMLOG(logLevel, "x-amz-copy-source-server-side-encryption-customer-key-md5:************");
+        }
+        else if (0 == strncmp(tmp->data, "x-obs-copy-source-server-side-encryption-customer-key-md5:", 58)) {
+            COMMLOG(logLevel, "x-obs-copy-source-server-side-encryption-customer-key-md5:************");
+        }
+        else if (0 == strncmp(tmp->data, "x-amz-security-token:", strlen("x-amz-security-token:"))) {
+            COMMLOG(logLevel, "x-amz-security-token:************");
+        }
+        else if (0 == strncmp(tmp->data, "x-obs-security-token:", strlen("x-obs-security-token:"))) {
+            COMMLOG(logLevel, "x-obs-security-token:************");
+        }
+        else {
+            COMMLOG(logLevel, "%s", tmp->data);
+        }
+    }
+}
+
 
 void request_finish(http_request *request)
 {
@@ -784,41 +853,7 @@ void request_finish(http_request *request)
     struct curl_slist* tmp = request->headers;
     while (NULL != tmp)
     {
-        if (0 != strncmp(tmp->data, "Authorization:", 14)) {
-            if (0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key:", 42)) {
-                COMMLOG(logLevel, "x-amz-server-side-encryption-customer-key:***********");
-            }
-            else if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key:", 42)) {
-                COMMLOG(logLevel, "x-obs-server-side-encryption-customer-key:***********");
-            }
-            else if (0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key-md5:", 46)) {
-                COMMLOG(logLevel, "x-amz-server-side-encryption-customer-key-md5:**********");
-            }
-            else if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key-md5:", 46)) {
-                COMMLOG(logLevel, "x-obs-server-side-encryption-customer-key-md5:**********");
-            }
-            else if (0 == strncmp(tmp->data, "x-amz-copy-source-server-side-encryption-customer-key:", 54)) {
-                COMMLOG(logLevel, "x-amz-copy-source-server-side-encryption-customer-key:**********");
-            }
-            else if (0 == strncmp(tmp->data, "x-obs-copy-source-server-side-encryption-customer-key:", 54)) {
-                COMMLOG(logLevel, "x-obs-copy-source-server-side-encryption-customer-key:**********");
-            }
-            else if (0 == strncmp(tmp->data, "x-amz-copy-source-server-side-encryption-customer-key-md5:", 58)) {
-                COMMLOG(logLevel, "x-amz-copy-source-server-side-encryption-customer-key-md5:************");
-            }
-            else if (0 == strncmp(tmp->data, "x-obs-copy-source-server-side-encryption-customer-key-md5:", 58)) {
-                COMMLOG(logLevel, "x-obs-copy-source-server-side-encryption-customer-key-md5:************");
-            }
-            else if (0 == strncmp(tmp->data, "x-amz-security-token:", strlen("x-amz-security-token:"))) {
-                COMMLOG(logLevel, "x-amz-security-token:************");
-            }
-            else if (0 == strncmp(tmp->data, "x-obs-security-token:", strlen("x-obs-security-token:"))) {
-                COMMLOG(logLevel, "x-obs-security-token:************");
-            }
-            else {
-            COMMLOG(logLevel, tmp->data);
-            }
-        }
+        request_finish_log(tmp, logLevel);
         tmp = tmp->next;
     }
     COMMLOG(logLevel, "%s request_finish status = %d,httpResponseCode = %d", __FUNCTION__,
@@ -860,6 +895,10 @@ void request_perform(const request_params *params)
     memset_s(&stTempAuthInfo,sizeof(temp_auth_info), 0, sizeof(temp_auth_info));
     stTempAuthInfo.temp_auth_headers = authTmpActualHeaders;
     stTempAuthInfo.tempAuthParams = authTmpParams;
+    
+     if ((status = encode_key(params->copySourceKey, computed.urlEncodedSrcKey)) != OBS_STATUS_OK) {
+        return_status(status);
+    }
 
     if ((status = compose_obs_headers(params, &computed)) != OBS_STATUS_OK) {
         return_status(status);
@@ -867,7 +906,7 @@ void request_perform(const request_params *params)
     if ((status = compose_standard_headers(params, &computed)) != OBS_STATUS_OK) {
         return_status(status);
     }
-    if ((status = encode_key(params, &computed)) != OBS_STATUS_OK) {
+    if ((status = encode_key(params->key, computed.urlEncodedKey)) != OBS_STATUS_OK) {
         return_status(status);
     }
     COMMLOG(OBS_LOGINFO, "Enter get_object object computed key= %s\n!",computed.urlEncodedKey);
@@ -915,7 +954,8 @@ void request_perform(const request_params *params)
         request->status = request_curl_code_to_status(code);
         char *proxyBuf = strstr(errorBuffer, "proxy:");
         if (NULL != proxyBuf) {
-            strcpy_s(proxyBuf, CURL_ERROR_SIZE - (proxyBuf - errorBuffer), "proxy: *****");
+            errno_t err = strcpy_s(proxyBuf, CURL_ERROR_SIZE - (proxyBuf - errorBuffer), "proxy: *****");
+            CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
         }
         COMMLOG(OBS_LOGWARN, "%s curl_easy_perform code = %d,status = %d,errorBuffer = %s", __FUNCTION__,code,
         request->status,errorBuffer);
@@ -1043,11 +1083,28 @@ static int sort_bucket_name(const char *bucket_name, const char *host_name)
     if (index == -1) {
        if (use_api_index == API_STACK_SIZE*3/4) {   
             API_STACK_SIZE = 2*API_STACK_SIZE;
-            api_switch = (obs_s3_switch *)realloc(api_switch,sizeof(obs_s3_switch)*API_STACK_SIZE);
+            obs_s3_switch *temp_api_switch = api_switch;
+            api_switch = (obs_s3_switch *)malloc(sizeof(obs_s3_switch)*API_STACK_SIZE);
+            //api_switch = (obs_s3_switch *)realloc(api_switch,sizeof(obs_s3_switch)*API_STACK_SIZE);
             if ( api_switch == NULL ) {
 	   	        use_api_index--;
                 API_STACK_SIZE = API_STACK_SIZE/2;
-	        }
+                api_switch = temp_api_switch;
+            }
+            else {
+                errno_t err = memcpy_s(api_switch, sizeof(obs_s3_switch)*API_STACK_SIZE, temp_api_switch, sizeof(obs_s3_switch)*API_STACK_SIZE / 2);
+                if (err != EOK)
+                {
+                    COMMLOG(OBS_LOGWARN, "%s(%d): memcpy_s failed!", __FUNCTION__, __LINE__);
+                    use_api_index--;
+                    API_STACK_SIZE = API_STACK_SIZE / 2;
+                    free(api_switch);
+                    api_switch = temp_api_switch;
+                }
+                else {
+                    free(temp_api_switch);
+                }
+            }
        } 
     }
     return index;
@@ -1060,17 +1117,17 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
         return ;
     }
 	
-	if (options->request_options.auth_switch == OBS_OBS_TYPE)
-	{
-		*use_api_temp = OBS_USE_API_OBS;
-		return;
-	}
+    if (options->request_options.auth_switch == OBS_OBS_TYPE)
+    {
+        *use_api_temp = OBS_USE_API_OBS;
+        return;
+    }
 	
-	if (options->request_options.auth_switch == OBS_S3_TYPE)
-	{
-		*use_api_temp = OBS_USE_API_S3;
-		return;
-	}
+    if (options->request_options.auth_switch == OBS_S3_TYPE)
+    {
+        *use_api_temp = OBS_USE_API_S3;
+        return;
+    }
 	
     int index = -1;
 #if defined __GNUC__ || defined LINUX
@@ -1079,23 +1136,34 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
 		WaitForSingleObject(use_api_mutex, INFINITE);
 #endif
     time_t time_obs = time(NULL);
+    errno_t err = EOK;
     if (use_api_index == -1) {
         use_api_index++;
         if(get_api_version(options->bucket_options.bucket_name,options->bucket_options.host_name,
                            options->bucket_options.protocol) == OBS_STATUS_OK )
         {   
-            memcpy(api_switch[use_api_index].bucket_name, options->bucket_options.bucket_name,strlen(options->bucket_options.bucket_name));
+			err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
+            CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+
             api_switch[use_api_index].bucket_name[strlen(options->bucket_options.bucket_name)] = '\0';
-            memcpy(api_switch[use_api_index].host_name, options->bucket_options.host_name,strlen(options->bucket_options.host_name));
+            
+			err = memcpy_s(api_switch[use_api_index].host_name, DOMAIN_LEN-1, options->bucket_options.host_name, strlen(options->bucket_options.host_name));
+            CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+
             api_switch[use_api_index].host_name[strlen(options->bucket_options.host_name)] = '\0';
             api_switch[use_api_index].use_api = OBS_USE_API_OBS;
             api_switch[use_api_index].time_switch = time_obs;
             *use_api_temp = OBS_USE_API_OBS;
         }
         else {
-            memcpy(api_switch[use_api_index].bucket_name, options->bucket_options.bucket_name,strlen(options->bucket_options.bucket_name));
+			err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
+            CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+
             api_switch[use_api_index].bucket_name[strlen(options->bucket_options.bucket_name)] = '\0';
-            memcpy(api_switch[use_api_index].host_name, options->bucket_options.host_name,strlen(options->bucket_options.host_name));
+			
+			err = memcpy_s(api_switch[use_api_index].host_name, DOMAIN_LEN-1, options->bucket_options.host_name, strlen(options->bucket_options.host_name));
+            CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+
             api_switch[use_api_index].host_name[strlen(options->bucket_options.host_name)] = '\0';
 
             api_switch[use_api_index].use_api = OBS_USE_API_S3;
@@ -1132,9 +1200,14 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
             if(get_api_version(options->bucket_options.bucket_name,options->bucket_options.host_name,
                                options->bucket_options.protocol) == OBS_STATUS_OK )
             {
-                memcpy(api_switch[use_api_index].bucket_name, options->bucket_options.bucket_name,strlen(options->bucket_options.bucket_name));
+				err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
+                CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+
                 api_switch[use_api_index].bucket_name[strlen(options->bucket_options.bucket_name)] = '\0';
-                memcpy(api_switch[use_api_index].host_name, options->bucket_options.host_name,strlen(options->bucket_options.host_name));
+				
+				err = memcpy_s(api_switch[use_api_index].host_name, DOMAIN_LEN-1, options->bucket_options.host_name, strlen(options->bucket_options.host_name));
+                CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+
                 api_switch[use_api_index].host_name[strlen(options->bucket_options.host_name)] = '\0';
 
                 api_switch[use_api_index].use_api = OBS_USE_API_OBS;
@@ -1143,9 +1216,14 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
 
             }
             else {
-                memcpy(api_switch[use_api_index].bucket_name, options->bucket_options.bucket_name,strlen(options->bucket_options.bucket_name));
+				err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
+                CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+
                 api_switch[use_api_index].bucket_name[strlen(options->bucket_options.bucket_name)] = '\0';
-                memcpy(api_switch[use_api_index].host_name, options->bucket_options.host_name,strlen(options->bucket_options.host_name));
+
+				err = memcpy_s(api_switch[use_api_index].host_name, DOMAIN_LEN-1, options->bucket_options.host_name, strlen(options->bucket_options.host_name));
+                CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+
                 api_switch[use_api_index].host_name[strlen(options->bucket_options.host_name)] = '\0';
 
                 api_switch[use_api_index].use_api = OBS_USE_API_S3;
@@ -1156,9 +1234,9 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
     }
 	
 #if defined __GNUC__ || defined LINUX
-		pthread_mutex_unlock(&use_api_mutex);
+    pthread_mutex_unlock(&use_api_mutex);
 #else
-		ReleaseMutex(use_api_mutex);
+    ReleaseMutex(use_api_mutex);
 #endif
 }
 

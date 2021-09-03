@@ -15,9 +15,6 @@
 #ifndef DEMO_COMMON_H
 #define DEMO_COMMON_H
 
-#ifdef _MSC_VER
-#define snprintf _snprintf
-#endif
 
 extern obs_status statusG;
 extern int  showResponsePropertiesG;

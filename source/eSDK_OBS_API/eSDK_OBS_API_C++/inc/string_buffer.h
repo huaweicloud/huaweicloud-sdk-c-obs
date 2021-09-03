@@ -97,7 +97,10 @@
             return OBS_STATUS_OutOfMemory;                            \
         }                                                               \
         memset_s(sb, len+1, 0, len+1);                                  \
-        snprintf_s(sb, len+1, len, "%.*s", (int)len, str);              \
+        int l = snprintf_s(sb, len+1, len, "%.*s", (int)len, str);              \
+        if (l < 0) {                                                      \
+            COMMLOG(OBS_LOGWARN, "snprintf_s failed.");                      \
+        }                                                                   \
     }while (0)
 
 #endif /* STRING_BUFFER_H */
@@ -122,8 +125,7 @@
         }\
         amp = 1;\
         char encoded[3 * 1024];\
-        int isFlag = 0;\
-        if (isFlag == urlEncode(encoded, value, 1024, 0))\
+        if (OBS_STATUS_OK != encode_key(value, encoded))\
         {\
             (void)(*(complete_callback))(OBS_STATUS_QueryParamsTooLong, 0, callback_data);\
             return;\
@@ -137,38 +139,7 @@
     } while (0)
 
 #define safe_append(name, value, complete_callback)\
-    do {\
-        int fit;\
-        if (amp)\
-        {\
-        string_buffer_append(queryParams, "&", 1, fit);\
-        if (!fit)\
-        {\
-            (void)(*(complete_callback))(OBS_STATUS_QueryParamsTooLong, 0, callback_data);\
-            return;\
-        }\
-        }\
-        string_buffer_append(queryParams, name "=", sizeof(name "=") - 1, fit);\
-        if (!fit)\
-        {\
-            (void)(*(complete_callback))(OBS_STATUS_QueryParamsTooLong, 0, callback_data);\
-            return;\
-        }\
-        amp = 1;\
-        char encoded[3 * 1024];\
-        int isFlag = 0;\
-        if (isFlag == urlEncode(encoded, value, 1024, 0))\
-        {\
-            (void)(*(complete_callback))(OBS_STATUS_QueryParamsTooLong, 0, callback_data);\
-            return;\
-        }\
-        string_buffer_append(queryParams, encoded, strlen(encoded), fit);\
-        if (!fit)\
-        {\
-            (void)(*(complete_callback))(OBS_STATUS_QueryParamsTooLong, 0, callback_data);\
-            return;\
-        }\
-    } while (0)
+    safe_append_with_interface_log(name, value, complete_callback);
 
 #define safe_append_status(name, value)\
     do {\
@@ -188,8 +159,7 @@
         }\
         amp = 1;\
         char encoded[3 * 1024];\
-        int isFlag = 0;\
-        if (isFlag == urlEncode(encoded, value, 1024, 0))\
+        if (OBS_STATUS_OK != encode_key(value, encoded))\
         {\
             return OBS_STATUS_QueryParamsTooLong;\
         }\

@@ -54,12 +54,18 @@ V3.19.5
 1. 添加的auth_switch字段,用于选择S3或者OBS协议访问（用户可访问字段，但文档不给出，默认采用协商）
 2. 删除demo中uri_style的手动赋值（默认初始化为virtual_host）
 
-V3.19.9.9.2
+V3.19.9.2
 1. linux平台更新第三方库：openssl从1.0.2r升级到1.1.1.d，libcurl从7.64.1升级到7.66.0
 2. 去掉日志里面的敏感信息
 3. 修复断点续传下载download_file的功能
 4、支持安卓ndk的编译
 
-V3.19.9.9.3
+V3.19.9.3
 1. 增加create_bucket_with_params函数，支持3az创建
+
+V3.19.9.4
+1. 修复copy_object、copy_part中src key为中文的时候，上传obs失败
+
+V3.20.7
+1. 修复download_file下载文件打开失败时导致异常的问题
 

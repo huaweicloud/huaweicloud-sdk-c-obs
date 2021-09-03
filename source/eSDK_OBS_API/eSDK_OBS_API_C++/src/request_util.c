@@ -1,17 +1,28 @@
-/*********************************************************************************
-* Copyright 2019 Huawei Technologies Co.,Ltd.
-* Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-* this file except in compliance with the License.  You may obtain a copy of the
-* License at
-* 
-* http://www.apache.org/licenses/LICENSE-2.0
-* 
-* Unless required by applicable law or agreed to in writing, software distributed
-* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-* CONDITIONS OF ANY KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations under the License.
-**********************************************************************************
-*/
+/** **************************************************************************
+ *
+ * Copyright 2008 Bryan Ischo <bryan@ischo.com>
+ *
+ * This file is part of libs3.
+ *
+ * libs3 is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation, version 3 of the License.
+ *
+ * In addition, as a special exception, the copyright holders give
+ * permission to link the code of this library and its programs with the
+ * OpenSSL library, and distribute linked combinations including the two.
+ *
+ * libs3 is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * version 3 along with libs3, in a file named COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ ************************************************************************** **/
+
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <ctype.h>
@@ -53,7 +64,7 @@ static HANDLE* lockarray;
             if (!*val) {                                                    \
                 return badError;                                            \
             }                                                               \
-            int len = snprintf_sec(values->destField,                          \
+            int len = snprintf_s(values->destField,                          \
                                sizeof(values->destField),_TRUNCATE,  fmt, val);       \
             if (len >= (int) sizeof(values->destField) || len < 0) {                  \
                 return tooLongError;                                        \
@@ -83,7 +94,7 @@ static HANDLE* lockarray;
                 if (!*val) {                                                             \
                     return badError;                                                    \
                 }                                                                       \
-                int len = snprintf_sec(values-> destField,                                \
+                int len = snprintf_s(values-> destField,                                \
                     sizeof(values-> destField),_TRUNCATE,  fmt, val);                   \
                 if (len >= (int) sizeof(values-> destField) || len < 0) {               \
                     return tooLongError;                                                \
@@ -110,7 +121,7 @@ static HANDLE* lockarray;
             if (!*val) {                                                                    \
                 return badError;                                                            \
             }                                                                               \
-            int len = snprintf_sec(values-> destField,                                        \
+            int len = snprintf_s(values-> destField,                                        \
                             sizeof(values-> destField),_TRUNCATE,  fmt, val);               \
             if (len >= (int) sizeof(values-> destField) || len < 0) {                       \
                 return tooLongError;                                                        \
@@ -156,7 +167,7 @@ size_t curl_header_func(void *ptr, size_t size, size_t nmemb,
 {
     http_request *request = (http_request *) data;
 
-    size_t len = size * nmemb;
+    int64_t len = (int64_t)size * nmemb;
 
     response_headers_handler_add
         (&(request->responseHeadersHandler), (char *) ptr, len);
@@ -251,18 +262,18 @@ obs_status headers_append(int *len, request_computed_values *values, int isNewHe
     }
     if(chstr2)
     {
-        if (snprintf_sec(&(values->amzHeadersRaw[*len]), sizeof(values->amzHeadersRaw) - (*len),
+        if (snprintf_s(&(values->amzHeadersRaw[*len]), sizeof(values->amzHeadersRaw) - (*len),
                     _TRUNCATE, format, chstr1, chstr2) > 0) 
         {
-            (*len) += snprintf_sec(&(values->amzHeadersRaw[*len]),                  
+            (*len) += snprintf_s(&(values->amzHeadersRaw[*len]),
             sizeof(values->amzHeadersRaw) - (*len),_TRUNCATE, format, chstr1, chstr2);                           
         }
     }
     else{
-        if (snprintf_sec(&(values->amzHeadersRaw[*len]), sizeof(values->amzHeadersRaw) - (*len),
+        if (snprintf_s(&(values->amzHeadersRaw[*len]), sizeof(values->amzHeadersRaw) - (*len),
             _TRUNCATE, format, chstr1) > 0) 
         {
-            (*len) += snprintf_sec(&(values->amzHeadersRaw[*len]),                  
+            (*len) += snprintf_s(&(values->amzHeadersRaw[*len]),
             sizeof(values->amzHeadersRaw) - (*len), _TRUNCATE, format, chstr1);                           
         }
     }
@@ -278,19 +289,19 @@ obs_status headers_append(int *len, request_computed_values *values, int isNewHe
 
 obs_status header_name_tolower_copy(request_computed_values *values, int *len, const char *str, int l) {
      values->amzHeaders[values->amzHeadersCount++] = &(values->amzHeadersRaw[*len]);                              
-     if (((*len) + l) >= (int) sizeof(values->amzHeadersRaw)) {        
-            return OBS_STATUS_MetadataHeadersTooLong;                      
-        }                                                               
-      int todo = l;                                                   
-      while (todo--) {                                                
-          if ((*(str) >= 'A') && (*(str) <= 'Z')) {                   
-                values->amzHeadersRaw[(*len)++] = 'a' + (*(str) - 'A');    
-          }                                                           
-          else {                                                      
-              values->amzHeadersRaw[(*len)++] = *(str);                  
-          }                                                           
-          (str)++;                                                    
-      }
+    if (((*len) + l) >= (int) sizeof(values->amzHeadersRaw)) {        
+        return OBS_STATUS_MetadataHeadersTooLong;                      
+    }                                                               
+    int todo = l;                                                   
+    while (todo--) {                                                
+        if ((*(str) >= 'A') && (*(str) <= 'Z')) {                   
+            values->amzHeadersRaw[(*len)++] = 'a' + (*(str) - 'A');    
+        }                                                           
+        else {                                                      
+            values->amzHeadersRaw[(*len)++] = *(str);                  
+        }                                                           
+        (str)++;                                                    
+    }
     return OBS_STATUS_OK;
 }
 
@@ -429,34 +440,36 @@ const char *http_request_type_to_verb(http_request_type requestType)
 ** 但是有./的还是需要encode，原因在于./在libcurl去request的时候会被自动去掉，
 ** 从而会导致sdk计算的CanonicalizedResource和服务端计算的不一致，最终会签名不匹配
 **/
-obs_status encode_key(const request_params *params,
-                    request_computed_values *values)
+obs_status encode_key(const char *params,  char *values)
 {
     char ingoreChar = '/';
-    if (NULL != params->key)
+    if (NULL != params && NULL != values)
     {
 #ifdef WIN32
-        char *pStrKeyUTF8 = string_To_UTF8(params->key);
+        char *pStrKeyUTF8 = string_To_UTF8(params);
         if (NULL != strstr(pStrKeyUTF8, "./"))
         {
             ingoreChar = 0;
         }
-        int nRet = urlEncode(values->urlEncodedKey, pStrKeyUTF8, OBS_MAX_KEY_SIZE, ingoreChar);
+        int nRet = urlEncode(values, pStrKeyUTF8, OBS_MAX_KEY_SIZE, ingoreChar);
         CHECK_NULL_FREE(pStrKeyUTF8);
         return (nRet ? OBS_STATUS_OK : OBS_STATUS_UriTooLong);
 #else
-        if (NULL != strstr(params->key, "./"))
+        if (NULL != strstr(params, "./"))
         {
             ingoreChar = 0;
         }
-        return (urlEncode(values->urlEncodedKey, params->key, OBS_MAX_KEY_SIZE, ingoreChar) ?
+        return (urlEncode(values, params, OBS_MAX_KEY_SIZE, ingoreChar) ?
             OBS_STATUS_OK : OBS_STATUS_UriTooLong);
 #endif
     }
     else
     {
-        return (urlEncode(values->urlEncodedKey, params->key, OBS_MAX_KEY_SIZE, ingoreChar) ?
-            OBS_STATUS_OK : OBS_STATUS_UriTooLong);
+        int nRet = urlEncode(values, params, OBS_MAX_KEY_SIZE, ingoreChar);
+        if (nRet == -1) {
+            return OBS_STATUS_InvalidArgument;
+        }
+        return (nRet ? OBS_STATUS_OK : OBS_STATUS_UriTooLong);
     }
 }
 
@@ -529,7 +542,7 @@ obs_status headers_append_acl(obs_canned_acl acl, request_computed_values *value
         return headers_append(len, values, 1, "x-obs-acl: %s", cannedAclString, NULL);
     }
     
-    return OBS_STATUS_OK;
+
 }
 
 static obs_status headers_append_az_redundancy(obs_az_redundancy az_redundancy, request_computed_values *values, int *len, const request_params *params)
@@ -679,7 +692,7 @@ obs_status headers_append_epid(const char *epid, request_computed_values *values
          return headers_append(len, values, 1, "x-obs-epid: %s", epid, NULL);
     }
 
-    return OBS_STATUS_OK;
+
 }
 
 
@@ -709,11 +722,11 @@ obs_status request_compose_properties(request_computed_values *values, const req
 			char headerName[OBS_MAX_METADATA_SIZE - sizeof(": v")];
 			int l = 0;
 			if ( params->use_api == OBS_USE_API_S3) {
-				l = snprintf_sec(headerName, sizeof(headerName),_TRUNCATE,
+				l = snprintf_s(headerName, sizeof(headerName),_TRUNCATE,
 							OBS_METADATA_HEADER_NAME_PREFIX "%s",
 							property->name);
 			} else {
-				l = snprintf_sec(headerName, sizeof(headerName),_TRUNCATE,
+				l = snprintf_s(headerName, sizeof(headerName),_TRUNCATE,
 							"x-obs-meta-%s",
 							property->name);
 			}
@@ -727,19 +740,19 @@ obs_status request_compose_properties(request_computed_values *values, const req
 		}
 
 		ret_status = headers_append_acl(properties->canned_acl, values, len, params);
-		if (OBS_STATUS_OK != ret_status) {
+        if (OBS_STATUS_OK != ret_status) {
 			return ret_status;
 		}
 
         ret_status = headers_append_az_redundancy(properties->az_redundancy, values, len, params);
         if (OBS_STATUS_OK != ret_status) {
-			return ret_status;
-		}
+            return ret_status;
+        }
 
-		ret_status = headers_append_domin(properties, values, len);
-		if (OBS_STATUS_OK != ret_status) {
-			return ret_status;
-		}
+        ret_status = headers_append_domin(properties, values, len);
+        if (OBS_STATUS_OK != ret_status) {
+            return ret_status;
+        }
 	}
 
     ret_status = headers_append_bucket_type(params->bucketContext.bucket_type, 
@@ -795,7 +808,7 @@ obs_status request_compose_encrypt_params_s3(request_computed_values *values, co
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
             base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5);
+            compute_md5(buffer,strlen(buffer),ssec_key_md5, SSEC_KEY_MD5_LENGTH);
             if ((status = headers_append(len, values,1, 
                              "x-amz-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL)) !=OBS_STATUS_OK) {
@@ -819,7 +832,7 @@ obs_status request_compose_encrypt_params_s3(request_computed_values *values, co
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
             base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5);
+            compute_md5(buffer,strlen(buffer),ssec_key_md5, SSEC_KEY_MD5_LENGTH);
             status = headers_append(len, values,1, 
                              "x-amz-copy-source-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL);
@@ -865,7 +878,7 @@ obs_status request_compose_encrypt_params_obs(request_computed_values *values, c
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
             base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5);
+            compute_md5(buffer,strlen(buffer),ssec_key_md5, SSEC_KEY_MD5_LENGTH);
             if ((status = headers_append(len, values,1, 
                              "x-obs-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL)) !=OBS_STATUS_OK) {
@@ -889,7 +902,7 @@ obs_status request_compose_encrypt_params_obs(request_computed_values *values, c
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
             base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5);
+            compute_md5(buffer,strlen(buffer),ssec_key_md5, SSEC_KEY_MD5_LENGTH);
             status = headers_append(len, values,1, 
                              "x-obs-copy-source-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL);
@@ -966,6 +979,10 @@ obs_status request_compose_data(request_computed_values *values, int *len,const 
     return OBS_STATUS_OK;
 }
 
+int check_copy_params(const request_params *params) {
+    return params->subResource != NULL && !strcmp(params->subResource, "metadata") && params->put_properties;
+}
+
 obs_status request_compose_token_and_httpcopy_s3(request_computed_values *values, const request_params *params, int *len)
 {
     obs_status status = OBS_STATUS_OK;	
@@ -982,7 +999,7 @@ obs_status request_compose_token_and_httpcopy_s3(request_computed_values *values
             params->copySourceKey && params->copySourceKey[0]) {
             if ((status = headers_append(len, values, 1, "x-amz-copy-source: /%s/%s",
                            params->copySourceBucketName,
-                           params->copySourceKey)) != OBS_STATUS_OK) {
+                           values->urlEncodedSrcKey)) != OBS_STATUS_OK) {
                 return status;
             }
         }
@@ -992,13 +1009,13 @@ obs_status request_compose_token_and_httpcopy_s3(request_computed_values *values
             }
         }
     }
-	else if(params->subResource != NULL && !strcmp(params->subResource, "metadata") && params->put_properties && params->put_properties->metadata_action == OBS_REPLACE)
+	else if(check_copy_params(params) && params->put_properties->metadata_action == OBS_REPLACE)
 	{
 		if ((status = headers_append(len, values, 1, "%s", "x-amz-metadata-directive: REPLACE", NULL)) != OBS_STATUS_OK) {
 			return status;
 		}
 	}
-	else if(params->subResource != NULL && !strcmp(params->subResource, "metadata") && params->put_properties && params->put_properties->metadata_action == OBS_REPLACE_NEW)
+	else if(check_copy_params(params) && params->put_properties->metadata_action == OBS_REPLACE_NEW)
 	{
 		if ((status = headers_append(len, values, 1, "%s", "x-amz-metadata-directive: REPLACE_NEW", NULL)) != OBS_STATUS_OK) {
 			return status;
@@ -1023,7 +1040,7 @@ obs_status request_compose_token_and_httpcopy_obs(request_computed_values *value
             params->copySourceKey && params->copySourceKey[0]) {
             if ((status = headers_append(len, values, 1, "x-obs-copy-source: /%s/%s",
                            params->copySourceBucketName,
-                           params->copySourceKey)) != OBS_STATUS_OK) {
+                          values->urlEncodedSrcKey)) != OBS_STATUS_OK) {
                 return status;
             }
         }
@@ -1033,13 +1050,13 @@ obs_status request_compose_token_and_httpcopy_obs(request_computed_values *value
             }
         }
     }
-	else if(params->subResource != NULL && !strcmp(params->subResource, "metadata") && params->put_properties && params->put_properties->metadata_action == OBS_REPLACE)
+	else if(check_copy_params(params) && params->put_properties->metadata_action == OBS_REPLACE)
 	{
 		if ((status = headers_append(len, values, 1, "%s", "x-obs-metadata-directive: REPLACE", NULL)) != OBS_STATUS_OK) {
 			return status;
 		}
 	}
-	else if(params->subResource != NULL && !strcmp(params->subResource, "metadata") && params->put_properties && params->put_properties->metadata_action == OBS_REPLACE_NEW)
+	else if(check_copy_params(params) && params->put_properties->metadata_action == OBS_REPLACE_NEW)
 	{
 		if ((status = headers_append(len, values, 1, "%s", "x-obs-metadata-directive: REPLACE_NEW", NULL)) != OBS_STATUS_OK) {
 			return status;
@@ -1096,6 +1113,7 @@ obs_status compose_put_header(const request_params *params,
     }
     return OBS_STATUS_OK;
 }
+
 
 obs_status compose_get_put_header_s3(const request_params *params,
                             request_computed_values *values)
@@ -1244,46 +1262,53 @@ obs_status compose_get_put_header(const request_params *params,
 obs_status compose_range_header(const request_params *params,
                             request_computed_values *values)
 {
+    int ret = 0;
     if (params->get_conditions && (params->get_conditions->start_byte || params->get_conditions->byte_count)) {
         if (params->get_conditions->byte_count) {
-            snprintf_sec(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
+            ret = snprintf_s(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
                      "Range: bytes=%llu-%llu",
                      (unsigned long long) params->get_conditions->start_byte,
                      (unsigned long long) (params->get_conditions->start_byte +
                                            params->get_conditions->byte_count - 1));
+            CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         }
         else {
-            snprintf_sec(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
+            ret = snprintf_s(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
                      "Range: bytes=%llu-",
                      (unsigned long long) params->get_conditions->start_byte);
+            CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         }
     }
     else  if (params->put_properties&&( params->put_properties->start_byte || params->put_properties->byte_count)) {
         if (params->use_api == OBS_USE_API_S3) {
             if (params->put_properties->byte_count) {
-                snprintf_sec(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
+                ret = snprintf_s(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
                     "x-amz-copy-source-range: bytes=%llu-%llu", 
                     (unsigned long long) params->put_properties->start_byte,
                     (unsigned long long) (params->put_properties->start_byte +
                     params->put_properties->byte_count - 1));
+                CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
             }
             else {
-                snprintf_sec(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
+                ret = snprintf_s(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
                     "x-amz-copy-source-range: bytes=%llu-",
                     (unsigned long long) params->put_properties->start_byte);
+                CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
             }
         } else {
             if (params->put_properties->byte_count) {
-                snprintf_sec(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
+                ret = snprintf_s(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
                     "x-obs-copy-source-range: bytes=%llu-%llu", 
                     (unsigned long long) params->put_properties->start_byte,
                     (unsigned long long) (params->put_properties->start_byte +
                     params->put_properties->byte_count - 1));
+                CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
             }
             else {
-                snprintf_sec(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
+                ret = snprintf_s(values->rangeHeader, sizeof(values->rangeHeader),_TRUNCATE,
                     "x-obs-copy-source-range: bytes=%llu-",
                     (unsigned long long) params->put_properties->start_byte);
+                CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
             }
         }
     }
@@ -1298,11 +1323,13 @@ void pre_compute_header(const char **sortedHeaders, request_computed_values *val
 {
     char match_str[7];
     int is_true = 0;
+    errno_t err = EOK;
     if (use_api == OBS_USE_API_S3) {
-        strcpy(match_str, "x-amz-");
+		err = strcpy_s(match_str, sizeof(match_str), "x-amz-");
     } else {
-        strcpy(match_str, "x-obs-");
+		err = strcpy_s(match_str, sizeof(match_str), "x-obs-");
     }
+    CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
     is_true = (0 != values->rangeHeader[0] 
                   && strlen(values->rangeHeader) >= strlen(match_str)
                   && 0 == strncmp(match_str,values->rangeHeader,strlen(match_str)));
@@ -1537,7 +1564,8 @@ obs_status compose_temp_header(const request_params* params,
             {
                 len1 = strlen(params->queryParams);
             }
-            strncpy_sec(tmp, sizeof(tmp), params->queryParams, len1); 
+            int ret = strncpy_s(tmp, sizeof(tmp), params->queryParams, len1);
+            CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
             signbuf_attach("?%s", tmp);
         }
         if ((pos = strstr(params->queryParams, "versionId")) != NULL)
@@ -1565,17 +1593,20 @@ obs_status compose_temp_header(const request_params* params,
 
             if(len2>0)
             {
-                strncpy_sec(tmp, sizeof(tmp),params->queryParams,len2);
+                int ret = strncpy_s(tmp, sizeof(tmp),params->queryParams,len2);
+                CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
                 decodedStr = (char*)malloc(len2+1);
 				
 				if (decodedStr == NULL)
 				{
 					COMMLOG(OBS_LOGWARN, "compose_temp_header : decodedStr malloc failed!\n");
+                    return OBS_STATUS_InternalError;
 				}
 				
                 memset_s(decodedStr,len2+1,0,len2+1);
                 urlDecode(decodedStr,tmp,len2+1);
-                strncpy_sec(tmp, 1024, decodedStr, strlen(decodedStr)+1);
+                ret = strncpy_s(tmp, ARRAY_LENGTH_1024, decodedStr, strlen(decodedStr)+1);
+                CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
                 CHECK_NULL_FREE(decodedStr);   
                 signbuf_attach("?%s", tmp);           
             }
@@ -1589,12 +1620,14 @@ obs_status compose_temp_header(const request_params* params,
     (void)base64Encode(hmac, 20, b64);
     char cUrlEncode[512] = {0};
     (void)urlEncode(cUrlEncode, b64, 28, 0);
-    snprintf_sec(stTempAuthInfo->tempAuthParams, 1024, _TRUNCATE,
+    int ret = snprintf_s(stTempAuthInfo->tempAuthParams,ARRAY_LENGTH_1024, _TRUNCATE,
                "AWSAccessKeyId=%s&Expires=%lld&Signature=%s", params->bucketContext.access_key,
                (long long int)local_expires, cUrlEncode);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     
-    snprintf_sec(stTempAuthInfo->temp_auth_headers,1024,_TRUNCATE,"%s",
+    ret = snprintf_s(stTempAuthInfo->temp_auth_headers,ARRAY_LENGTH_1024,_TRUNCATE,"%s",
                values->canonicalizedAmzHeaders);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     COMMLOG(OBS_LOGINFO, "Leave compose_temp_header successful \n");
     return OBS_STATUS_OK;
 }
