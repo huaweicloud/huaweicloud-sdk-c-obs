@@ -812,7 +812,7 @@ int put_buffer_data_callback(int buffer_size, char *buffer, void *callback_data)
     if (data->buffer_size) {
         toRead = ((data->buffer_size > (unsigned) buffer_size) ?
                     (unsigned) buffer_size : data->buffer_size);
-        memcpy_s(buffer,sizeof(buffer) ,data->put_buffer + data->cur_offset, toRead);
+        memcpy_s(buffer,buffer_size ,data->put_buffer + data->cur_offset, toRead);
     }
     
     uint64_t originalContentLength = data->buffer_size;
