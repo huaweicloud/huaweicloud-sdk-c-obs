@@ -3038,6 +3038,7 @@ static void start_upload_threads(test_upload_file_callback_data data,
         concurrent_temp[i].upload_id = concurrent_upload_id;
         concurrent_temp[i].key = key;
         concurrent_temp[i].option = &option;
+		concurrent_temp[i].offset = 0;
         if(i == partCount-1)
         {
             concurrent_temp[i].part_size = filesize - (data.part_size)*i;

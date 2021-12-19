@@ -339,7 +339,7 @@ extern int64_t parseIso8601Time(const char *str);
 
 
 
-/***********************ç»“æ„å®šä¹‰*************************************/
+/***********************½á¹¹¶¨Òå*************************************/
 
 static struct option longOptionsG[] = 
 {
@@ -352,7 +352,7 @@ static struct option longOptionsG[] =
 };
 
 
-/********************å…¬å…±å‡½æ•°******************************************/
+/********************¹«¹²º¯Êı******************************************/
 static uint64_t convertInt(const char *str, const char *paramName)
 {
     uint64_t ret = 0;
@@ -2543,7 +2543,7 @@ static void test_get_lifecycle_config_new(int argc, char **argv, int optindex)
 			option.request_options.auth_switch = OBS_S3_TYPE;
         }
     }
-    // è®¾ç½®å›è°ƒå‡½æ•°
+    // ÉèÖÃ»Øµ÷º¯Êı
     obs_lifecycle_handler lifeCycleHandlerEx =
     {
         {&response_properties_callback, &response_complete_callback},
@@ -2567,7 +2567,7 @@ static void test_delete_lifecycle_config_new(int argc, char **argv, int optindex
     char *bucket_name = argv[optindex++];
     printf("Bucket's name is == %s. \n", bucket_name);
 
-    // è®¾ç½®option
+    // ÉèÖÃoption
     init_obs_options(&option);    
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = bucket_name;
@@ -3813,14 +3813,14 @@ void test_set_bucket_cors(int argc, char **argv, int optindex)
     obs_bucket_cors_conf bucketCorsConf; 
     memset_s(&bucketCorsConf,sizeof(bucketCorsConf) ,0, sizeof(obs_bucket_cors_conf));
 
-    // è®¾ç½®option
+    // ÉèÖÃoption
     init_obs_options(&option);
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
-    // è®¾ç½®å›è°ƒå‡½æ•°
+    // ÉèÖÃ»Øµ÷º¯Êı
     obs_response_handler response_handler =
     { 
         NULL, &response_complete_callback
@@ -3930,7 +3930,7 @@ void test_get_cors_config(int argc, char **argv, int optindex)
     obs_options option;
 
 
-    // è®¾ç½®option
+    // ÉèÖÃoption
     init_obs_options(&option);
     option.bucket_options.host_name     = HOST_NAME;
     option.bucket_options.bucket_name   = bucket_name;
@@ -3950,7 +3950,7 @@ void test_get_cors_config(int argc, char **argv, int optindex)
         }
     }
 	
-    // è®¾ç½®å›è°ƒå‡½æ•°
+    // ÉèÖÃ»Øµ÷º¯Êı
     obs_cors_handler cors_handler_info =
     {
         {&response_properties_callback, &response_complete_callback},
@@ -3972,7 +3972,7 @@ static void test_delete_cors_config(int argc, char **argv, int optindex)
     obs_status  ret_status = OBS_STATUS_BUTT;
     char *bucket_name = argv[optindex++];
 
-    // è®¾ç½®option
+    // ÉèÖÃoption
     init_obs_options(&option);
     option.bucket_options.host_name     = HOST_NAME;
     option.bucket_options.bucket_name   = bucket_name;
@@ -3991,7 +3991,7 @@ static void test_delete_cors_config(int argc, char **argv, int optindex)
         }
     }
 	
-    // è®¾ç½®å›è°ƒå‡½æ•°
+    // ÉèÖÃ»Øµ÷º¯Êı
     obs_response_handler response_handler =
     { 
         0, &response_complete_callback
@@ -4496,8 +4496,8 @@ void *upload_thread_proc(void * thread_param)
 
 
 static void start_upload_threads(test_upload_file_callback_data data,
-                                 char *concurrent_upload_id, uint64_t filesize, char *key,
-                                 obs_options option,test_concurrent_upload_file_callback_data *concurrent_upload_file)
+	char *concurrent_upload_id, uint64_t filesize, FILE ** uploadFilePool,
+	char *key, obs_options option,test_concurrent_upload_file_callback_data *concurrent_upload_file)
 {
      int partCount = data.part_num;
      test_concurrent_upload_file_callback_data *concurrent_temp;
@@ -4509,10 +4509,11 @@ static void start_upload_threads(test_upload_file_callback_data data,
      {
         memset_s(concurrent_temp[i].etag,sizeof(concurrent_temp[i].etag) ,0,sizeof(concurrent_temp[i].etag));
         concurrent_temp[i].part_num = i+1;
-        concurrent_temp[i].infile = data.infile;
+        concurrent_temp[i].infile = uploadFilePool[i];
         concurrent_temp[i].upload_id = concurrent_upload_id;
         concurrent_temp[i].key = key;
         concurrent_temp[i].option = &option;
+		concurrent_temp[i].offset = 0;
         if(i == partCount-1)
         {
             concurrent_temp[i].part_size = filesize - (data.part_size)*i;
@@ -4617,15 +4618,16 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     init_put_properties(&putProperties);
     putProperties.canned_acl = canned_acl;
     
-    //å¤§æ–‡ä»¶ä¿¡æ¯:æ–‡ä»¶æŒ‡é’ˆï¼Œæ–‡ä»¶å¤§å°ï¼ŒæŒ‰ç…§åˆ†æ®µå¤§å°çš„åˆ†æ®µæ•°
+    //´óÎÄ¼şĞÅÏ¢:ÎÄ¼şÖ¸Õë£¬ÎÄ¼ş´óĞ¡£¬°´ÕÕ·Ö¶Î´óĞ¡µÄ·Ö¶ÎÊı
     test_upload_file_callback_data data;
     memset_s(&data,sizeof(data), 0, sizeof(test_upload_file_callback_data));
     filesize = get_file_info(filename,&data);
     data.noStatus = 1;
     data.part_size = uploadSize;
     data.part_num = (filesize % uploadSize == 0) ? (filesize / uploadSize) : (filesize / uploadSize +1);
+	uploadFilePool = init_uploadfilepool(uploadFilePool, data.part_num, filename);
 
-    //åˆå§‹åŒ–ä¸Šä¼ æ®µä»»åŠ¡è¿”å›uploadId: uploadIdReturn
+    //³õÊ¼»¯ÉÏ´«¶ÎÈÎÎñ·µ»ØuploadId: uploadIdReturn
     char uploadIdReturn[256] = {0};
     int upload_id_return_size = 255;
     initiate_multi_part_upload(&option,key,upload_id_return_size,uploadIdReturn, &putProperties,
@@ -4638,7 +4640,7 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     {
         printf("test init upload part faied(%s).\n", obs_get_status_name(ret_status));
     }
-    //å¹¶å‘ä¸Šä¼ 
+    //²¢·¢ÉÏ´«
     test_concurrent_upload_file_callback_data *concurrent_upload_file;
     concurrent_upload_file =(test_concurrent_upload_file_callback_data *)malloc(
                 sizeof(test_concurrent_upload_file_callback_data)*(data.part_num+1));
@@ -4648,9 +4650,9 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
         return;
     }
     test_concurrent_upload_file_callback_data *concurrent_upload_file_complete = concurrent_upload_file;
-    start_upload_threads(data, concurrent_upload_id,filesize, key, option, concurrent_upload_file_complete);
+    start_upload_threads(data, concurrent_upload_id,filesize, uploadFilePool,key, option, concurrent_upload_file_complete);
 
-    // åˆå¹¶æ®µ
+    // ºÏ²¢¶Î
     obs_complete_upload_Info *upload_Info = (obs_complete_upload_Info *)malloc(
         sizeof(obs_complete_upload_Info)*data.part_num);
     if(upload_Info == NULL)
@@ -4658,7 +4660,9 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
         printf("malloc upload_Info failed!!!");
         free(concurrent_upload_file);
         return;
-    }        
+    }   
+	deinit_uploadfilepool(uploadFilePool, data.part_num);
+	uploadFilePool = NULL;
     for(i=0; i<data.part_num; i++)
     {
         upload_Info[i].part_number = concurrent_upload_file_complete[i].part_num;
@@ -4756,7 +4760,7 @@ static void test_concurrent_copy_part(int argc, char **argv, int optindex)
         &listPartsCallbackEx
     };
 
-    //åˆå§‹åŒ–ä¸Šä¼ æ®µä»»åŠ¡è¿”å›uploadId: uploadIdReturn
+    //³õÊ¼»¯ÉÏ´«¶ÎÈÎÎñ·µ»ØuploadId: uploadIdReturn
     char uploadIdReturn[256] = {0};
     int upload_id_return_size = 255;
     initiate_multi_part_upload(&option,destinationKey,upload_id_return_size,uploadIdReturn, 0,
@@ -5296,11 +5300,11 @@ static void test_put_object_with_encrypt(int argc, char **argv, int optindex)
 
     obs_put_properties put_properties;
     init_put_properties(&put_properties);
-    //æœåŠ¡ç«¯åŠ å¯†
-    /*SSE-KMSåŠ å¯†*/
+    //·şÎñ¶Ë¼ÓÃÜ
+    /*SSE-KMS¼ÓÃÜ*/
     server_side_encryption_params encryption_params;
     memset_s(&encryption_params,sizeof(encryption_params) ,0, sizeof(server_side_encryption_params));
-    //ä¸è®¾ç½® ç³»ç»Ÿä¼šç”Ÿæˆé»˜è®¤çš„åŠ å¯†å¯†é’¥
+    //²»ÉèÖÃ ÏµÍ³»áÉú³ÉÄ¬ÈÏµÄ¼ÓÃÜÃÜÔ¿
 
     /*SSE-C*/
     char* buffer = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";

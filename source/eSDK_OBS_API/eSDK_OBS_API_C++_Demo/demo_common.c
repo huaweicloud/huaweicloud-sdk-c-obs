@@ -1097,11 +1097,11 @@ int test_concurrent_upload_part_data_callback(int buffer_size, char *buffer,
     test_concurrent_upload_file_callback_data *data = 
         (test_concurrent_upload_file_callback_data *) callback_data;
     int ret=0;
-    fseek(data->infile, data->start_byte, SEEK_SET);
+    fseek(data->infile, data->start_byte + data->offset, SEEK_SET);
     int toRead = ((data->part_size> (unsigned) buffer_size) ?
                     (unsigned) buffer_size : data->part_size);
     ret = fread(buffer, 1, toRead, data->infile);
-
+	data->offset += ret;
     return ret;
 }
 
@@ -1475,4 +1475,28 @@ void destroy_logging_message(bucket_logging_message *logging_message)
     free(logging_message->agency);
 }
 
+FILE** init_uploadfilepool(FILE **fd, uint64_t part_num, char *filename)
+{
+	fd = (FILE**)malloc(sizeof(FILE*)*part_num);
+	int i = 0;
+	for (; i < part_num; i++)
+	{
+		if (!(fd[i] = fopen(filename, "rb")))
+		{
+			fprintf(stderr, "\nERROR: Failed to open input file %s: ", filename);
+			perror(0);
+			exit(-1);
+		}
+	}
+	return fd;
+}
 
+void deinit_uploadfilepool(FILE **fd, uint64_t part_num)
+{
+	int i = 0;
+	for (; i < part_num; i++)
+	{
+		fclose(fd[i]);
+	}
+	free(fd);
+}
