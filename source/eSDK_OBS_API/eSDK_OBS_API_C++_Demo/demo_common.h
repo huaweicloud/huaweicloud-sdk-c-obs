@@ -36,7 +36,6 @@ extern char OBJECT_VER[][256];
 extern obs_uri_style gDefaultURIStyle;
 
 // struct------------------------------------------
-FILE **uploadFilePool = NULL;
 typedef struct head_object_data
 {
     obs_status ret_status;
@@ -170,7 +169,7 @@ typedef struct _test_concurrent_upload_file_callback_data
     unsigned int part_num;
     uint64_t part_size;
     uint64_t start_byte;
-	uint64_t offset;
+    uint64_t offset;
     obs_options *option;
     char * key;
     obs_status ret_status;

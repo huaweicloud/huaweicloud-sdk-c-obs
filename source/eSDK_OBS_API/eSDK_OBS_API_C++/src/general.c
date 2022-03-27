@@ -237,6 +237,70 @@ void init_obs_options(obs_options *options)
     options->temp_auth = NULL;
 }
 
+obs_status init_certificate_set_path(obs_certificate_conf ca_conf, char *ca_path,
+	const char *path, int path_length)
+{
+	if (OBS_DEFAULT_CERTIFICATE == ca_conf)
+	{
+#if defined __GNUC__ || defined LINUX
+		getCurrentPath(ca_path);
+		strcat_s(ca_path, PATH_LENGTH, CERTIFICATE_NAME);
+#else
+		GetModuleFileNameA(NULL, ca_path, MAX_MSG_SIZE - 1);
+		char *chr = strrchr(ca_path, '\\');
+		if (NULL != chr)
+		{
+			*(chr + 1) = '\0';
+		}
+		int ret = strcat_s(ca_path, PATH_LENGTH, "client.crt");
+		if (ret != 0) {
+			COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.", __FUNCTION__);
+		}
+#endif
+	}
+	else if ((OBS_DEFINED_CERTIFICATE == ca_conf) && path && (path_length > 0))
+	{
+		errno_t err = EOK;
+		err = memcpy_s(ca_path, sizeof(ca_path), path, path_length);
+		if (err != EOK)
+		{
+			COMMLOG(OBS_LOGWARN, "%s(%d):memcpy_s failed!", __FUNCTION__, __LINE__);
+		}
+	}
+	else
+	{
+		return OBS_STATUS_InvalidParameter;
+	}
+	return OBS_STATUS_OK;
+}
+
+obs_status init_certificate_readInfo(char *ca_path, int length)
+{
+	FILE *fp = fopen(ca_path, "r");
+	if (!fp)
+	{
+		COMMLOG(OBS_LOGERROR, "fopen failed path = %s", ca_path);
+		return OBS_STATUS_OpenFileFailed;
+	}
+	while (1)
+	{
+		int rc = fread(g_ca_info, sizeof(char), CERTIFICATE_SIZE, fp);
+		if (rc <= 0)
+		{
+			break;
+		}
+		length += rc;
+	}
+	fclose(fp);
+	if (length <= 0)
+	{
+		COMMLOG(OBS_LOGERROR, "fread failed length = %d\n", length);
+		return OBS_STATUS_EmptyFile;
+	}
+	return OBS_STATUS_OK;
+}
+
+
 obs_status init_certificate_by_path(obs_protocol protocol, obs_certificate_conf ca_conf, 
                                     const char *path, int path_length)
 {
@@ -251,59 +315,17 @@ obs_status init_certificate_by_path(obs_protocol protocol, obs_certificate_conf 
     }
 
     memset_s(ca_path, PATH_LENGTH, 0, PATH_LENGTH);
-    if (OBS_DEFAULT_CERTIFICATE == ca_conf)
-    {
-    #if defined __GNUC__ || defined LINUX
-        getCurrentPath(ca_path);
-        strcat_s(ca_path, PATH_LENGTH, CERTIFICATE_NAME);
-    #else
-        GetModuleFileNameA(NULL,ca_path,MAX_MSG_SIZE-1);
-        char *chr = strrchr(ca_path, '\\');
-        if(NULL != chr){ 
-            *(chr + 1) = '\0'; 
-        }
-        int ret = strcat_s(ca_path, PATH_LENGTH, "client.crt");
-        if (ret != 0) {
-            COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.", __FUNCTION__);
-        }
-    #endif
-    }
-    else if ((OBS_DEFINED_CERTIFICATE == ca_conf) && path && (path_length > 0))
-    {
-        errno_t err = EOK;
-        err = memcpy_s(ca_path, sizeof(ca_path), path, path_length);
-        if (err != EOK)
-        {
-            COMMLOG(OBS_LOGWARN, "%s(%d): memcpy_s failed!", __FUNCTION__, __LINE__);
-        }
-    }
-    else
-    {
-        return OBS_STATUS_InvalidParameter;
-    }
-        
-    FILE *fp = fopen(ca_path, "r");
-    if (!fp)
-    {
-        COMMLOG(OBS_LOGERROR, "fopen failed path = %s", ca_path);
-        return OBS_STATUS_OpenFileFailed;  
-    }
-    while(1)
-    {
-        int rc = fread(g_ca_info, sizeof(char), CERTIFICATE_SIZE, fp);
-        if (rc <= 0)
-        {
-            break; 
-        }
-        length += rc;
-    }
-    fclose(fp);
+	status = init_certificate_set_path(ca_conf, ca_path, path, path_length);
+	if (OBS_STATUS_OK != status) 
+	{
+		return status;
+	}
     
-    if (length <= 0)
-    {
-        COMMLOG(OBS_LOGERROR, "fread failed length = %d\n", length);
-        return OBS_STATUS_EmptyFile;  
-    }
+	status = init_certificate_readInfo(ca_path, length);
+	if (OBS_STATUS_OK != status)
+	{
+		return status;
+	}
     return status;
 }
 
@@ -332,12 +354,14 @@ obs_status init_certificate_by_buffer(const char *buffer, int buffer_length)
 void init_put_properties(obs_put_properties *put_properties)
 {
     put_properties->byte_count=0;
+    put_properties->upload_limit = 0;
     put_properties->cache_control=0;
     put_properties->canned_acl= OBS_CANNED_ACL_PRIVATE;
     put_properties->content_disposition_filename = 0;
     put_properties->content_encoding = 0;
     put_properties->content_type =0;
     put_properties->expires = -1;
+    put_properties->obs_expires = -1;
     put_properties->file_object_config=0;
     put_properties->get_conditions=0;
     put_properties->md5=0;
@@ -347,12 +371,14 @@ void init_put_properties(obs_put_properties *put_properties)
     put_properties->website_redirect_location=0;
     put_properties->domain_config = NULL;
 	put_properties->metadata_action = OBS_NO_METADATA_ACTION;
+    init_server_callback(&(put_properties->server_callback));
 }
 
 void init_get_properties(obs_get_conditions *get_conditions)
 {
     get_conditions->byte_count=0;
     get_conditions->start_byte=0;
+    get_conditions->download_limit = 0;
     get_conditions->if_match_etag=NULL;
     get_conditions->if_modified_since = -1;
     get_conditions->if_not_match_etag = NULL;
@@ -360,6 +386,13 @@ void init_get_properties(obs_get_conditions *get_conditions)
     get_conditions->image_process_config = NULL;
 }
 
+void init_server_callback(obs_upload_file_server_callback * server_callback)
+{
+    server_callback->callback_url = NULL;
+    server_callback->callback_host = NULL;
+    server_callback->callback_body = NULL;
+    server_callback->callback_body_type = NULL;
+}
 
 void obs_deinitialize()
 {

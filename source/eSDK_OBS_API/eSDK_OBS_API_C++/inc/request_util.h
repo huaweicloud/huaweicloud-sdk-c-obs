@@ -79,6 +79,9 @@ obs_status encode_key(const char * pSrc, char *pValue);
 
 obs_status request_curl_code_to_status(CURLcode code);
 
+obs_status request_compose_limit(request_computed_values *values,
+    const request_params *params, int *len);
+
 obs_status request_compose_properties(request_computed_values *values, 
                 const request_params *params, int *len);
 
@@ -101,6 +104,13 @@ obs_status compose_get_put_header(const request_params *params,
 
 obs_status compose_range_header(const request_params *params,
                               request_computed_values *values);
+
+obs_status compose_callback_header(const request_params *params,
+    request_computed_values *values, int *len);
+
+int compose_callback_params_header(char * param_str,
+    const char* param_name, char *callback_str, int charllback_index);
+
 void pre_compute_header(const char **sortedHeaders, 
                 request_computed_values *values, int *nCount, obs_use_api use_api);
 void canonicalize_headers(request_computed_values *values, 

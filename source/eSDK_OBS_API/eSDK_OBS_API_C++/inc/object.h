@@ -12,12 +12,23 @@
 * specific language governing permissions and limitations under the License.
 **********************************************************************************
 */
+#ifndef OBJECT_H
+#define OBJECT_H
+
 #include "eSDKOBS.h"
 #include "request.h"
 #include "simplexml.h"
 #include "securec.h"
 #include "common.h"
 
+#if defined WIN32
+#include <io.h>
+#include <share.h>
+#include <process.h>
+#endif
+
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 #define MAX_PARTS 32
 #define SECONDS_TO_AN_HOUR 3600
 #define ACL_XML_DOC_MAXSIZE (64 * 1024)
@@ -52,7 +63,7 @@
 
 #define MAX_NUM_TAGGING 10
 
-char * g_uploadStatus[STATUS_BUTT] = 
+static char * g_uploadStatus[STATUS_BUTT] = 
 {
     "UPLOAD_NOTSTART",
     "UPLOADING",
@@ -60,14 +71,14 @@ char * g_uploadStatus[STATUS_BUTT] =
     "UPLOAD_SUCCESS"
 };
 
-char * g_storageClass[OBS_STORAGE_CLASS_BUTT] = 
+static char * g_storageClass[OBS_STORAGE_CLASS_BUTT] = 
 {
     "STANDARD",
     "STANDARD_IA",
     "GLACIER"
 };
 
-char * g_downloadStatus[DOWN_STATUS_BUTT] = 
+static char * g_downloadStatus[DOWN_STATUS_BUTT] = 
 {
     "DOWNLOAD_NOTSTART",
     "DOWNLOADING",
@@ -114,6 +125,7 @@ typedef struct complete_multi_part_upload_data
     string_buffer(etag, 256);
     string_buffer(bucket, 256);
     string_buffer(key, 256);
+    bool server_callback;
 } complete_multi_part_upload_data;
 
 typedef struct parts_info
@@ -257,13 +269,27 @@ typedef struct _upload_params
     server_side_encryption_params *pstServerSideEncryptionParams;
     obs_response_handler * response_handler;
     void * callBackData;
+
+    obs_progress_callback *progress_callback;
+    uint64_t totalFileSize;
+    uint64_t uploadedSize;
 }upload_params;
+
+typedef struct
+{
+    uint64_t *progressArr;
+    int arrSize;
+    int index;
+    uint64_t totalFileSize;
+    uint64_t uploadedSize;
+}upload_file_progress_info;
 
 typedef struct
 {
     upload_params * stUploadParams;
     upload_file_part_info  *stUploadFilePartInfo;
     void * callBackData;
+    upload_file_progress_info  stUploadProgressInfo;
 }upload_file_proc_data;
 
 typedef struct _upload_file_callback_data
@@ -273,11 +299,14 @@ typedef struct _upload_file_callback_data
     int fdUploadFile;
     int part_num;
     int enableCheckPoint;
+    uint64_t fileBytes;
     uint64_t totalBytes;
-    uint64_t bytesRemaining;    
+    uint64_t bytesRemaining;
     const obs_response_handler * respHandler;
-    upload_file_part_info *stUploadFilePartInfo;// this store the info about one part        
+    upload_file_part_info *stUploadFilePartInfo;// this store the info about one part
     void * callbackDataIn;//the callback data pass from client
+    upload_file_progress_info *progressInfo;
+    obs_progress_callback *progressCallback;
 }upload_file_callback_data;
 
 typedef struct
@@ -367,6 +396,11 @@ typedef struct delete_object_data
     delete_object_contents contents[OBS_MAX_DELETE_OBJECT_NUMBER];
 } delete_object_data;
 
+typedef struct
+{
+    obs_status retStatus;
+}lisPartResult;
+
 #define append(fmt, ...)                                                  \
     do {                                                                 \
         *xmlDocumentLenReturn += snprintf_s                              \
@@ -378,4 +412,36 @@ typedef struct delete_object_data
         } \
     } while (0)
 
+int check_file_is_valid(char *file_name);
+
+xmlNodePtr get_xmlnode_from_file(const char * file_name, xmlDocPtr *doc);
+
+int updataCheckPointFindNode(xmlNodePtr *curNode, unsigned int strNum, char(*strArry)[32]);
+
+int updateCheckPoint(char * elementPath, const char * content, const char * file_name);
+
+int isXmlFileValid(const char * file_name, exml_root xmlRootIn);
+
+int open_file(const char * file_name, int *ret_stat, int *file_size);
+
+int set_check_pointFile_with_name(const char * checkPointFileName,
+    int * isFirstTimeUpload, exml_root xmlRootIn);
+
+int set_check_pointFile_with_null(const char * uploadFileName, char * checkPointFileName,
+    int * isFirstTimeUpload, exml_root xmlRootIn);
+
+int setCheckPointFile(const char * uploadFileName, char * checkPointFileName,
+    int * isFirstTimeUpload, exml_root xmlRootIn);
+
+void ListPartsCompleteCallback_Intern(obs_status status,
+    const obs_error_details *error,
+    void *callback_data);
+
+obs_status ListPartsPropertiesCallback_Intern(const obs_response_properties *properties,
+    void *callback_data);
+
+obs_status copyObjectDataCallback(int buffer_size, const char *buffer,
+    void *callback_data);
+
+#endif
 

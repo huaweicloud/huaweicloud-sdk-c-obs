@@ -341,7 +341,11 @@ int urlDecode(char *dest, const char *src, int maxSrcSize)
             if (ret != 1) {
                 COMMLOG(OBS_LOGWARN, "%s(%d): sscanf_s failed!(%d)", __FUNCTION__, __LINE__);
             }
-            memset_s(strOne,ARRAY_LENGTH_4,0,4);
+            if (ret = memset_s(strOne, ARRAY_LENGTH_4, 0, 4))
+            {
+                COMMLOG(OBS_LOGERROR, "in %s line %s memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
+                return OBS_STATUS_InternalError;
+            }
             src ++;
 
             *dest++ = (char)charGot;            
@@ -566,8 +570,11 @@ void HMAC_SHA256(unsigned char hmac[32], const unsigned char *key, int key_len,
     HMAC_Final(ctx, temp, &tempLength);
     HMAC_CTX_free(ctx);
 #endif
-
-    memset_s(hmac, ARRAY_LENGTH_32, 0, 32);
+    int ret = 0;
+    if (ret = memset_s(hmac, ARRAY_LENGTH_32, 0, 32))
+    {
+        COMMLOG(OBS_LOGERROR, "in %s line %s memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
+    }
     unsigned int i;
     for(i=0; i<tempLength; i++)
     {
@@ -618,7 +625,11 @@ void SHA256Hash(unsigned char sha[32], const unsigned char *message, int message
     EVP_DigestFinal_ex(mdctx, temp, &tempLength);
     EVP_MD_CTX_free(mdctx);
 #endif
-    memset_s(sha,ARRAY_LENGTH_32, 0, 32);
+    int ret = 0;
+    if (ret = memset_s(sha, ARRAY_LENGTH_32, 0, 32))
+    {
+        COMMLOG(OBS_LOGERROR, "in %s line %s memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
+    }
     unsigned int i = 0;
     for(i = 0; i < tempLength; i++)
     {
@@ -654,6 +665,72 @@ void ustr_to_hexes(unsigned char* szIn,unsigned int inlen, unsigned char* szOut)
     }
 }
 
+int pcre_replace_start(char *dest, int offset, int count,
+	const char *src, int src_len, int *ovector)
+{
+	for (int i = 0; i<count; i++)
+	{
+		int retVal = 0;
+		if (i == 0)
+		{
+			int ret = strncpy_s(dest + offset, src_len + count * 6 - offset, src, ovector[i * 2]);
+			CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
+			offset = ovector[i * 2];
+		}
+		else
+		{
+			int ret = strncpy_s(dest + offset, src_len + count * 6 - offset, 
+				src + ovector[i * 2 - 1], ovector[i * 2] - ovector[i * 2 - 1]);
+			CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
+			offset += ovector[i * 2] - ovector[i * 2 - 1];
+		}
+		if (src[ovector[i * 2]] == '<')
+		{
+			retVal = strcat_s(dest, sizeof(char)*(src_len + count * 6), "&lt;");
+			if (retVal != 0)
+			{
+				COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+			}
+			offset += 4;
+		}
+		if (src[ovector[i*2]] == '>')
+		{
+			retVal = strcat_s(dest, sizeof(char)*(src_len + count * 6), "&gt;");
+			if (retVal != 0)
+			{
+				COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+			}
+			offset += 4;
+		}
+		if (src[ovector[i*2]] == '&')
+		{
+			retVal = strcat_s(dest, sizeof(char)*(src_len + count * 6), "&amp;");
+			if (retVal != 0)
+			{
+				COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+			}
+			offset += 5;
+		}
+		if (src[ovector[i*2]] == '\'')
+		{
+			retVal = strcat_s(dest, sizeof(char)*(src_len + count * 6), "&apos;");
+			if (retVal != 0)
+			{
+				COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+			}
+			offset += 6;
+		}
+		if (src[ovector[i * 2]] == '\"')
+		{
+			retVal = strcat_s(dest, sizeof(char)*(src_len + count * 6), "&quot;");
+			if (retVal != 0) {
+				COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+			}
+			offset += 6;
+		}
+	}
+	return count;
+}
 
 int pcre_replace(const char* src,char ** destOut)
 {
@@ -692,65 +769,8 @@ int pcre_replace(const char* src,char ** destOut)
         return 0;
     }
     memset_s(dest, sizeof(char)*(src_len + count*6), 0,(src_len + count*6));
-    int i;
     offset = 0;
-    for(i = 0; i < count; i++)
-    {
-        int retVal = 0;
-        if(i == 0)
-        {
-            int ret = strncpy_s(dest + offset, src_len + count*6 - offset, src , ovector[i*2]);
-            CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
-            offset = ovector[i*2];
-        }
-        else
-        {
-            int ret = strncpy_s(dest + offset, src_len + count*6 - offset, src + ovector[i*2-1], ovector[i*2]-ovector[i*2-1]);
-            CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
-            offset += ovector[i*2]-ovector[i*2-1];
-        }
-        if(src[ovector[i*2]] == '<')
-        {
-            retVal = strcat_s(dest, sizeof(char)*(src_len + count*6), "&lt;");
-            if (retVal != 0) {
-                COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
-            }
-            offset += 4;
-        }
-        if(src[ovector[i*2]] == '>')
-        {
-            retVal = strcat_s(dest, sizeof(char)*(src_len + count*6), "&gt;");
-            if (retVal != 0) {
-                COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
-            }
-            offset += 4;
-        }
-        if(src[ovector[i*2]] == '&')
-        {
-            retVal = strcat_s(dest, sizeof(char)*(src_len + count*6), "&amp;");
-            if (retVal != 0) {
-                COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
-            }
-            offset += 5;
-        }
-        if(src[ovector[i*2]] == '\'')
-        {
-            retVal = strcat_s(dest, sizeof(char)*(src_len + count*6), "&apos;");
-            if (retVal != 0) {
-                COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
-            }
-            offset += 6;
-        }
-        if(src[ovector[i*2]] == '\"')
-        {
-            retVal = strcat_s(dest, sizeof(char)*(src_len + count*6), "&quot;");
-            if (retVal != 0) {
-                COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
-            }
-            offset += 6;
-        }
-
-    }
+	pcre_replace_start(dest, offset, count, src, src_len, ovector);
     *destOut = dest;
     return count;
 }
@@ -759,6 +779,64 @@ int add_xml_element(char * buffOut, int * lenth,const char * elementName, const 
         eFormalizeChoice needFormalize, xmlAddType addType)
 {
     return add_xml_element_in_bufflen(buffOut, lenth, elementName, content, needFormalize, addType, MAX_XML_LEN);
+}
+
+int add_xml_element_headOrTail(char *buffOut, int *lenth, const char *elementName, 
+	xmlAddType addType, int tmplen, int buff_len)
+{
+	if (addType == ADD_HEAD_ONLY)
+	{
+		tmplen = snprintf_s(buffOut + *lenth, buff_len - *lenth,
+			_TRUNCATE, "<%s>", elementName);
+	}
+	else
+	{
+		tmplen = snprintf_s(buffOut + *lenth, buff_len - *lenth,
+			_TRUNCATE, "</%s>", elementName);
+	}
+	if (tmplen < 0)
+	{
+		COMMLOG(OBS_LOGERROR, "snprintf_s error xmlElementName:%s!", elementName);
+		return -1;
+	}
+	*lenth += tmplen;
+	return 0;
+}
+
+int add_xml_element_name(char *buffOut, int *lenth, const char *elementName, const char *content, 
+	eFormalizeChoice needFormalize, const char *pstrContent, char *afterFormalize, 
+	int mark , int is_true, int tmplen, int buff_len)
+{
+	is_true = (content == NULL || '\0' == content[0]);
+	if (is_true)
+	{
+		COMMLOG(OBS_LOGERROR, "xml element content is NULL!");
+		return -1;
+	}
+	if (needFormalize == NEED_FORMALIZE)
+	{
+		mark = pcre_replace(content, &afterFormalize);
+		pstrContent = mark ? afterFormalize : content;
+	}
+	else
+	{
+		pstrContent = content;
+	}
+	tmplen = snprintf_s(buffOut + *lenth, buff_len - *lenth, _TRUNCATE,
+		"<%s>%s</%s>", elementName, pstrContent, elementName);
+	if (tmplen < 0) 
+	{
+		COMMLOG(OBS_LOGERROR, "snprintf_s error xmlElementName:%s, xmlElementContent:%s!",
+			elementName, content);
+		return -1;
+	}
+	*lenth += tmplen;
+	if ((needFormalize) && (mark))
+	{
+		free(afterFormalize);
+		afterFormalize = NULL;
+	}
+	return 0;
 }
 
 int add_xml_element_in_bufflen(char * buffOut, int * lenth,const char * elementName, const char * content, 
@@ -779,59 +857,18 @@ int add_xml_element_in_bufflen(char * buffOut, int * lenth,const char * elementN
     is_true = ((addType == ADD_HEAD_ONLY) || (addType == ADD_TAIL_ONLY));
     if(is_true)
     {
-        if(addType == ADD_HEAD_ONLY)
-        {
-            tmplen = snprintf_s(buffOut + *lenth, buff_len - *lenth,
-                                    _TRUNCATE, "<%s>", elementName);
-        }
-        else
-        {
-            tmplen = snprintf_s(buffOut + *lenth, buff_len - *lenth,
-                                           _TRUNCATE, "</%s>", elementName);
-        }
-
-        if(tmplen < 0)
-        {
-            COMMLOG(OBS_LOGERROR, "snprintf_s error xmlElementName:%s!", elementName);
-            return -1;
-        }
-        *lenth += tmplen;
+		if (add_xml_element_headOrTail(buffOut, lenth, elementName, addType, tmplen, buff_len))
+		{
+			return -1;
+		}
     }
     else if(addType  == ADD_NAME_CONTENT)
     {
-        is_true = (content == NULL || '\0' == content[0]);
-        if(is_true)
-        {
-            COMMLOG(OBS_LOGERROR, "xml element content is NULL!");
-            return -1;
-        }
-
-        if(needFormalize == NEED_FORMALIZE)
-        {
-            mark = pcre_replace(content, &afterFormalize);
-            pstrContent = mark?afterFormalize:content;
-        }
-        else
-        {
-            pstrContent = content;
-        }
-
-        tmplen = snprintf_s(buffOut + *lenth, buff_len - *lenth, _TRUNCATE,
-                "<%s>%s</%s>", elementName, pstrContent, elementName);
-
-        if(tmplen < 0)
-        {
-            COMMLOG(OBS_LOGERROR, "snprintf_s error xmlElementName:%s, xmlElementContent:%s!",elementName,content);
-            return -1;
-        }
-
-        *lenth += tmplen;
-
-        if((needFormalize)&&(mark))
-        {
-            free(afterFormalize);
-            afterFormalize = NULL;
-        }          
+		if (add_xml_element_name(buffOut, lenth, elementName, content, needFormalize,
+			pstrContent, afterFormalize, mark, is_true, tmplen, buff_len)) 
+		{
+			return -1;
+		}
     }
     else
     {

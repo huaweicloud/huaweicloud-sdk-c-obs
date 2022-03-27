@@ -46,6 +46,7 @@
 #define HEAD_AUTH_LEN 1028
 #define BUCKET_LEN 65
 #define DOMAIN_LEN 254
+#define HEAD_CALLBACK_LEN 8192
 
 #define OBS_SDK_VERSION "3.21.8"
 #define USER_AGENT_VALUE  "obs-sdk-c-3.21.8" ;
@@ -56,9 +57,9 @@
 #define DEFAULT_TIMEOUT_S          (0)
 
 #define signbuf_append(format, ...)                             \
-    if (snprintf_s(&(signbuf[len]), buf_len - (len), _TRUNCATE,format, __VA_ARGS__) > 0) \
+    if (snprintf_s(&(signbuf[*len]), buf_len - (*len), _TRUNCATE,format, __VA_ARGS__) > 0) \
     {\
-        (len) += snprintf_s(&(signbuf[len]), buf_len - (len), _TRUNCATE,      \
+        (*len) += snprintf_s(&(signbuf[*len]), buf_len - (*len), _TRUNCATE,      \
             format, __VA_ARGS__);                                                     \
     }\
 
@@ -123,6 +124,7 @@ typedef struct http_request
     int64_t toS3CallbackBytesRemaining;
     obs_get_object_data_callback *fromS3Callback;
     obs_response_complete_callback *complete_callback;
+    obs_progress_callback_internal *progressCallback;
     void *callback_data;
     response_headers_handler responseHeadersHandler;
     int propertiesCallbackMade;
@@ -183,6 +185,8 @@ typedef struct request_params
     obs_storage_class_format storageClassFormat;
 
     obs_use_api use_api;
+
+    obs_progress_callback_internal *progressCallback;
 
 } request_params;
 

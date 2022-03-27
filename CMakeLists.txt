@@ -110,13 +110,13 @@ message(STATUS "ICONV_LIB_DIR: ${ICONV_LIB_DIR}")
 #*  compile mode
 #*
 #***********************************************************************
-SET(ESDK_BASE_FLAGS            "-g -Wall -fPIC -fno-strict-overflow")
+SET(ESDK_BASE_FLAGS            "-g -Wall -fPIC -fno-strict-overflow -s -shared")
 SET(ESDK_SP_C_FLAGS            "-std=gnu99")
 SET(ESDK_SP_C++_FLAGS          "-std=c++11")
 SET(ESDK_SP_RELEASE_FLAGS      "-O2")
 SET(ESDK_SP_DEBUG_FLAGS        "-O0 -coverage")
 if(NOT CMAKE_HOST_WIN32)
-    SET(SEC_REQ_FLAGS             "-fstack-protector-all -fPIE -pie -Wl,-z,relro,-z,now,-z,noexecstack")
+    SET(SEC_REQ_FLAGS             "-fstack-protector-strong -fPIE -pie -Wl,-z,relro,-z,now,-z,noexecstack")
     SET(SEC_SUG_BASE_FLAGS        "-Wformat=2")
     SET(SEC_SUG_SP_C_FLAGS        "-Wshadow -Wstack-protector")
 endif()
@@ -176,7 +176,9 @@ link_directories(${SECUREC_LIB_DIR})
 link_directories(${ESDK_LOG_LIB_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/source/eSDK_OBS_API/eSDK_OBS_API_C++/inc)
 aux_source_directory(${CMAKE_SOURCE_DIR}/source/eSDK_OBS_API/eSDK_OBS_API_C++/src SOURCE_DIR)
-add_library(eSDKOBS SHARED ${SOURCE_DIR})
+aux_source_directory(${CMAKE_SOURCE_DIR}/source/eSDK_OBS_API/eSDK_OBS_API_C++/src/bucket BUCKET_SOURCE_DIR)
+aux_source_directory(${CMAKE_SOURCE_DIR}/source/eSDK_OBS_API/eSDK_OBS_API_C++/src/object OBJECT_SOURCE_DIR)
+add_library(eSDKOBS SHARED ${SOURCE_DIR} ${BUCKET_SOURCE_DIR} ${OBJECT_SOURCE_DIR})
 target_link_libraries(eSDKOBS curl ssl xml2 pcre iconv securec eSDKLogAPI)
 
 #***********************************************************************

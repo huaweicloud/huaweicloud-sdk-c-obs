@@ -33,6 +33,8 @@
 #include "demo_common.h"
 #include "securec.h"
 
+FILE **uploadFilePool = NULL;
+
 
 // head object ---------------------------------------------------------------
 static void test_head_object(char *key, char *bucket_name)
@@ -368,14 +370,14 @@ void test_set_bucket_policy(char *bucket_name)
     char bucket_policy[1024] = {0};
     if(demoUseObsApi == OBS_USE_API_S3) {
         sprintf_s(bucket_policy,
-			sizeof(bucket_policy),
+            sizeof(bucket_policy),
             "{\"Version\":\"2008-10-17\",\"Id\":\"111\","
             "\"Statement\":[{\"Sid\": \"AddPerm\", \"Action\": [\"s3:GetObject\" ]," 
             "\"Effect\": \"Allow\",\"Resource\": \"arn:aws:s3:::%s/*\",\"Principal\":\"*\"} ] }", 
             bucket_name);
     } else {
         sprintf_s(bucket_policy,
-			sizeof(bucket_policy),
+            sizeof(bucket_policy),
             "{\"Statement\":[{\"Sid\": \"AddPerm\", \"Action\": [\"GetObject\" ]," 
             "\"Effect\": \"Allow\",\"Resource\": \"%s/*\",\"Principal\":\"*\"} ] }", 
             bucket_name);
@@ -711,7 +713,7 @@ void set_log_delivery_acl(char *bucket_name_target)
         (aclinfo.acl_grants + 1)->grantee_type = OBS_GRANTEE_TYPE_ALL_USERS;
     }
     aclinfo.acl_grants->permission = OBS_PERMISSION_WRITE ; 
-    (aclinfo.acl_grants + 1)->permission = OBS_PERMISSION_READ_ACP ; 		
+    (aclinfo.acl_grants + 1)->permission = OBS_PERMISSION_READ_ACP ;         
 
     aclinfo.acl_grant_count_return = (int*)malloc(sizeof(int));
     *(aclinfo.acl_grant_count_return) = 2;
@@ -2163,6 +2165,7 @@ static void test_get_object(char *bucket_name, char *key)
     getcondition.start_byte = 0;
     // Read length, default is 0: read to the end of the object
     getcondition.byte_count = 100;
+    getcondition.download_limit = 819200;
     obs_get_object_handler get_object_handler =
     { 
         {&get_properties_callback, &get_object_complete_callback},
@@ -2930,13 +2933,20 @@ static void test_upload_file(char *bucket_name, char *filename, char *key)
     uploadFileInfo.task_num = 10;
     uploadFileInfo.upload_file = filename;
 
+    obs_upload_file_server_callback server_callback;
+    init_server_callback(&server_callback);
+    server_callback.callback_url = NULL;
+    server_callback.callback_host = NULL;
+    server_callback.callback_body = NULL;
+    server_callback.callback_body_type = NULL;
+
     obs_upload_file_response_handler Handler =
     { 
         {&response_properties_callback, &response_complete_callback},
         &uploadFileResultCallback
     };
 
-    upload_file(&option, key, 0, &uploadFileInfo, &Handler, &ret_status);
+    upload_file(&option, key, 0, &uploadFileInfo, server_callback, &Handler, &ret_status);
     if (OBS_STATUS_OK == ret_status) {
         printf("test upload file %s %s successfully.\n", filename, key);
     }
@@ -3022,8 +3032,8 @@ void *upload_thread_proc(void * thread_param)
 
 
 static void start_upload_threads(test_upload_file_callback_data data,
-                                 char *concurrent_upload_id, uint64_t filesize, char *key,
-                                 obs_options option,test_concurrent_upload_file_callback_data *concurrent_upload_file)
+                                 char *concurrent_upload_id, uint64_t filesize, FILE ** upload_FilePool,
+                                 char *key, obs_options option,test_concurrent_upload_file_callback_data *concurrent_upload_file)
 {
      int partCount = data.part_num;
      test_concurrent_upload_file_callback_data *concurrent_temp;
@@ -3034,11 +3044,11 @@ static void start_upload_threads(test_upload_file_callback_data data,
      {
         memset_s(concurrent_temp[i].etag, sizeof(concurrent_temp[i].etag),0,sizeof(concurrent_temp[i].etag));
         concurrent_temp[i].part_num = i + 1;
-        concurrent_temp[i].infile = data.infile;
+        concurrent_temp[i].infile = uploadFilePool[i];
         concurrent_temp[i].upload_id = concurrent_upload_id;
         concurrent_temp[i].key = key;
         concurrent_temp[i].option = &option;
-		concurrent_temp[i].offset = 0;
+        concurrent_temp[i].offset = 0;
         if(i == partCount-1)
         {
             concurrent_temp[i].part_size = filesize - (data.part_size)*i;
@@ -3118,6 +3128,7 @@ static void test_concurrent_upload_part(char *bucket_name, char *filename, char 
     data.noStatus = 1;
     data.part_size = uploadSize;
     data.part_num = (filesize % uploadSize == 0) ? (filesize / uploadSize) : (filesize / uploadSize +1);
+    uploadFilePool = init_uploadfilepool(uploadFilePool, data.part_num, filename);
 
     //Initialize the upload segment task to return uploadId: uploadIdReturn
     char uploadIdReturn[256] = {0};
@@ -3143,7 +3154,7 @@ static void test_concurrent_upload_part(char *bucket_name, char *filename, char 
         return ;
     }
     test_concurrent_upload_file_callback_data *concurrent_upload_file_complete = concurrent_upload_file;
-    start_upload_threads(data, concurrent_upload_id,filesize, key, option, concurrent_upload_file_complete);
+    start_upload_threads(data, concurrent_upload_id,filesize, uploadFilePool, key, option, concurrent_upload_file_complete);
 
     // Merging segment
     obs_complete_upload_Info *upload_Info = (obs_complete_upload_Info *)malloc(
@@ -3161,6 +3172,8 @@ static void test_concurrent_upload_part(char *bucket_name, char *filename, char 
     {
         printf("test complete upload %s %s faied(%s).\n", filename, key, obs_get_status_name(ret_status));
     }
+    deinit_uploadfilepool(uploadFilePool, data.part_num);
+    uploadFilePool = NULL;
     if(concurrent_upload_file)
     {
         free(concurrent_upload_file);
@@ -3863,13 +3876,13 @@ int main(int argc, char **argv)
     test_head_object("put_buffer_test",BUCKET_NAME);
     //list objects
     test_list_bucket_objects(BUCKET_NAME);
-	// copy part
+    // copy part
     test_init_upload_part(BUCKET_NAME, "test516");
     test_copy_part(BUCKET_NAME, "put_file_test", "test516");
     test_list_parts(BUCKET_NAME, "test516");
     test_list_multipart_uploads(BUCKET_NAME);
     test_abort_multi_part_upload(UPLOAD_ID, BUCKET_NAME, "test516");
-    // mulit part	
+    // mulit part    
     create_and_write_file("./test1.txt", 8*1024*1024);
     test_init_upload_part(BUCKET_NAME, "test517");
     test_upload_part("./test1.txt", BUCKET_NAME, "test517");

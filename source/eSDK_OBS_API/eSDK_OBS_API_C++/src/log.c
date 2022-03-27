@@ -51,6 +51,40 @@ int set_obs_log_path(const char *log_path)
 # pragma warning (disable:4127)
 #endif
 #if defined __GNUC__ || defined LINUX
+int ReadModeleFile(FILE* fp , char* sPath,char* pTmpFullDir, char* pTmpModuleDir,
+	char *sLine, int sLineLen,const char *sModuleName, unsigned int unSize)
+{
+	int iRet = -1;
+	while (0 == feof(fp))
+	{
+		if (NULL == fgets(sLine, sLineLen, fp))
+		{
+			continue;
+		}
+		pTmpFullDir = strchr(sLine, '/');
+		if (NULL == strstr(sLine, "r-xp") || NULL == pTmpFullDir || NULL == strstr(sLine, sModuleName))
+		{
+			continue;
+		}
+		pTmpModuleDir = strrchr(pTmpFullDir, '/');
+		if (pTmpModuleDir == pTmpFullDir)
+		{
+			break;
+		}
+		*pTmpModuleDir = '\0';
+		if (pTmpModuleDir == pTmpFullDir)
+		{
+			break;
+		}
+		iRet = 0;
+		int ret = strncpy_s(sPath, unSize, pTmpFullDir, strlen(pTmpFullDir) + 1);
+		if (ret) {
+			return ret;
+		}
+		break;
+	}
+	return iRet;
+}
 int GetModuleFilePath(const char* sModuleName, char* sPath, unsigned int unSize)
 {
     int iRet = -1;
@@ -64,36 +98,7 @@ int GetModuleFilePath(const char* sModuleName, char* sPath, unsigned int unSize)
     {
         return iRet;
     }
-    while (0 == feof(fp))
-    {
-        if (NULL == fgets(sLine, sizeof(sLine), fp))
-        {
-            continue;
-        }
-        
-        pTmpFullDir = strchr(sLine, '/');
-        if (NULL == strstr(sLine, "r-xp") ||  NULL == pTmpFullDir || NULL == strstr(sLine, sModuleName))
-        {
-            continue;
-        }
-
-        pTmpModuleDir = strrchr(pTmpFullDir, '/');   
-        if (pTmpModuleDir == pTmpFullDir)
-        {
-        break;
-        }
-        *pTmpModuleDir = '\0';
-        if (strlen(pTmpFullDir) >= unSize)
-        {
-            break;
-        }
-        iRet = 0;
-        int ret = strncpy_s(sPath, unSize, pTmpFullDir, strlen(pTmpFullDir) + 1);
-        if (ret != 0) {
-            NULLLOG();
-        }
-        break;
-    }
+	iRet = ReadModeleFile(fp, sPath, pTmpFullDir, pTmpModuleDir, sLine, 1024,sModuleName, unSize);
     fclose(fp);
     return iRet;
 }
@@ -129,11 +134,68 @@ void getCurrentPath(char *strPath)
 }
 #endif
 
+int SetSectionForSearch(char* Sect, size_t Sectlen, const char* Section, char* linebuf) 
+{
+	int ret = strcpy_s(Sect, Sectlen, "[");
+	if (ret != 0) {
+		CHECK_NULL_FREE(linebuf);
+		return ret;
+	}
+	ret = strcat_s(Sect, Sectlen, Section);
+	if (ret != 0) {
+		CHECK_NULL_FREE(linebuf);
+		return ret;
+	}
+	ret = strcat_s(Sect, Sectlen, "]");
+	if (ret != 0) {
+		CHECK_NULL_FREE(linebuf);
+		return ret;
+	}
+	return 0;
+}
+
+void SearchSection(char* linebuf, char* Sect, const char* Item, char* iniValue, FILE* inifp) 
+{
+	int isSection = 0;
+	char* iniItem = NULL;
+	while (NULL != fgets(linebuf, MAX_MSG_SIZE, inifp))
+	{
+		linebuf[MAX_MSG_SIZE - 1] = '\0';
+		
+		if ('[' == linebuf[0])
+		{
+			if (strstr(linebuf, Sect))
+			{
+				isSection = 1;
+			}else {
+				isSection = 0;
+			}
+			continue;
+		}
+
+		if (!isSection || ';' == linebuf[0] || !strstr(linebuf, Item))
+		{
+			continue;
+		}
+
+		if ((iniItem = strchr(linebuf, '=')) != NULL)
+		{
+			iniItem++;
+			while ('\n' != *iniItem && '\r' != *iniItem && '\0' != *iniItem)
+			{
+				*iniValue = *iniItem;
+				iniItem++;
+				iniValue++;
+			}
+			break;
+		}
+	}
+	*iniValue = '\0';
+}
+
 void GetIniSectionItem(const char* Section, const char* Item, const char* FileName, char* iniValue)
 {
-    char* iniItem = NULL;
     char Sect[30] = {0};
-    int isSection = 0;
     char* linebuf = NULL;
     FILE* inifp = NULL;
 
@@ -144,21 +206,11 @@ void GetIniSectionItem(const char* Section, const char* Item, const char* FileNa
     }
     linebuf[0] = '\0';
 
-    int ret = strcpy_s(Sect, sizeof(Sect), "[");
-    if (ret != 0) {
-        CHECK_NULL_FREE(linebuf);
-        return;
-    }
-    ret = strcat_s(Sect, sizeof(Sect), Section);
-    if (ret != 0) {
-        CHECK_NULL_FREE(linebuf);
-        return;
-    }
-    ret = strcat_s(Sect, sizeof(Sect), "]");
-    if (ret != 0) {
-        CHECK_NULL_FREE(linebuf);
-        return;
-    }
+	int ret = SetSectionForSearch(Sect, sizeof(Sect), Section, linebuf);
+	if (ret)
+	{
+		return;
+	}
 
     inifp = fopen(FileName, "rb");
     if(NULL == inifp)
@@ -168,40 +220,8 @@ void GetIniSectionItem(const char* Section, const char* Item, const char* FileNa
         return;
     }
 
-    while(NULL != fgets(linebuf, MAX_MSG_SIZE, inifp))
-    {
-        linebuf[MAX_MSG_SIZE-1] = '\0';
+	SearchSection(linebuf, Sect, Item, iniValue, inifp);
 
-        if('[' == linebuf[0])
-        {
-            if(strstr(linebuf, Sect))
-            {
-                isSection = 1;
-            } else {
-                isSection = 0;
-            }
-            continue;
-        }
-
-        if(!isSection || ';' == linebuf[0] || !strstr(linebuf, Item))
-        {
-            continue;
-        }
-
-        if((iniItem = strchr(linebuf, '=')) != NULL)
-        {
-            iniItem++;
-            while('\n' != *iniItem && '\r' != *iniItem && '\0' != *iniItem) 
-            {
-                *iniValue = *iniItem;
-                iniItem++;
-                iniValue++;
-            }
-            break;
-        }
-    }
-
-    *iniValue = '\0';
     fclose(inifp);
     CHECK_NULL_FREE(linebuf);
     return;
@@ -239,6 +259,79 @@ int GET_LOG_PATH(char *logPath, const char *tempLogPath) {
         err = strcat_s(logPath, sizeof(char)*MAX_MSG_SIZE, "logs");
     }
     return err;
+}
+
+int SetConfPath(char* currentPath, char* buf, char* confPath, char* logPath, char* tempLogPath) 
+{
+	errno_t err = EOK;
+	if (NULL == currentPath)
+	{
+		CHECK_NULL_FREE(buf);
+		CHECK_NULL_FREE(confPath);
+		CHECK_NULL_FREE(logPath);
+		CHECK_NULL_FREE(tempLogPath);
+		return -1;
+	}
+	memset_s(currentPath, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE * sizeof(char));
+
+	err = memcpy_s(currentPath, sizeof(char)*MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
+	if (err != EOK)
+	{
+		CHECK_NULL_FREE(buf);
+		CHECK_NULL_FREE(confPath);
+		CHECK_NULL_FREE(logPath);
+		CHECK_NULL_FREE(tempLogPath);
+		CHECK_NULL_FREE(currentPath);
+		return -1;
+	}
+	char* chr = strrchr(currentPath, '\\');
+	if (NULL != chr) {
+		*(chr + 1) = '\0';
+	}
+	err = memcpy_s(logPath, sizeof(char)*MAX_MSG_SIZE, currentPath, MAX_MSG_SIZE);
+	if (err != EOK)
+	{
+		CHECK_NULL_FREE(buf);
+		CHECK_NULL_FREE(confPath);
+		CHECK_NULL_FREE(logPath);
+		CHECK_NULL_FREE(tempLogPath);
+		CHECK_NULL_FREE(currentPath);
+		return -1;
+	}
+	err = memcpy_s(confPath, sizeof(char)*MAX_MSG_SIZE, currentPath, MAX_MSG_SIZE);
+	if (err != EOK)
+	{
+		CHECK_NULL_FREE(buf);
+		CHECK_NULL_FREE(confPath);
+		CHECK_NULL_FREE(logPath);
+		CHECK_NULL_FREE(tempLogPath);
+		CHECK_NULL_FREE(currentPath);
+		return -1;
+	}
+	int ret = strcat_s(confPath, sizeof(char)*MAX_MSG_SIZE, "OBS.ini");
+	if (ret != 0) {
+		CHECK_NULL_FREE(buf);
+		CHECK_NULL_FREE(confPath);
+		CHECK_NULL_FREE(logPath);
+		CHECK_NULL_FREE(tempLogPath);
+		CHECK_NULL_FREE(currentPath);
+		return -1;
+	}
+
+	GetIniSectionItem(SECTION_PATH, PATH_VALUE, confPath, tempLogPath);
+	tempLogPath[MAX_MSG_SIZE - 1] = '\0';
+
+	ret = GET_LOG_PATH(logPath, tempLogPath);
+	if (ret != 0) {
+		CHECK_NULL_FREE(buf);
+		CHECK_NULL_FREE(confPath);
+		CHECK_NULL_FREE(logPath);
+		CHECK_NULL_FREE(tempLogPath);
+		CHECK_NULL_FREE(currentPath);
+		return -1;
+	}
+
+	return 0;
 }
 
 int LOG_INIT()
@@ -316,7 +409,7 @@ int LOG_INIT()
         return -1;
     }
 #else
-    errno_t err = EOK;
+	errno_t err =EOK;
     if( OBS_LOG_PATH[0] != 0 )  {
         err = memcpy_s(buf, sizeof(char)*MAX_MSG_SIZE, OBS_LOG_PATH, MAX_MSG_SIZE);
         if (err != EOK)
@@ -333,72 +426,11 @@ int LOG_INIT()
     }
 
     char* currentPath = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
-    if (NULL == currentPath)
-    {
-        CHECK_NULL_FREE(buf);
-        CHECK_NULL_FREE(confPath);
-        CHECK_NULL_FREE(logPath);
-        CHECK_NULL_FREE(tempLogPath);
-        return -1;
-    }
-    memset_s(currentPath, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE*sizeof(char));
-
-    err = memcpy_s(currentPath, sizeof(char)*MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
-    if (err != EOK)
-    {
-        CHECK_NULL_FREE(buf);
-        CHECK_NULL_FREE(confPath);
-        CHECK_NULL_FREE(logPath);
-        CHECK_NULL_FREE(tempLogPath);
-        CHECK_NULL_FREE(currentPath);
-        return -1;
-    }
-    char* chr = strrchr(currentPath, '\\');
-    if(NULL != chr){ 
-        *(chr + 1) = '\0'; 
-    }
-    err = memcpy_s(logPath, sizeof(char)*MAX_MSG_SIZE, currentPath, MAX_MSG_SIZE);
-    if (err != EOK)
-    {
-        CHECK_NULL_FREE(buf);
-        CHECK_NULL_FREE(confPath);
-        CHECK_NULL_FREE(logPath);
-        CHECK_NULL_FREE(tempLogPath);
-        CHECK_NULL_FREE(currentPath);
-        return -1;
-    }
-    err = memcpy_s(confPath, sizeof(char)*MAX_MSG_SIZE, currentPath, MAX_MSG_SIZE);
-    if (err != EOK)
-    {
-        CHECK_NULL_FREE(buf);
-        CHECK_NULL_FREE(confPath);
-        CHECK_NULL_FREE(logPath);
-        CHECK_NULL_FREE(tempLogPath);
-        CHECK_NULL_FREE(currentPath);
-        return -1;
-    }
-    int ret = strcat_s(confPath, sizeof(char)*MAX_MSG_SIZE, "OBS.ini");
-    if (ret != 0) {
-        CHECK_NULL_FREE(buf);
-        CHECK_NULL_FREE(confPath);
-        CHECK_NULL_FREE(logPath);
-        CHECK_NULL_FREE(tempLogPath);
-        CHECK_NULL_FREE(currentPath);
-        return -1;
-    }
-
-    GetIniSectionItem(SECTION_PATH, PATH_VALUE, confPath, tempLogPath);
-    tempLogPath[MAX_MSG_SIZE - 1] = '\0';
-
-    ret = GET_LOG_PATH(logPath, tempLogPath);
-    if (ret != 0) {
-        CHECK_NULL_FREE(buf);
-        CHECK_NULL_FREE(confPath);
-        CHECK_NULL_FREE(logPath);
-        CHECK_NULL_FREE(tempLogPath);
-        CHECK_NULL_FREE(currentPath);
-        return -1;
-    }
+	int ret = SetConfPath(currentPath, buf, confPath, logPath, tempLogPath);
+	if (ret)
+	{
+		return ret;
+	}
     CHECK_NULL_FREE(currentPath);
 
 #endif

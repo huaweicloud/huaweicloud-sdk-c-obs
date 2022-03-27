@@ -889,14 +889,14 @@ obs_status set_online_request_max_rate(uint64_t online_request_rate)
         return OBS_STATUS_InvalidParameter;
     }
     
-	LIMIT_FLOW_MAX_SPEED = online_request_rate;
-	
+    LIMIT_FLOW_MAX_SPEED = online_request_rate;
+    
     return OBS_STATUS_OK;
 }
 
 void initialize_get_token_lock()
 {
-	pthread_mutex_init(&g_mutexThreadGetToken,NULL);
+    pthread_mutex_init(&g_mutexThreadGetToken,NULL);
 }
 
 void deinitialize_get_token_lock()
@@ -936,10 +936,10 @@ void preduce_token()
 
 int get_token(int buffer_size)
 {
-	if(0 == LIMIT_FLOW_MAX_SPEED)
-	{
-		return 1;
-	}
+    if(0 == LIMIT_FLOW_MAX_SPEED)
+    {
+        return 1;
+    }
     preduce_token();
 
     if(token_bucket < buffer_size)
@@ -955,13 +955,13 @@ int get_token(int buffer_size)
 obs_status get_object_data_callback(int buffer_size, const char *buffer,
                                       void *callback_data)
 {
-	//获取令牌，开始写入数据到本地文件
-	pthread_mutex_lock(&g_mutexThreadGetToken);
-	while(0 == get_token(buffer_size)){
+    //获取令牌，开始写入数据到本地文件
+    pthread_mutex_lock(&g_mutexThreadGetToken);
+    while(0 == get_token(buffer_size)){
         sleep(1);
     }
-	pthread_mutex_unlock(&g_mutexThreadGetToken);
-	
+    pthread_mutex_unlock(&g_mutexThreadGetToken);
+    
     get_object_callback_data *data = (get_object_callback_data *) callback_data;
     size_t wrote = fwrite(buffer, 1, buffer_size, data->outfile);
     return ((wrote < (size_t) buffer_size) ? 
@@ -1087,8 +1087,8 @@ int test_upload_file_data_callback(int buffer_size, char *buffer,
     ret = fread(buffer, 1, toRead, data->infile);
 
     data->start_byte += toRead;
-	
-	return ret;
+    
+    return ret;
 }
 
 int test_concurrent_upload_part_data_callback(int buffer_size, char *buffer,
@@ -1101,7 +1101,7 @@ int test_concurrent_upload_part_data_callback(int buffer_size, char *buffer,
     int toRead = ((data->part_size> (unsigned) buffer_size) ?
                     (unsigned) buffer_size : data->part_size);
     ret = fread(buffer, 1, toRead, data->infile);
-	data->offset += ret;
+    data->offset += ret;
     return ret;
 }
 
@@ -1477,26 +1477,26 @@ void destroy_logging_message(bucket_logging_message *logging_message)
 
 FILE** init_uploadfilepool(FILE **fd, uint64_t part_num, char *filename)
 {
-	fd = (FILE**)malloc(sizeof(FILE*)*part_num);
-	int i = 0;
-	for (; i < part_num; i++)
-	{
-		if (!(fd[i] = fopen(filename, "rb")))
-		{
-			fprintf(stderr, "\nERROR: Failed to open input file %s: ", filename);
-			perror(0);
-			exit(-1);
-		}
-	}
-	return fd;
+    fd = (FILE**)malloc(sizeof(FILE*)*part_num);
+    int i = 0;
+    for (; i < part_num; i++)
+    {
+        if (!(fd[i] = fopen(filename, "rb")))
+        {
+            fprintf(stderr, "\nERROR: Failed to open input file %s: ", filename);
+            perror(0);
+            exit(-1);
+        }
+    }
+    return fd;
 }
 
 void deinit_uploadfilepool(FILE **fd, uint64_t part_num)
 {
-	int i = 0;
-	for (; i < part_num; i++)
-	{
-		fclose(fd[i]);
-	}
-	free(fd);
+    int i = 0;
+    for (; i < part_num; i++)
+    {
+        fclose(fd[i]);
+    }
+    free(fd);
 }

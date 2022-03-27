@@ -16,6 +16,7 @@
 #define ESDKOBS_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #if defined __GNUC__ || defined LINUX
 #include <sys/select.h>
 #else 
@@ -706,6 +707,20 @@ typedef struct _obs_upload_file_configuration
     int task_num;
 }obs_upload_file_configuration;
 
+typedef struct _obs_upload_file_server_callback
+{
+    char * callback_url;
+    char * callback_host;
+    char * callback_body;
+    char * callback_body_type;
+}obs_upload_file_server_callback;
+
+typedef struct _obs_sever_callback_data
+{
+    char * buffer;
+    uint64_t  buffer_len;
+}obs_sever_callback_data;
+
 typedef struct _obs_download_file_configuration
 {
     char * downLoad_file;
@@ -840,6 +855,9 @@ typedef obs_status (obs_list_parts_callback_ex)(obs_uploaded_parts_total_info* u
 typedef void (obs_upload_file_callback)(obs_status status, char *result_message, int part_count_return,
             obs_upload_file_part_info * upload_info_list, void *callback_data);
 
+typedef void (obs_progress_callback)(double progress, uint64_t uploadedSize, uint64_t fileTotalSize, void *callback_data);
+typedef void (obs_progress_callback_internal)(uint64_t now, void *callback_data);
+
 typedef obs_status (obs_list_objects_callback)(int is_truncated, const char *next_marker,
             int contents_count,  const obs_list_objects_content *contents,
             int common_prefixes_count, const char **common_prefixes,
@@ -939,6 +957,7 @@ typedef struct obs_upload_handler
 {
     obs_response_handler response_handler;
     obs_upload_data_callback *upload_data_callback;
+    obs_progress_callback_internal  *progress_callback;
 } obs_upload_handler;
 
 typedef struct obs_complete_multi_part_upload_handler
@@ -957,7 +976,9 @@ typedef struct obs_upload_file_response_handler
 {
     obs_response_handler response_handler;
     obs_upload_file_callback *upload_file_callback;
+    obs_progress_callback  *progress_callback;
 } obs_upload_file_response_handler;
+
 typedef struct __obs_download_file_response_handler
 {
     obs_response_handler response_handler;
@@ -1071,6 +1092,7 @@ typedef struct obs_get_conditions
 {
     uint64_t start_byte;
     uint64_t byte_count;
+    uint64_t download_limit;
     int64_t if_modified_since;
     int64_t if_not_modified_since;
     char *if_match_etag;
@@ -1104,7 +1126,9 @@ typedef struct obs_put_properties
     obs_get_conditions *get_conditions;
     uint64_t start_byte;
     uint64_t byte_count;
+    uint64_t upload_limit;
     int64_t expires;
+    int64_t obs_expires;
     obs_canned_acl canned_acl;
     obs_az_redundancy az_redundancy;
     grant_domain_config *domain_config;
@@ -1112,6 +1136,7 @@ typedef struct obs_put_properties
     obs_name_value *meta_data;
     file_object_config * file_object_config;
 	metadata_action_indicator metadata_action;
+    obs_upload_file_server_callback server_callback;
 } obs_put_properties;
 
 typedef struct server_side_encryption_params
@@ -1370,6 +1395,8 @@ eSDK_OBS_API void obs_head_object(const obs_options *options, char *key,
 
 eSDK_OBS_API void init_put_properties(obs_put_properties *put_properties);
 
+eSDK_OBS_API void init_server_callback(obs_upload_file_server_callback * server_callback);
+
 eSDK_OBS_API void upload_part(const obs_options *options, char *key, obs_upload_part_info *upload_part_info, 
                               uint64_t content_length, obs_put_properties *put_properties,
                               server_side_encryption_params *encryption_params,
@@ -1411,7 +1438,8 @@ eSDK_OBS_API void initialize_break_point_lock();
 eSDK_OBS_API void deinitialize_break_point_lock();
 
 eSDK_OBS_API void upload_file(const obs_options *options, char *key, server_side_encryption_params *encryption_params, 
-                          obs_upload_file_configuration *upload_file_config, obs_upload_file_response_handler *handler,
+                          obs_upload_file_configuration *upload_file_config, obs_upload_file_server_callback server_callback,
+                          obs_upload_file_response_handler *handler,
                           void *callback_data);
 
 eSDK_OBS_API void download_file(const obs_options *options, char *key, char* version_id, obs_get_conditions *get_conditions,

@@ -12,6 +12,9 @@
 * specific language governing permissions and limitations under the License.
 **********************************************************************************
 */
+#ifndef BUCKET_H
+#define BUCKET_H
+
 #include <string.h>
 #include <stdlib.h>
 #include "eSDKOBS.h"
@@ -50,14 +53,14 @@
 #define else_if else if
 
 
-char * g_storage_class_s3[OBS_STORAGE_CLASS_BUTT] = 
+static char * g_storage_class_s3[OBS_STORAGE_CLASS_BUTT] = 
 {
     "STANDARD",
     "STANDARD_IA",
     "GLACIER"
 };
 
-char * g_storage_class_obs[OBS_STORAGE_CLASS_BUTT] = 
+static char * g_storage_class_obs[OBS_STORAGE_CLASS_BUTT] = 
 {
     "STANDARD",
     "WARM",
@@ -494,8 +497,37 @@ typedef struct get_smn_data
 } get_smn_data;
 
 void obs_options_obj_or_bucket(const obs_options *options, int isBucket, char* key, char* origin,
-                char (*requestMethod)[OBS_COMMON_LEN_256], unsigned int rmNumber,
-                char (*requestHeader)[OBS_COMMON_LEN_256], unsigned int rhNumber,
-                obs_response_handler *handler, void *callback_data);
+    char(*requestMethod)[OBS_COMMON_LEN_256], unsigned int rmNumber,
+    char(*requestHeader)[OBS_COMMON_LEN_256], unsigned int rhNumber,
+    obs_response_handler *handler, void *callback_data);
 
+int update_bucket_common_data_callback(int buffer_size, char *buffer,
+    void *callback_data);
 
+obs_status update_bucket_common_properties_callback(const obs_response_properties *response_properties,
+    void *callback_data);
+
+void update_bucket_common_complete_callback(obs_status status,
+    const obs_error_details *error_details,
+    void *callback_data);
+
+obs_status append_xml_document(int *xml_document_len_return, char *xml_document,
+    int xml_document_buffer_size, char *fmt, ...);
+
+obs_status set_common_properties_callback(const obs_response_properties *response_properties,
+    void *callback_data);
+
+void set_common_complete_callback(obs_status status,
+    const obs_error_details *error_details, void *callback_data);
+
+int set_common_data_callback(int buffer_size, char *buffer, void *callback_data);
+
+obs_smn_event_enum get_event_enum_s3(const char* event_string);
+
+obs_smn_event_enum get_event_enum_obs(const char* event_string);
+
+obs_smn_filter_rule_enum get_filter_rule_enum(const char* rule_string);
+
+void initialize_list_common_prefixes(list_common_prefixes* common_prefixes);
+
+#endif

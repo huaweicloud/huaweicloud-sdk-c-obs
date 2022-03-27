@@ -36,6 +36,7 @@
 #include "pcre.h"
 #include <sys/utsname.h>
 #include "request_util.h"
+#include "object.h"
 
 
 #define SSEC_KEY_MD5_LENGTH 64
@@ -244,7 +245,10 @@ CURLcode sslctx_function(CURL *curl, const void *sslctx, void *parm)
 
     bio = BIO_new_mem_buf((char *)parm, -1);
 
-    PEM_read_bio_X509(bio, &cert, 0, NULL);
+	if (!PEM_read_bio_X509(bio, &cert, 0, NULL))
+	{
+		return CURLE_SSL_CACERT_BADFILE;
+	}
 
     store = SSL_CTX_get_cert_store((SSL_CTX *)sslctx);
     X509_STORE_add_cert(store, cert);
@@ -612,6 +616,40 @@ obs_status headers_append_domin(const obs_put_properties *properties,
     return OBS_STATUS_OK;
 }
 
+obs_status headers_append_expires_s3(const obs_put_properties *properties,
+    request_computed_values *values, int *len)
+{
+    obs_status status = OBS_STATUS_OK;
+    char expires[20];
+    snprintf_s(expires, sizeof(expires), _TRUNCATE, "%d", properties->obs_expires);
+    status = headers_append(len, values, 1, "x-amz-expires: %s",expires, NULL);
+    return status;
+}
+
+obs_status headers_append_expires_obs(const obs_put_properties *properties,
+    request_computed_values *values, int *len)
+{
+    obs_status status = OBS_STATUS_OK;
+    char expires[20];
+    snprintf_s(expires, sizeof(expires), _TRUNCATE, "%d", properties->obs_expires);
+    status = headers_append(len, values, 1, "x-obs-expires: %s", expires, NULL);
+    return status;
+}
+
+obs_status headers_append_expires(const obs_put_properties *properties,
+    request_computed_values *values, int *len, const request_params *params)
+{
+    obs_status status = OBS_STATUS_OK;
+    if (properties->obs_expires > 0)
+    {
+        if (params->use_api == OBS_USE_API_S3)
+            return headers_append_expires_s3(properties, values, len);
+        else
+            return headers_append_expires_obs(properties, values, len);
+    }
+    return status;
+}
+
 obs_status headers_append_storage_class(obs_storage_class input_storage_class,
             request_computed_values *values, const request_params *params, int *len)
 {
@@ -695,49 +733,148 @@ obs_status headers_append_epid(const char *epid, request_computed_values *values
 
 }
 
+int meta_data_nameDuplicate(const obs_put_properties *properties)
+{
+	int i, j;
+	for (i = 0; i < properties->meta_data_count; i++)
+	{
+		for (j = i + 1; j < properties->meta_data_count; j++)
+		{
+			if (!strcmp(properties->meta_data[i].name, properties->meta_data[j].name))
+			{
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+obs_status meta_data_headerAppend(request_computed_values *values, const request_params *params,
+	int *len, const obs_put_properties *properties)
+{	
+	int i;
+	obs_status ret = OBS_STATUS_OK;
+	for (i = 0; i < properties->meta_data_count; i++)
+	{
+		const obs_name_value *property = &(properties->meta_data[i]);
+		char headerName[OBS_MAX_METADATA_SIZE - sizeof(": v")];
+		int length = 0;
+		if (params->use_api == OBS_USE_API_S3) {
+			length = snprintf_s(headerName, sizeof(headerName), _TRUNCATE,
+				OBS_METADATA_HEADER_NAME_PREFIX "%s",
+				property->name);
+		}
+		else {
+			length = snprintf_s(headerName, sizeof(headerName), _TRUNCATE,
+				"x-obs-meta-%s",
+				property->name);
+		}
+		char *hn = headerName;
+		ret = header_name_tolower_copy(values, len, hn, length);
+		if (ret != OBS_STATUS_OK)
+		{
+			return ret;
+		}
+		ret = headers_append(len, values, 0, ": %s", property->value, NULL);
+		if (ret != OBS_STATUS_OK)
+		{
+			return ret;
+		}
+	}
+	return ret;
+}
+
+obs_status request_compose_limit_s3_header(request_computed_values *values, uint64_t limit, int *len)
+{
+    obs_status status;
+    char limit_tmp[10] = { 0 };
+    snprintf_s(limit_tmp, sizeof(limit_tmp), _TRUNCATE, \
+        "%d", limit);
+    if ((status = headers_append(len, values, 1,
+        "x-amz-traffic-limit: %s",
+        limit_tmp, NULL)) != OBS_STATUS_OK) {
+        return status;
+    }
+}
+
+obs_status request_compose_limit_obs_header(request_computed_values *values, uint64_t limit, int *len)
+{
+    obs_status status;
+    char limit_tmp[10] = { 0 };
+    snprintf_s(limit_tmp, sizeof(limit_tmp), _TRUNCATE, \
+        "%d", limit);
+    if ((status = headers_append(len, values, 1,
+        "x-obs-traffic-limit: %s",
+        limit_tmp, NULL)) != OBS_STATUS_OK) {
+        return status;
+    }
+}
+
+obs_status request_compose_limit_s3(request_computed_values *values, const request_params *params, int *len)
+{
+    obs_status status = OBS_STATUS_OK;
+    //get_conditions is get_object, put_properties is put_object
+    if (params->put_properties && params->put_properties->upload_limit != 0)
+    {
+        status = request_compose_limit_s3_header(values, 
+            params->put_properties->upload_limit, len);
+    }
+    if (params->get_conditions && params->get_conditions->download_limit != 0)
+    {
+        status = request_compose_limit_s3_header(values,
+            params->get_conditions->download_limit, len);
+    }
+    return status;
+}
+
+obs_status request_compose_limit_obs(request_computed_values *values, const request_params *params, int *len)
+{
+    obs_status status = OBS_STATUS_OK;
+    char limit_tmp[10] = { 0 };
+    //get_conditions is get_object, put_properties is put_object
+    if (params->put_properties && params->put_properties->upload_limit != 0)
+    {
+        status = request_compose_limit_obs_header(values,
+            params->put_properties->upload_limit, len);
+    }
+    if (params->get_conditions && params->get_conditions->download_limit != 0)
+    {
+        status = request_compose_limit_obs_header(values,
+            params->get_conditions->download_limit, len);
+    }
+    return status;
+}
+
+obs_status request_compose_limit(request_computed_values *values, const request_params *params, int *len)
+{
+   if (params->use_api == OBS_USE_API_S3)
+       return request_compose_limit_s3(values, params, len);
+   else
+   {
+       return request_compose_limit_obs(values, params, len);
+   }
+   return OBS_STATUS_OK;
+}
 
 obs_status request_compose_properties(request_computed_values *values, const request_params *params, int *len)
 {
     const obs_put_properties *properties = params->put_properties;
-    int i;
-    int j;
 	obs_status ret_status;
 	
 	if (properties != NULL)
 	{
 		// The name field of the user-defined metadata cannot be duplicated
-		for  (i = 0; i < properties->meta_data_count; i++) 
+		if (meta_data_nameDuplicate(properties))
 		{
-			for (j = i+1; j<  properties->meta_data_count; j++)
-		 	{
-		 		if (!strcmp(properties->meta_data[i].name, properties->meta_data[j].name))
-				{
-					return  OBS_STATUS_MetadataNameDuplicate;
-				}
-		 	}
+			return OBS_STATUS_MetadataNameDuplicate;
 		}
 
-		for (i = 0; i < properties->meta_data_count; i++) {
-			const obs_name_value *property = &(properties->meta_data[i]);
-			char headerName[OBS_MAX_METADATA_SIZE - sizeof(": v")];
-			int l = 0;
-			if ( params->use_api == OBS_USE_API_S3) {
-				l = snprintf_s(headerName, sizeof(headerName),_TRUNCATE,
-							OBS_METADATA_HEADER_NAME_PREFIX "%s",
-							property->name);
-			} else {
-				l = snprintf_s(headerName, sizeof(headerName),_TRUNCATE,
-							"x-obs-meta-%s",
-							property->name);
-			}
-			char *hn = headerName;
-			if (header_name_tolower_copy(values, len, hn, l) != OBS_STATUS_OK){
-				return header_name_tolower_copy(values, len, hn, l);
-			}
-			if (headers_append(len ,values, 0, ": %s", property->value, NULL) != OBS_STATUS_OK){
-				return headers_append(len ,values, 0, ": %s", property->value, NULL);
-			}
-		}
+		meta_data_headerAppend(values, params, len, properties);
+
+        ret_status = compose_callback_header(params, values, len);
+        if (OBS_STATUS_OK != ret_status) {
+            return ret_status;
+        }
 
 		ret_status = headers_append_acl(properties->canned_acl, values, len, params);
         if (OBS_STATUS_OK != ret_status) {
@@ -750,6 +887,11 @@ obs_status request_compose_properties(request_computed_values *values, const req
         }
 
         ret_status = headers_append_domin(properties, values, len);
+        if (OBS_STATUS_OK != ret_status) {
+            return ret_status;
+        }
+
+        ret_status = headers_append_expires(properties, values, len, params);
         if (OBS_STATUS_OK != ret_status) {
             return ret_status;
         }
@@ -983,6 +1125,57 @@ int check_copy_params(const request_params *params) {
     return params->subResource != NULL && !strcmp(params->subResource, "metadata") && params->put_properties;
 }
 
+obs_status httpcopy_s3(request_computed_values *values, const request_params *params,
+	const obs_put_properties * properties , int *len, 
+	obs_bucket_context bucketContext)
+{
+	obs_status status = OBS_STATUS_OK;
+	if (params->copySourceBucketName && params->copySourceBucketName[0] &&
+		params->copySourceKey && params->copySourceKey[0])
+	{
+		status = headers_append(len, values, 1, "x-amz-copy-source: /%s/%s",
+			params->copySourceBucketName, values->urlEncodedSrcKey);
+		if (status != OBS_STATUS_OK)
+		{
+			return OBS_STATUS_OK;
+		}
+	}
+	if (properties && 0 != properties->meta_data_count)
+	{
+		status = headers_append(len, values, 1, "x-amz-security-token: %s", bucketContext.token, NULL);
+		if (status != OBS_STATUS_OK)
+		{
+			return status;
+		}
+	}
+	return status;
+}
+
+obs_status httpcopy_obs(request_computed_values *values, const request_params *params,
+	const obs_put_properties * properties, int *len)
+{
+	obs_status status = OBS_STATUS_OK;
+	if (params->copySourceBucketName && params->copySourceBucketName[0] &&
+		params->copySourceKey && params->copySourceKey[0])
+	{
+		status = headers_append(len, values, 1, "x-obs-copy-source: /%s/%s",
+			params->copySourceBucketName, values->urlEncodedSrcKey);
+		if (status != OBS_STATUS_OK)
+		{
+			return OBS_STATUS_OK;
+		}
+	}
+	if (properties && 0 != properties->meta_data_count)
+	{
+		status = headers_append(len, values, 1, "%s", "x-obs-metadata-directive: REPLACE", NULL);
+		if (status != OBS_STATUS_OK)
+		{
+			return status;
+		}
+	}
+	return status;
+}
+
 obs_status request_compose_token_and_httpcopy_s3(request_computed_values *values, const request_params *params, int *len)
 {
     obs_status status = OBS_STATUS_OK;	
@@ -995,19 +1188,11 @@ obs_status request_compose_token_and_httpcopy_s3(request_computed_values *values
         }
     }
     if (params->httpRequestType == http_request_type_copy) {
-        if (params->copySourceBucketName && params->copySourceBucketName[0] &&
-            params->copySourceKey && params->copySourceKey[0]) {
-            if ((status = headers_append(len, values, 1, "x-amz-copy-source: /%s/%s",
-                           params->copySourceBucketName,
-                           values->urlEncodedSrcKey)) != OBS_STATUS_OK) {
-                return status;
-            }
-        }
-        if (properties && 0 != properties->meta_data_count) {
-            if ((status = headers_append(len, values, 1, "%s", "x-amz-metadata-directive: REPLACE", NULL)) != OBS_STATUS_OK) {
-                return status;
-            }
-        }
+		status = httpcopy_s3(values, params, properties, len, bucketContext);
+		if (status != OBS_STATUS_OK)
+		{
+			return status;
+		}
     }
 	else if(check_copy_params(params) && params->put_properties->metadata_action == OBS_REPLACE)
 	{
@@ -1036,19 +1221,11 @@ obs_status request_compose_token_and_httpcopy_obs(request_computed_values *value
         }
     }
     if (params->httpRequestType == http_request_type_copy) {
-        if (params->copySourceBucketName && params->copySourceBucketName[0] &&
-            params->copySourceKey && params->copySourceKey[0]) {
-            if ((status = headers_append(len, values, 1, "x-obs-copy-source: /%s/%s",
-                           params->copySourceBucketName,
-                          values->urlEncodedSrcKey)) != OBS_STATUS_OK) {
-                return status;
-            }
-        }
-        if (properties && 0 != properties->meta_data_count) {
-            if ((status = headers_append(len, values, 1, "%s", "x-obs-metadata-directive: REPLACE", NULL)) != OBS_STATUS_OK) {
-                return status;
-            }
-        }
+		status = httpcopy_obs(values, params, properties, len);
+		if (status != OBS_STATUS_OK)
+		{
+			return status;
+		}
     }
 	else if(check_copy_params(params) && params->put_properties->metadata_action == OBS_REPLACE)
 	{
@@ -1317,6 +1494,104 @@ obs_status compose_range_header(const request_params *params,
     }
 
     return OBS_STATUS_OK;
+}
+
+obs_status add_callback_header(const request_params *params,
+    request_computed_values *values, char *out, int *len)
+{
+    obs_status status = OBS_STATUS_OK;
+    if (params->use_api == OBS_USE_API_S3)
+    {
+        status = headers_append(len, values, 1,
+            "x-amz-callback: %s", out, NULL);
+    }
+    else
+    {
+        status = headers_append(len, values, 1,
+            "x-obs-callback: %s", out, NULL);
+    }
+    return status;
+
+}
+
+obs_status basecode_callback_header(const request_params *params,
+    request_computed_values *values, char * callback_str,
+    int callback_len, int *len)
+{
+    obs_status status = OBS_STATUS_OK;
+    char *out = (char *)malloc(sizeof(char) * HEAD_CALLBACK_LEN);
+    memset_s(out, HEAD_CALLBACK_LEN, 0, HEAD_CALLBACK_LEN);
+    base64Encode((unsigned char *)callback_str, callback_len, out);
+    add_callback_header(params, values, out, len);
+    complete_multi_part_upload_data* cmuData =(complete_multi_part_upload_data*)(params->callback_data);
+    cmuData->server_callback = true;
+    free(callback_str);
+    free(out);
+    return status;
+}
+
+int compose_callback_params_header(char * param_str, const char * param_name,char *callback_str, int callback_index)
+{
+    int param_len = 0;
+    int param_name_len = 0;
+    int ret = 0;
+    if (param_str)
+    {
+        if (callback_index != 1)
+        {
+            callback_str[callback_index] = ',';
+            callback_index++;
+        }
+        param_len = strlen(param_str);
+        param_name_len = strlen(param_name) - 2;
+        ret = snprintf_s(callback_str + callback_index, param_len + param_name_len + 1,
+            _TRUNCATE, param_name, param_str);
+        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
+        callback_index += param_len + param_name_len;
+    }
+    return callback_index;
+}
+bool check_callback_param(obs_upload_file_server_callback server_callback)
+{
+    bool is_ture = (
+        server_callback.callback_url ||
+        server_callback.callback_host ||
+        server_callback.callback_body ||
+        server_callback.callback_body_type
+        );
+    if (!is_ture)
+        return true;
+    else
+        return false;
+}
+
+obs_status compose_callback_header(const request_params *params,
+    request_computed_values *values, int *len)
+{
+    if (check_callback_param(params->put_properties->server_callback))
+        return OBS_STATUS_OK;
+
+    char *callback_str = (char *)malloc(sizeof(char) * HEAD_CALLBACK_LEN);
+    memset_s(callback_str, HEAD_CALLBACK_LEN, 0, HEAD_CALLBACK_LEN);
+    callback_str[0] = '{';
+    int callback_index = 1;
+    int params_len = 0;
+    int ret = 0;
+    obs_status status = OBS_STATUS_OK;
+
+    callback_index = compose_callback_params_header(params->put_properties->server_callback.callback_url,
+        "\"callbackUrl\": \"%s\"", callback_str,callback_index);
+    callback_index = compose_callback_params_header(params->put_properties->server_callback.callback_host,
+        "\"callbackHost\": \"%s\"", callback_str, callback_index);
+    callback_index = compose_callback_params_header(params->put_properties->server_callback.callback_body,
+        "\"callbackBody\": \"%s\"", callback_str, callback_index);
+    callback_index = compose_callback_params_header(params->put_properties->server_callback.callback_body_type,
+        "\"callbackBodyType\": \"%s\"", callback_str, callback_index);
+    callback_str[callback_index] = '}';
+    callback_str[callback_index+1] = '\0';
+    callback_index ++;
+    status = basecode_callback_header(params, values, callback_str, callback_index, len);
+    return status;
 }
 
 void pre_compute_header(const char **sortedHeaders, request_computed_values *values, int *nCount, obs_use_api use_api)

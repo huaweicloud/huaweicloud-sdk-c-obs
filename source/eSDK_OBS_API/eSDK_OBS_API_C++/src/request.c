@@ -122,56 +122,70 @@ void request_api_deinitialize()
     api_switch =NULL;
 }
 
+obs_status request_api_initialize_global(unsigned int flags)
+{
+	if (curl_global_init(CURL_GLOBAL_ALL &
+		~((flags & OBS_INIT_WINSOCK) ? 0 : CURL_GLOBAL_WIN32))
+		!= CURLE_OK)
+	{
+		return OBS_STATUS_InternalError;
+	}
+
+	if (OBS_OPENSSL_CLOSE == g_switch_openssl)
+	{
+		init_locks();
+	}
+	return OBS_STATUS_OK;
+}
+
+void request_api_initialize_setPlatform()
+{
+#if defined __GNUC__ || defined LINUX
+	pthread_mutex_init(&requestStackMutexG, 0);
+	pthread_mutex_init(&use_api_mutex, 0);
+#else
+	hmutex = CreateMutexA(NULL, FALSE, "");
+	use_api_mutex = CreateMutexA(NULL, FALSE, "");
+#endif
+	requestStackCountG = 0;
+	current_request_cnt = 0;
+	char platform[96];
+#if defined __GNUC__ || defined LINUX
+	struct utsname utsn;
+	if (uname(&utsn))
+	{
+		strncpy_s(platform, sizeof(platform), "Unknown", sizeof("Unknown"));
+		platform[sizeof(platform) - 1] = 0;
+	}
+	else
+	{
+		int ret = snprintf_s(platform, sizeof(platform), _TRUNCATE, "%s%s%s", utsn.sysname,
+			utsn.machine[0] ? " " : "", utsn.machine);
+		CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
+	}
+#else
+	OSVERSIONINFOEX os;
+	if (GetVersionEx((OSVERSIONINFO *)&os))
+	{
+	}
+	else
+	{
+		int ret = strncpy_s(platform, sizeof(platform), "Unknown", sizeof("Unknown"));
+		CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
+		platform[sizeof(platform) - 1] = 0;
+	}
+#endif
+}
 
 obs_status request_api_initialize(unsigned int flags)
 {
-    if (curl_global_init(CURL_GLOBAL_ALL &
-                         ~((flags & OBS_INIT_WINSOCK) ? 0 : CURL_GLOBAL_WIN32))
-        != CURLE_OK) {
-        return OBS_STATUS_InternalError;
-    }
+	if (request_api_initialize_global(flags) != OBS_STATUS_OK)
+	{
+		return OBS_STATUS_InternalError;
+	}
 
-    if(OBS_OPENSSL_CLOSE == g_switch_openssl)
-    {
-        init_locks();
-    }
+	request_api_initialize_setPlatform();
 
-
-#if defined __GNUC__ || defined LINUX
-    pthread_mutex_init(&requestStackMutexG, 0);
-    pthread_mutex_init(&use_api_mutex, 0);
-#else
-    hmutex = CreateMutexA(NULL, FALSE, ""); 
-    use_api_mutex = CreateMutexA(NULL, FALSE, ""); 
-#endif
-    requestStackCountG  = 0;
-    current_request_cnt = 0;
-    char platform[96];
-#if defined __GNUC__ || defined LINUX
-    struct utsname utsn;
-    if (uname(&utsn)) {
-        strncpy_s(platform, sizeof(platform), "Unknown", sizeof("Unknown"));
-        platform[sizeof(platform) - 1] = 0;
-    }
-    else {
-        int ret = snprintf_s(platform, sizeof(platform), _TRUNCATE, "%s%s%s", utsn.sysname,
-                 utsn.machine[0] ? " " : "", utsn.machine);
-        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-    }
-#else
-    OSVERSIONINFOEX os;
-    if(GetVersionEx((OSVERSIONINFO *)&os))
-    {
-
-    }
-    else
-    {
-        int ret = strncpy_s(platform, sizeof(platform), "Unknown", sizeof("Unknown"));
-        CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
-        platform[sizeof(platform) - 1] = 0;
-    }
-
-#endif
     api_switch = (obs_s3_switch *)malloc(sizeof(obs_s3_switch)*API_STACK_SIZE);
     if (NULL == api_switch)
     {
@@ -185,6 +199,48 @@ obs_status request_api_initialize(unsigned int flags)
     return OBS_STATUS_OK;
 }
 
+obs_status compose_obs_headers_withCondition(const obs_put_properties *properties,
+	const server_side_encryption_params *encryption_params, const obs_cors_conf *corsConf,
+	const request_params *params, request_computed_values *values, int *len)
+{
+	obs_status status = OBS_STATUS_OK;
+
+    request_compose_limit(values, params, len);
+
+	if (properties) {
+		status = request_compose_properties(values, params, len);
+		if (status != OBS_STATUS_OK)
+		{
+			return status;
+		}
+	}
+	if (encryption_params)
+	{
+		status = request_compose_encrypt_params(values, params, len);
+		if (status != OBS_STATUS_OK)
+		{
+			return status;
+		}
+	}
+	if (corsConf)
+	{
+		status = request_compose_cors_conf(values, params, len);
+		if (status != OBS_STATUS_OK)
+		{
+			return status;
+		}
+	}
+	if (params->temp_auth == NULL)
+	{
+		status = request_compose_data(values, len, params);
+		if (status !=OBS_STATUS_OK)
+		{
+			return status;
+		}
+	}
+	return status;
+}
+
 static obs_status compose_obs_headers(const request_params *params,
                                     request_computed_values *values)
 {
@@ -196,11 +252,6 @@ static obs_status compose_obs_headers(const request_params *params,
     values->amzHeadersRaw[0] = 0;
     int len = 0;
     obs_status status = OBS_STATUS_OK;
-    if (properties){
-        if ((status = request_compose_properties( values, params, &len)) != OBS_STATUS_OK) {
-             return status;
-        }
-    }
 
     if ((status = headers_append_list_bucket_type(params->bucketContext.bucket_list_type, 
                             values, &len)) != OBS_STATUS_OK)
@@ -208,24 +259,12 @@ static obs_status compose_obs_headers(const request_params *params,
         return status;
     }
     
-    if(encryption_params){
-        if ((status = request_compose_encrypt_params(values,params,&len)) != OBS_STATUS_OK) {
-             return status;
-        }
-    }
-    if(corsConf){
-        if ((status = request_compose_cors_conf(values, params,&len)) != OBS_STATUS_OK) {
-             return status;
-        }
-    }
-    if( params->temp_auth == NULL ) {
-        if ((status = request_compose_data(values, &len,params)) != OBS_STATUS_OK) {
-             return status;
-        }
-    }
     if ((status = request_compose_token_and_httpcopy(values, params, &len)) != OBS_STATUS_OK) {
         return status;
     }
+    
+	status = compose_obs_headers_withCondition(properties, encryption_params, 
+		corsConf, params, values, &len);
     return status;
 }
 
@@ -272,6 +311,39 @@ static void canonicalize_obs_headers(request_computed_values *values, obs_use_ap
     canonicalize_headers(values, sortedHeaders, nCount);
 }
 
+void canonicalize_resource_subResource(const request_params *params, const char * subResource,
+	char * buffer, int buffer_size, int len)
+{
+	if (strcmp(subResource, "truncate") == 0)
+	{
+		if (params->queryParams && strstr(params->queryParams, "length") != NULL)
+		{
+			append_request("?");
+			append_request(params->queryParams);
+			append_request("&");
+			append_request(subResource);
+		}
+	}
+	else if (strcmp(subResource, "rename") == 0)
+	{
+		if (params->queryParams && strstr(params->queryParams, "name") != NULL)
+		{
+			append_request("?");
+			char decoded[3 * 1024];
+			urlDecode(decoded, params->queryParams, strlen(params->queryParams));
+			append_request(decoded);
+			append_request("&");
+			append_request(subResource);
+		}
+	}
+	else
+	{
+		append_request("?");
+		append_request(subResource);
+	}
+
+}
+
 static void canonicalize_resource(const request_params *params,
                                   const char *urlEncodedKey,
                                   char *buffer ,int buffer_size)
@@ -293,35 +365,11 @@ static void canonicalize_resource(const request_params *params,
     }
 
     if (subResource && subResource[0]) {
-        if (strcmp(subResource, "truncate") == 0)
-        {
-            if(params->queryParams && strstr(params->queryParams,"length") != NULL) 
-            {   
-                append_request("?");
-                append_request(params->queryParams);
-                append_request("&");
-                append_request(subResource);
-            }
-        }
-        else if (strcmp(subResource, "rename") == 0)
-        {
-            if(params->queryParams && strstr(params->queryParams,"name") != NULL) 
-            {   
-                append_request("?");
-                char decoded[3 * 1024];
-                urlDecode(decoded, params->queryParams, strlen(params->queryParams));
-                append_request(decoded);
-                append_request("&");
-                append_request(subResource);
-            }
-        }
-        else
-        {
-            append_request("?");
-            append_request(subResource);
-        }
+		canonicalize_resource_subResource(params, subResource, buffer, buffer_size, len);
     }
 }
+
+
 
 static obs_status compose_uri(char *buffer, int buffer_size,
                             const obs_bucket_context *bucketContext,
@@ -596,6 +644,7 @@ static obs_status request_get(const request_params *params,
     request->toS3CallbackBytesRemaining = params->toObsCallbackTotalSize;
     request->fromS3Callback = params->fromObsCallback;
     request->complete_callback = params->complete_callback;
+    request->progressCallback = params->progressCallback;
     request->callback_data = params->callback_data;
     response_headers_handler_initialize(&(request->responseHeadersHandler));
     request->propertiesCallbackMade = 0;
@@ -604,42 +653,47 @@ static obs_status request_get(const request_params *params,
     return OBS_STATUS_OK;
 }
 
+void set_query_params_ID(const request_params *params, char *signbuf,
+	const char *pos, char *tmp, int tmp_len, int buf_len, int ret, int *len)
+{
+	if ((pos = strstr(params->queryParams, "uploadId=")) != NULL)
+	{
+		int len1 = pos - params->queryParams;
+		if ((pos = strstr(params->queryParams + len1, "&")) != NULL)
+		{
+			len1 = pos - params->queryParams;
+		}
+		else
+		{
+			len1 = strlen(params->queryParams);
+		}
+		ret = strncpy_s(tmp, tmp_len, params->queryParams, len1);
+		CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
+		signbuf_append("?%s", tmp);
+	}
+
+	if ((pos = strstr(params->queryParams, "versionId=")) != NULL)
+	{
+		if (params->subResource)
+		{
+			signbuf_append("&%s", params->queryParams);
+		}
+		else
+		{
+			signbuf_append("?%s", params->queryParams);
+		}
+	}
+}
 
 static obs_status set_query_params(const request_params *params, char *signbuf, 
             int *buf_now_len, int buf_len)
 {
-    int len = *buf_now_len;
-    const char* pos;
+    int *len = buf_now_len;
+    const char* pos = NULL;
     char tmp[1024]={0};
     int ret = 0;
 
-    if((pos=strstr(params->queryParams,"uploadId=")) != NULL) 
-    {
-        int len1 = pos - params->queryParams;
-        if((pos = strstr(params->queryParams + len1,"&")) != NULL)
-        {
-            len1 = pos - params->queryParams;
-        }
-        else
-        {
-            len1 = strlen(params->queryParams);
-        }
-        ret = strncpy_s(tmp, sizeof(tmp),params->queryParams,len1);
-        CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
-        signbuf_append("?%s", tmp);
-    }
-    
-    if((pos=strstr(params->queryParams,"versionId=")) != NULL) 
-    {
-        if(params->subResource) 
-        {
-            signbuf_append("&%s", params->queryParams);
-        }
-        else 
-        {
-            signbuf_append("?%s", params->queryParams);
-        }
-    }
+	set_query_params_ID(params, signbuf, pos, tmp, 1024, buf_len, ret, len);
     
     if((pos=strstr(params->queryParams,"position=")) != NULL) 
     {
@@ -685,8 +739,30 @@ static obs_status set_query_params(const request_params *params, char *signbuf,
         }
     }
     
-    *buf_now_len = len;
     return OBS_STATUS_OK;
+}
+
+obs_status compose_auth_header_append(const request_params *params,
+	request_computed_values *values, char *signbuf, int *len,
+	int buf_len)
+{
+	signbuf_append("%s\n",http_request_type_to_verb(params->httpRequestType));
+	signbuf_append("%s\n", values->md5Header[0] ?
+		&(values->md5Header[sizeof("Content-MD5: ") - 1]) : "");
+	signbuf_append("%s\n", values->contentTypeHeader[0] ?
+		&(values->contentTypeHeader[sizeof("Content-Type: ") - 1]) : "");
+	signbuf_append("%s", "\n");
+	signbuf_append("%s", values->canonicalizedAmzHeaders);
+	signbuf_append("%s", values->canonicalizedResource);
+	if (NULL != params->queryParams) {
+		obs_status ret_status = set_query_params(params, signbuf, len, buf_len);
+		if (ret_status != OBS_STATUS_OK)
+		{
+			COMMLOG(OBS_LOGERROR, "set_query_params return %d !", ret_status);
+			return ret_status;
+		}
+	}
+	return OBS_STATUS_OK;
 }
 
 static obs_status compose_auth_header(const request_params *params,
@@ -696,29 +772,20 @@ static obs_status compose_auth_header(const request_params *params,
                  (sizeof(values->canonicalizedAmzHeaders) - 1) +
                  (sizeof(values->canonicalizedResource) - 1) + 1];
     int buf_len = sizeof(signbuf);
-    int len = 0;
+    int lencount = 0;
+	int *len = &lencount;
     
-    signbuf_append("%s\n", http_request_type_to_verb(params->httpRequestType));
-    signbuf_append("%s\n", values->md5Header[0] ? 
-            &(values->md5Header[sizeof("Content-MD5: ") - 1]) : "");
-    signbuf_append("%s\n", values->contentTypeHeader[0] ? 
-            &(values->contentTypeHeader[sizeof("Content-Type: ") - 1]) : "");
-    signbuf_append("%s", "\n");
-    signbuf_append("%s", values->canonicalizedAmzHeaders);
-    signbuf_append("%s", values->canonicalizedResource);
-    if( NULL != params->queryParams) {
-        obs_status ret_status = set_query_params(params, signbuf, &len, buf_len);
-        if (ret_status != OBS_STATUS_OK) {
-            COMMLOG(OBS_LOGERROR, "set_query_params return %d !", ret_status);
-            return ret_status;
-        }
-    }
+	obs_status status = compose_auth_header_append(params, values, signbuf, len, buf_len);
+	if (status != OBS_STATUS_OK)
+	{
+		return status;
+	}
     
     unsigned char hmac[20] = {0};
     HMAC_SHA1(hmac, (unsigned char *) params->bucketContext.secret_access_key,
               strlen(params->bucketContext.secret_access_key),
-              (unsigned char *) signbuf, len);
-    char b64[((20 + 1) * 4) / 3] = {0};
+              (unsigned char *) signbuf, *len);
+    char b64[((20 + 1) * 4) / 3 + 1] = {0};
     int b64Len = base64Encode(hmac, 20, b64);
 
     char *sts_marker;
@@ -801,42 +868,71 @@ static void request_release(http_request *request)
     }
 }
 
+void request_finish_log_amz(struct curl_slist* tmp, OBS_LOGLEVEL logLevel)
+{
+	if (0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key", 42))
+	{
+		COMMLOG(logLevel, "x-amz-server-side-encryption-customer-key:***********");
+	}
+	else if ( 0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key-md5:",46))
+	{
+		COMMLOG(logLevel, "x-amz-server-side-encryption-customer-key-md5:**********");
+	}
+	else if (0 == strncmp(tmp->data, "x-amz-copy-source-server-side-encryption-customer-key:", 54))
+	{
+		COMMLOG(logLevel, "x-amz-copy-source-server-side-encryption-customer-key:**********");
+	}
+	else if (0 == strncmp(tmp->data, "x-amz-copy-source-server-side-encryption-customer-key-md5:", 58))
+	{
+		COMMLOG(logLevel, "x-amz-copy-source-server-side-encryption-customer-key-md5:************");
+	}
+	else if (0 == strncmp(tmp->data, "x-amz-security-token:", strlen("x-amz-security-token:"))) {
+		COMMLOG(logLevel, "x-amz-security-token:************");
+	}
+	else {
+		COMMLOG(logLevel, "%s", tmp->data);
+	}
+}
+
+void request_finish_log_obs(struct curl_slist* tmp, OBS_LOGLEVEL logLevel)
+{
+	if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key", 42))
+	{
+		COMMLOG(logLevel, "x-obs-server-side-encryption-customer-key:***********");
+	}
+	else if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key-md5:", 46))
+	{
+		COMMLOG(logLevel, "x-obs-server-side-encryption-customer-key-md5:**********");
+	}
+	else if (0 == strncmp(tmp->data, "x-obs-copy-source-server-side-encryption-customer-key:", 54))
+	{
+		COMMLOG(logLevel, "x-obs-copy-source-server-side-encryption-customer-key:**********");
+	}
+	else if (0 == strncmp(tmp->data, "x-obs-copy-source-server-side-encryption-customer-key-md5:", 58))
+	{
+		COMMLOG(logLevel, "x-obs-copy-source-server-side-encryption-customer-key-md5:************");
+	}
+	else if (0 == strncmp(tmp->data, "x-obs-security-token:", strlen("x-amz-security-token:"))) {
+		COMMLOG(logLevel, "x-obs-security-token:************");
+	}
+	else {
+		COMMLOG(logLevel, "%s", tmp->data);
+	}
+}
+
 void request_finish_log(struct curl_slist* tmp, OBS_LOGLEVEL logLevel) {
-    if (0 != strncmp(tmp->data, "Authorization:", 14)) {
-        if (0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key:", 42)) {
-            COMMLOG(logLevel, "x-amz-server-side-encryption-customer-key:***********");
-        }
-        else if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key:", 42)) {
-            COMMLOG(logLevel, "x-obs-server-side-encryption-customer-key:***********");
-        }
-        else if (0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key-md5:", 46)) {
-            COMMLOG(logLevel, "x-amz-server-side-encryption-customer-key-md5:**********");
-        }
-        else if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key-md5:", 46)) {
-            COMMLOG(logLevel, "x-obs-server-side-encryption-customer-key-md5:**********");
-        }
-        else if (0 == strncmp(tmp->data, "x-amz-copy-source-server-side-encryption-customer-key:", 54)) {
-            COMMLOG(logLevel, "x-amz-copy-source-server-side-encryption-customer-key:**********");
-        }
-        else if (0 == strncmp(tmp->data, "x-obs-copy-source-server-side-encryption-customer-key:", 54)) {
-            COMMLOG(logLevel, "x-obs-copy-source-server-side-encryption-customer-key:**********");
-        }
-        else if (0 == strncmp(tmp->data, "x-amz-copy-source-server-side-encryption-customer-key-md5:", 58)) {
-            COMMLOG(logLevel, "x-amz-copy-source-server-side-encryption-customer-key-md5:************");
-        }
-        else if (0 == strncmp(tmp->data, "x-obs-copy-source-server-side-encryption-customer-key-md5:", 58)) {
-            COMMLOG(logLevel, "x-obs-copy-source-server-side-encryption-customer-key-md5:************");
-        }
-        else if (0 == strncmp(tmp->data, "x-amz-security-token:", strlen("x-amz-security-token:"))) {
-            COMMLOG(logLevel, "x-amz-security-token:************");
-        }
-        else if (0 == strncmp(tmp->data, "x-obs-security-token:", strlen("x-obs-security-token:"))) {
-            COMMLOG(logLevel, "x-obs-security-token:************");
-        }
-        else {
-            COMMLOG(logLevel, "%s", tmp->data);
-        }
-    }
+	if (0 == strncmp(tmp->data, "x-amz", 5))
+	{
+		request_finish_log_amz(tmp, logLevel);
+	}
+	else if(0 == strncmp(tmp->data, "x-obs", 5))
+	{
+		request_finish_log_obs(tmp, logLevel);
+	}
+	else
+	{
+		COMMLOG(logLevel, "%s", tmp->data);
+	}
 }
 
 
@@ -876,6 +972,42 @@ void request_finish(http_request *request)
         (request->status, &(request->errorParser.obsErrorDetails),
          request->callback_data);
     request_release(request);
+}
+
+int request_progress_callback(void *clientp,   curl_off_t  dltotal,   curl_off_t  dlnow,   curl_off_t  ultotal,   curl_off_t  ulnow) {
+    http_request *request = (http_request *)clientp;
+    static int i = 0;
+    i++;
+
+    if (i % 1000 == 0 && ulnow > 0) {
+        COMMLOG(OBS_LOGDEBUG,"\nUP: %" CURL_FORMAT_CURL_OFF_T " of %" CURL_FORMAT_CURL_OFF_T
+        "  DOWN: %" CURL_FORMAT_CURL_OFF_T " of %" CURL_FORMAT_CURL_OFF_T
+        "\r\n",ulnow, ultotal, dlnow, dltotal);
+        COMMLOG(OBS_LOGDEBUG, "\nulnow %d", (int)ulnow);
+    }
+    if(ulnow > 0 && request->progressCallback) {
+        request->progressCallback((uint64_t)ulnow, request->callback_data);
+    }
+
+    return 0;
+}
+
+void request_set_opt_for_progress(http_request *request) {
+    CURLcode setoptResult;
+    setoptResult = curl_easy_setopt(request->curl, CURLOPT_XFERINFODATA, request);
+    if (setoptResult != CURLE_OK){
+        COMMLOG(OBS_LOGWARN, "%s curl_easy_setopt CURLOPT_PROGRESSDATA failed! CURLcode = %d", __FUNCTION__,setoptResult);
+    }
+
+    setoptResult =  curl_easy_setopt(request->curl, CURLOPT_XFERINFOFUNCTION, &request_progress_callback);
+    if (setoptResult != CURLE_OK){
+        COMMLOG(OBS_LOGWARN, "%s curl_easy_setopt CURLOPT_PROGRESSFUNCTION failed! CURLcode = %d", __FUNCTION__,setoptResult);
+    }
+
+    setoptResult = curl_easy_setopt(request->curl, CURLOPT_NOPROGRESS, 0L);
+    if (setoptResult != CURLE_OK){
+        COMMLOG(OBS_LOGWARN, "%s curl_easy_setopt CURLOPT_NOPROGRESS failed! CURLcode = %d", __FUNCTION__,setoptResult);
+    }
 }
 
 void request_perform(const request_params *params)
@@ -939,6 +1071,8 @@ void request_perform(const request_params *params)
     if (setoptResult != CURLE_OK){
         COMMLOG(OBS_LOGWARN, "%s curl_easy_setopt failed! CURLcode = %d", __FUNCTION__,setoptResult);
     }
+
+    request_set_opt_for_progress(request);
 
     char* accessmode = "Virtual Hosting";
     if(params->bucketContext.uri_style == OBS_URI_STYLE_PATH)
