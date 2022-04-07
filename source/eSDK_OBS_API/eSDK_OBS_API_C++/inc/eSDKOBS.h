@@ -50,6 +50,9 @@ extern "C" {
 #define ARRAY_LENGTH_512 512
 #define ARRAY_LENGTH_1024 1024
 #define ARRAY_LENGTH_2014 2014
+#define SLEEP_TIMES_FOR_LINUX 100
+#define SLEEP_TIMES_FOR_WIN32 0.05
+#define SLEEP_TIMES_FOR_WAIT 100
 
 typedef enum
 {
@@ -705,6 +708,7 @@ typedef struct _obs_upload_file_configuration
     char * check_point_file;
     int enable_check_point;
     int task_num;
+    int *pause_upload_flag;
 }obs_upload_file_configuration;
 
 typedef struct _obs_upload_file_server_callback
@@ -1436,6 +1440,8 @@ eSDK_OBS_API void obs_options_object(const obs_options *options, char* key, char
 eSDK_OBS_API void initialize_break_point_lock();
 
 eSDK_OBS_API void deinitialize_break_point_lock();
+
+eSDK_OBS_API void pause_upload_file(int *pause_flag);
 
 eSDK_OBS_API void upload_file(const obs_options *options, char *key, server_side_encryption_params *encryption_params, 
                           obs_upload_file_configuration *upload_file_config, obs_upload_file_server_callback server_callback,

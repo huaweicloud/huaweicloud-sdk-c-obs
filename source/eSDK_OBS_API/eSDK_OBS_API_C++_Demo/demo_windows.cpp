@@ -4576,7 +4576,7 @@ static void test_upload_file(int argc, char **argv, int optindex)
     printf("filename is: %s\n", filename);
 
     uint64_t uploadSliceSize =5L * 1024 * 1024;                   // upload part slice size
-
+    int pause_upload_flag = 0;
     obs_options option;
     init_obs_options(&option);
 
@@ -4599,6 +4599,7 @@ static void test_upload_file(int argc, char **argv, int optindex)
     uploadFileInfo.part_size = uploadSliceSize;
     uploadFileInfo.task_num = 1;
     uploadFileInfo.upload_file = filename;
+    uploadFileInfo.pause_upload_flag = &pause_upload_flag;
 
     while (optindex < argc){
         char *param = argv[optindex++];
@@ -5268,6 +5269,129 @@ static void test_gen_signed_url_get_object(char *key, char *versionid)
 
 }
 
+typedef struct pause_concurrent_upload_file
+{
+    char *bucket;
+    char *key;
+    char *file_name;
+    int *pause_upload_flag;
+} pause_concurrent_upload_file;
+
+unsigned int __stdcall test_pause_concurrent_upload_file(void *param)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    pause_concurrent_upload_file *pause_param = (pause_concurrent_upload_file*)param;
+
+    uint64_t uploadSliceSize =40L * 1024 * 1024;           // upload part slice size
+    obs_options option;
+    init_obs_options(&option);
+    obs_put_properties putProperties = { 0 };
+    init_put_properties(&putProperties);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = pause_param->bucket;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.request_options.auth_switch = OBS_OBS_TYPE;
+    option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+
+    obs_upload_file_configuration uploadFileInfo;
+    memset_s(&uploadFileInfo, sizeof(obs_upload_file_configuration), 0, sizeof(obs_upload_file_configuration));
+    uploadFileInfo.check_point_file = NULL;
+    uploadFileInfo.enable_check_point = 0;
+    uploadFileInfo.part_size = uploadSliceSize;
+    uploadFileInfo.task_num = 1;
+    uploadFileInfo.upload_file = pause_param->file_name;
+    uploadFileInfo.pause_upload_flag = pause_param->pause_upload_flag;
+
+    obs_upload_file_server_callback server_callback;
+    init_server_callback(&server_callback);
+    server_callback.callback_url = "http://xx.xx.xx.xx:port/backend/v1/json";
+    server_callback.callback_host = NULL;
+    server_callback.callback_body = "{\"vid\":\"0d8b255141eb7fb860bb9ae3b3649f65\",\"bucket\":\"$(bucket)\",\"keepsource\":\"0\",\"size\":\"$(fsize)\",\"etag\":\"$(etag)\",\"userid\":\"0d8b255141\",\"fileid\":\"1648624028591";
+    server_callback.callback_body_type = "application/json";
+
+    obs_upload_file_response_handler Handler =
+    {
+        {&response_properties_callback,
+        &response_complete_callback},
+        &uploadFileResultCallback,
+        &test_progress_callback
+    };
+
+    upload_file(&option, pause_param->key, 0, &uploadFileInfo, server_callback, &Handler, &ret_status);
+    if (OBS_STATUS_OK == ret_status) {
+        printf("test upload file successfully. \n");
+    }
+    else
+    {
+        printf("test upload file faied(%s).\n", obs_get_status_name(ret_status));
+    }
+    return ret_status;
+}
+
+static obs_status test_pause_upload_file(int argc, char ** argv, int optindex)
+{
+    int pause_upload_flag1 = 0;
+    int pause_upload_flag2 = 0;
+    int task_num = 2;
+
+    pause_concurrent_upload_file param[2];
+    char *bucket_name = argv[optindex++];
+    printf("bucket name is: %s\n", bucket_name);
+    char *key1 = argv[optindex++];
+    char *key2 = argv[optindex++];
+    printf("key1 is: %s, key2 is: %s\n", key1, key2);
+    char *filename1 = argv[optindex++];
+    char *filename2 = argv[optindex++];
+    printf("filename1 is: %s, filename2 is: %s\n", filename1, filename2);
+    param[0].bucket = bucket_name;
+    param[0].key = key1;
+    param[0].file_name = filename1;
+    param[0].pause_upload_flag = &pause_upload_flag1;
+    param[1].bucket = bucket_name;
+    param[1].key = key2;
+    param[1].file_name = filename2;
+    param[1].pause_upload_flag = &pause_upload_flag2;
+
+    HANDLE *arrHandle = (HANDLE*)malloc(sizeof(HANDLE) * task_num);
+    unsigned uiThread2ID;
+    DWORD   dwExitCode = 0;
+    int err = 1;
+    int i = 0;
+
+    for (i = 0; i < task_num; i++) {
+        arrHandle[i] = (HANDLE)_beginthreadex(NULL, 0, test_pause_concurrent_upload_file, (void*)&param[i], CREATE_SUSPENDED, &uiThread2ID);
+        if (0 == arrHandle[i]) {
+            GetExitCodeThread(arrHandle[i], &dwExitCode);
+            printf("create thread failed. error is %u\n", dwExitCode);
+        }
+    }
+
+    for (i = 0; i < task_num; i++) {
+        ResumeThread(arrHandle[i]);
+    }
+
+    Sleep(60000);
+    pause_upload_file(param[0].pause_upload_flag);
+    printf("has call pause_upload_file.\n");
+
+    for (i = 0; i < task_num; i++) {
+        err = WaitForSingleObject(arrHandle[i], INFINITE);
+        if (err != 0) {
+            printf("WaitForSingleObject failed. err:%d\n", err);
+        }
+    }
+    for (i = 0; i < task_num; i++) {
+        CloseHandle(arrHandle[i]);
+    }
+    if (arrHandle) {
+        free(arrHandle);
+        arrHandle = NULL;
+    }
+    printf("test_pause_upload_file success.\n");
+    return OBS_STATUS_OK;
+}
 
 int main(int argc, char **argv)
 {
@@ -5414,6 +5538,11 @@ int main(int argc, char **argv)
     {
         test_delete_bucket_tagging(argc, argv, optind);
     }
+
+    if (!strcmp(command, "pause_upload_file")) {
+        test_pause_upload_file(argc, argv , optind);
+    }
+
     obs_deinitialize();   
 }
 

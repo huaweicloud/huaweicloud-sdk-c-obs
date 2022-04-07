@@ -273,6 +273,7 @@ typedef struct _upload_params
     obs_progress_callback *progress_callback;
     uint64_t totalFileSize;
     uint64_t uploadedSize;
+    int *pause_upload_flag;
 }upload_params;
 
 typedef struct
@@ -289,8 +290,18 @@ typedef struct
     upload_params * stUploadParams;
     upload_file_part_info  *stUploadFilePartInfo;
     void * callBackData;
+    bool thread_start;
+    bool thread_end;
     upload_file_progress_info  stUploadProgressInfo;
 }upload_file_proc_data;
+
+#if defined WIN32
+typedef struct
+{
+    upload_file_proc_data *upload_data;
+    HANDLE hEvent;
+}upload_file_for_win32;
+#endif
 
 typedef struct _upload_file_callback_data
 {

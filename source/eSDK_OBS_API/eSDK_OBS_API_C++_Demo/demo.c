@@ -2912,7 +2912,7 @@ static void test_upload_file(char *bucket_name, char *filename, char *key)
 {
     obs_status ret_status = OBS_STATUS_BUTT;
     uint64_t uploadSliceSize = 5L * 1024 * 1024;                  // upload part slice size
-
+    int pause_upload_flag = 0;
     obs_options option;
     init_obs_options(&option);
 
@@ -2932,6 +2932,7 @@ static void test_upload_file(char *bucket_name, char *filename, char *key)
     uploadFileInfo.part_size = uploadSliceSize;
     uploadFileInfo.task_num = 10;
     uploadFileInfo.upload_file = filename;
+    uploadFileInfo.pause_upload_flag = &pause_upload_flag;
 
     obs_upload_file_server_callback server_callback;
     init_server_callback(&server_callback);
