@@ -129,6 +129,7 @@ typedef struct http_request
     response_headers_handler responseHeadersHandler;
     int propertiesCallbackMade;
     error_parser errorParser;
+    void* pause_handle;
 } http_request;
 
 typedef struct obs_cors_conf
@@ -187,6 +188,8 @@ typedef struct request_params
     obs_use_api use_api;
 
     obs_progress_callback_internal *progressCallback;
+
+    void* pause_handle;
 
 } request_params;
 

@@ -52,7 +52,7 @@ extern "C" {
 #define ARRAY_LENGTH_2014 2014
 #define SLEEP_TIMES_FOR_LINUX 100
 #define SLEEP_TIMES_FOR_WIN32 0.05
-#define SLEEP_TIMES_FOR_WAIT 100
+#define SLEEP_TIMES_FOR_WAIT 0
 
 typedef enum
 {
@@ -477,6 +477,7 @@ typedef struct obs_upload_part_info
 {
     unsigned int part_number; 
     char *upload_id;
+    void *arrEvent;
 }obs_upload_part_info;
 
 typedef struct obs_complete_upload_Info

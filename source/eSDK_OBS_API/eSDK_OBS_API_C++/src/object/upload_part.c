@@ -79,6 +79,7 @@ void upload_part(const obs_options *options, char *key, obs_upload_part_info *up
     params.storageClassFormat = no_need_storage_class;
     params.use_api = use_api;
     params.progressCallback = handler->progress_callback;
+    params.pause_handle = upload_part_info->arrEvent;
     request_perform(&params);
     COMMLOG(OBS_LOGINFO, "Leave upload_part successfully !");
 }

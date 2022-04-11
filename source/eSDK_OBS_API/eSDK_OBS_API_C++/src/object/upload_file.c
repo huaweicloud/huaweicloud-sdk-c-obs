@@ -1109,6 +1109,7 @@ unsigned __stdcall UploadThreadProc_win32(void* param)
 
                 upload_part_info.part_number = part_num + 1;
                 upload_part_info.upload_id = szUpload;
+                upload_part_info.arrEvent = arrEvent;
                 upload_part(pstPara->stUploadParams->options, pstPara->stUploadParams->objectName,
                     &upload_part_info, part_size, &stPutProperties, pstEncrypParam, &uploadResponseHandler, &data);
             }
@@ -1162,8 +1163,6 @@ void *UploadThreadProc_linux(void* param)
     if (fd == -1)
     {
         COMMLOG(OBS_LOGINFO, "open upload file failed, partnum[%d]\n", part_num);
-        pstPara->thread_end = 1;
-        return NULL;
     }
     else
     {
@@ -1602,6 +1601,11 @@ int completeUploadFileParts(upload_file_part_info * pstUploadInfoList, int partC
     pstUploadInfo = upInfoList;
     for (i = 0; i < partCount; i++)
     {
+        if (!pstSrcUploadInfo)
+        {
+            COMMLOG(OBS_LOGERROR, "due to some reasons, some part is not upload ,can not complete\n");
+            return -1;
+        }
         pstUploadInfo->etag = pstSrcUploadInfo->etag;
         pstUploadInfo->part_number = pstSrcUploadInfo->part_num + 1;
         pstUploadInfo++;
@@ -1792,7 +1796,7 @@ void upload_complete_handle_allSuccess(const obs_options *options, char *key, ob
         else if (handler->upload_file_callback)
         {
             handler->upload_file_callback(OBS_STATUS_InternalError,
-                "upload part all success, but complete multi part failed!\n", 0, NULL, callback_data);
+                "complete multi part failed!\n", 0, NULL, callback_data);
         }
     }
     else

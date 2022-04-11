@@ -80,6 +80,7 @@ static void request_deinitialize(http_request *request)
         curl_slist_free_all(request->headers);
     }
 
+    request->pause_handle = NULL;
     error_parser_deinitialize(&(request->errorParser));
 
     curl_easy_reset(request->curl);
@@ -648,6 +649,7 @@ static obs_status request_get(const request_params *params,
     request->callback_data = params->callback_data;
     response_headers_handler_initialize(&(request->responseHeadersHandler));
     request->propertiesCallbackMade = 0;
+    request->pause_handle = params->pause_handle;
     error_parser_initialize(&(request->errorParser));
     *reqReturn = request;
     return OBS_STATUS_OK;
@@ -988,6 +990,14 @@ int request_progress_callback(void *clientp,   curl_off_t  dltotal,   curl_off_t
     if(ulnow > 0 && request->progressCallback) {
         request->progressCallback((uint64_t)ulnow, request->callback_data);
     }
+
+#ifdef WIN32
+    HANDLE arrEvent = request->pause_handle;
+    DWORD waitRet = WaitForSingleObject(arrEvent, SLEEP_TIMES_FOR_WAIT);
+    if (waitRet == WAIT_OBJECT_0) {
+        return -1;
+    }
+#endif
 
     return 0;
 }
