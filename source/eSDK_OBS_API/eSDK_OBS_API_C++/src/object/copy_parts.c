@@ -193,7 +193,7 @@ void copy_part(const obs_options *options, char *key, obs_copy_destination_objec
     params.complete_callback = &CopyPartCompleteCallback;
     params.fromObsCallback = &copyObjectDataCallback;
     params.callback_data = data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.use_api = use_api;
     request_perform(&params);

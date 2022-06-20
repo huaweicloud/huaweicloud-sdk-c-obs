@@ -28,27 +28,86 @@
     <ClInclude Include="..\..\inc\simplexml.h" />
     <ClInclude Include="..\..\inc\string_buffer.h" />
     <ClInclude Include="..\..\inc\util.h" />
-	<ClInclude Include="..\..\inc\request_util.h" />
-	<ClInclude Include="..\..\inc\bucket.h" />
-	<ClInclude Include="..\..\inc\object.h" />
+    <ClInclude Include="..\..\inc\request_util.h" />
+    <ClInclude Include="..\..\inc\bucket.h" />
+    <ClInclude Include="..\..\inc\object.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\bucket.c" />
+    <ClCompile Include="..\..\src\bucket\bucket_acl.c" />
+    <ClCompile Include="..\..\src\bucket\bucket_common.c" />
+    <ClCompile Include="..\..\src\bucket\create_bucket.c" />
+    <ClCompile Include="..\..\src\bucket\delete_bucket.c" />
+    <ClCompile Include="..\..\src\bucket\delete_bucket_cors_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\delete_bucket_lifecycle_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\delete_bucket_policy.c" />
+    <ClCompile Include="..\..\src\bucket\delete_bucket_tagging.c" />
+    <ClCompile Include="..\..\src\bucket\delete_bucket_website_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_cors_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_lifecycle_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_logging_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_metadata_with_corsconf.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_policy.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_quota.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_storage_class_policy.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_storage_info.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_tagging.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_version_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_website_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\get_notification_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\list_bucket.c" />
+    <ClCompile Include="..\..\src\bucket\list_multipart_uploads.c" />
+    <ClCompile Include="..\..\src\bucket\list_object.c" />
+    <ClCompile Include="..\..\src\bucket\list_versions.c" />
+    <ClCompile Include="..\..\src\bucket\obs_head_bucket.c" />
+    <ClCompile Include="..\..\src\bucket\options_bucket.c" />
+    <ClCompile Include="..\..\src\bucket\set_bucket_cors_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\set_bucket_lifecycle_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\set_bucket_logging_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\set_bucket_policy.c" />
+    <ClCompile Include="..\..\src\bucket\set_bucket_quota.c" />
+    <ClCompile Include="..\..\src\bucket\set_bucket_storage_class_policy.c" />
+    <ClCompile Include="..\..\src\bucket\set_bucket_tagging.c" />
+    <ClCompile Include="..\..\src\bucket\set_bucket_version_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\set_bucket_website_configuration.c" />
+    <ClCompile Include="..\..\src\bucket\set_notification_configuration.c" />
     <ClCompile Include="..\..\src\error_parser.c" />
     <ClCompile Include="..\..\src\general.c" />
     <ClCompile Include="..\..\src\log.c" />
-    <ClCompile Include="..\..\src\object.c" />
+    <ClCompile Include="..\..\src\object\abort_multi_part_upload.c" />
+    <ClCompile Include="..\..\src\object\append_object.c" />
+    <ClCompile Include="..\..\src\object\batch_delete_objects.c" />
+    <ClCompile Include="..\..\src\object\complete_multi_part_upload.c" />
+    <ClCompile Include="..\..\src\object\copy_object.c" />
+    <ClCompile Include="..\..\src\object\copy_parts.c" />
+    <ClCompile Include="..\..\src\object\delete_object.c" />
+    <ClCompile Include="..\..\src\object\download_file.c" />
+    <ClCompile Include="..\..\src\object\get_object.c" />
+    <ClCompile Include="..\..\src\object\get_object_acl.c" />
+    <ClCompile Include="..\..\src\object\get_object_metadata.c" />
+    <ClCompile Include="..\..\src\object\initiate_multi_part_upload.c" />
+    <ClCompile Include="..\..\src\object\list_parts.c" />
+    <ClCompile Include="..\..\src\object\object_common.c" />
+    <ClCompile Include="..\..\src\object\obs_head_object.c" />
+    <ClCompile Include="..\..\src\object\obs_options_obj.c" />
+    <ClCompile Include="..\..\src\object\put_object.c" />
+    <ClCompile Include="..\..\src\object\restore_object.c" />
+    <ClCompile Include="..\..\src\object\set_common_acl.c" />
+    <ClCompile Include="..\..\src\object\set_object_acl.c" />
+    <ClCompile Include="..\..\src\object\set_object_metadata.c" />
+    <ClCompile Include="..\..\src\object\upload_file.c" />
+    <ClCompile Include="..\..\src\object\upload_part.c" />
     <ClCompile Include="..\..\src\request.c" />
     <ClCompile Include="..\..\src\request_context.c" />
     <ClCompile Include="..\..\src\response_headers_handler.c" />
     <ClCompile Include="..\..\src\simplexml.c" />
     <ClCompile Include="..\..\src\util.c" />
-	<ClCompile Include="..\..\src\request_util.c" />
+    <ClCompile Include="..\..\src\request_util.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>obs</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

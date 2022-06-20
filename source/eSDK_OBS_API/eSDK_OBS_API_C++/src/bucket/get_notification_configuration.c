@@ -508,7 +508,7 @@ void get_notification_configuration(const obs_options *options,
     params.fromObsCallback = &get_notification_data_callback;
     params.complete_callback = &get_notification_complete_callback;
     params.callback_data = smn_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "notification";
     params.temp_auth = options->temp_auth;

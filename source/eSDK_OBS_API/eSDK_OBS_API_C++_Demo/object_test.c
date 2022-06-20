@@ -428,6 +428,13 @@ static void put_object_complete_callback(obs_status status,
     data->put_status = status;
 }
 
+static void progress_callback(uint64_t now, uint64_t total, void* callback_data)
+{
+    if (total)
+    {
+        printf("progress is %d%% \n", (now * 100) / total);
+    }
+}
 // head object ---------------------------------------------------------------
 static void test_head_object_new(int argc, char **argv, int optindex)
 {
@@ -1448,7 +1455,8 @@ static void test_put_object_new(int argc, char **argv, int optindex)
     { 
         { &responsePropertiesCallback,
           &put_object_complete_callback},
-        &put_object_data_callback
+          &put_object_data_callback,
+          &progress_callback
     };
     
     put_object(&option,key,content_length,&put_properties,0,&putobjectHandler,&data);
@@ -4892,10 +4900,19 @@ void *test_multi_thread_upload_file(void *pause_file)
 
     obs_upload_file_server_callback server_callback;
     init_server_callback(&server_callback);
-    server_callback.callback_url = NULL;
+
+    cJSON *body = NULL;
+    char *out = NULL;
+    body = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(body, "bucket", "test_json");
+    cJSON_AddStringToObject(body, "etag", "test_etag");
+    out = cJSON_PrintUnformatted(body);
+
+    server_callback.callback_url = "http://xxxxxx";
     server_callback.callback_host = NULL;
-    server_callback.callback_body = NULL;
-    server_callback.callback_body_type = NULL;
+    server_callback.callback_body = out;
+    server_callback.callback_body_type = "application/json";
 
     obs_upload_file_response_handler Handler =
     {
@@ -4910,7 +4927,7 @@ void *test_multi_thread_upload_file(void *pause_file)
     } else {
         printf("test upload file faied(%s).\n", obs_get_status_name(ret_status));
     }
-
+    cJSON_Delete(body);
     printf("pause_flag = %d, filename=%s\n", *(pause_upload_flag->pause_flag), pause_upload_flag->filename);
     return ((void*)0);
 }
@@ -5010,6 +5027,8 @@ static void test_upload_file(int argc, char **argv, int optindex)
         }
     }
 
+    option.request_options.server_cert_path = NULL;    //set server cert , example: /etc/certs/cabundle.pem
+
     obs_put_properties putProperties={0};
     init_put_properties(&putProperties);
 
@@ -5024,10 +5043,19 @@ static void test_upload_file(int argc, char **argv, int optindex)
 
     obs_upload_file_server_callback server_callback;
     init_server_callback(&server_callback);
-    server_callback.callback_url = NULL;
+
+    cJSON *body = NULL;
+    char *out = NULL;
+    body = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(body, "bucket", "test_json");
+    cJSON_AddStringToObject(body, "etag", "test_etag");
+    out = cJSON_PrintUnformatted(body);
+
+    server_callback.callback_url = "http://8.45.3.18:3000/backend/v1/json";
     server_callback.callback_host = NULL;
-    server_callback.callback_body = NULL;
-    server_callback.callback_body_type = NULL;
+    server_callback.callback_body = out;
+    server_callback.callback_body_type = "application/json";
 
     obs_upload_file_response_handler Handler =
     { 
@@ -5044,6 +5072,7 @@ static void test_upload_file(int argc, char **argv, int optindex)
     {
         printf("test upload file faied(%s).\n", obs_get_status_name(ret_status));
     }
+    cJSON_Delete(body);
 }
 
 static void test_download_file(int argc, char **argv, int optindex)

@@ -312,7 +312,7 @@ void set_bucket_lifecycle_configuration(const obs_options *options,
     params.complete_callback = &set_lifecycle_complete_callback;
     params.toObsCallbackTotalSize = sblcData->docLen;
     params.callback_data = sblcData;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "lifecycle";
     params.put_properties = &put_properties;

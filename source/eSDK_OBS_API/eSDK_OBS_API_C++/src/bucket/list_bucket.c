@@ -227,7 +227,7 @@ void list_bucket(const obs_options *options, obs_list_service_handler *handler, 
     params.fromObsCallback = &data_callback;
     params.complete_callback = &complete_callback;
     params.callback_data = data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.temp_auth = options->temp_auth;
     params.use_api = use_api;
@@ -300,7 +300,7 @@ void list_bucket_obs(const obs_options *options, obs_list_service_obs_handler *h
     params.fromObsCallback = &data_callback;
     params.complete_callback = &complete_callback;
     params.callback_data = data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.temp_auth = options->temp_auth;
     params.use_api = use_api;

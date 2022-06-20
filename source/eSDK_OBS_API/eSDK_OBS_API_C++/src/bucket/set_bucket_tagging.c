@@ -106,7 +106,7 @@ void set_bucket_tagging(const obs_options *options, obs_name_value * tagging_lis
     params.toObsCallbackTotalSize = tagging_data->xml_document_len;
     params.complete_callback = &set_common_complete_callback;
     params.callback_data = tagging_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "tagging";
     params.temp_auth = options->temp_auth;

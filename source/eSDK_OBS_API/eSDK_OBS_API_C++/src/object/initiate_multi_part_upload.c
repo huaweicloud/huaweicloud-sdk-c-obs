@@ -146,7 +146,7 @@ void initiate_multi_part_upload(const obs_options *options, char *key, int uploa
     params.complete_callback = &initiate_multi_part_upload_complete_callback;
     params.fromObsCallback = &initiate_multi_part_upload_data_callback;
     params.callback_data = imuData;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = storage_class;
     params.use_api = use_api;
 

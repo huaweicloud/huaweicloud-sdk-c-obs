@@ -334,7 +334,7 @@ void get_bucket_logging_configuration(const obs_options *options, obs_response_h
     params.fromObsCallback = &get_bucket_logging_data_callback;
     params.complete_callback = &get_bucket_logging_complete_callback;
     params.callback_data = logging_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "logging";
     params.temp_auth = options->temp_auth;

@@ -1,27 +1,17 @@
-/** **************************************************************************
- *
- * Copyright 2008 Bryan Ischo <bryan@ischo.com>
- *
- * This file is part of libs3.
- *
- * libs3 is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License as published by the Free
- * Software Foundation, version 3 of the License.
- *
- * In addition, as a special exception, the copyright holders give
- * permission to link the code of this library and its programs with the
- * OpenSSL library, and distribute linked combinations including the two.
- *
- * libs3 is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
- * details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * version 3 along with libs3, in a file named COPYING.  If not, see
- * <http://www.gnu.org/licenses/>.
- *
- ************************************************************************** **/
+/*********************************************************************************
+* Copyright 2022 Huawei Technologies Co.,Ltd.
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+* this file except in compliance with the License.  You may obtain a copy of the
+* License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software distributed
+* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+* CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations under the License.
+**********************************************************************************
+*/
 
 #include <ctype.h>
 #include <pthread.h>
@@ -450,6 +440,40 @@ obs_status set_curl_easy_setopt_safe(http_request *request, const request_params
     return OBS_STATUS_OK;
 }
 
+obs_status setup_CA(http_request *request,
+    const request_params *params,
+    const request_computed_values *values)
+{
+    CURLcode status = CURLE_OK;
+    curl_easy_setopt_safe(CURLOPT_SSL_VERIFYPEER, 1);
+    curl_easy_setopt_safe(CURLOPT_SSL_VERIFYHOST, 0);
+    if (params->bucketContext.certificate_info)
+    {
+        curl_easy_setopt_safe(CURLOPT_SSL_CTX_DATA, (void *)params->bucketContext.certificate_info);
+        curl_easy_setopt_safe(CURLOPT_SSL_CTX_FUNCTION, *sslctx_function);
+    }
+    if (params->request_option.server_cert_path)
+    {
+        curl_easy_setopt_safe(CURLOPT_CAINFO, params->request_option.server_cert_path);
+    }
+    return OBS_STATUS_OK;
+}
+
+
+obs_status setup_CheckCA(http_request *request,
+    const request_params *params,
+    const request_computed_values *values)
+{
+    CURLcode status = CURLE_OK;
+    if (params->isCheckCA) {
+        return setup_CA(request, params, values);
+    }
+    else {
+        curl_easy_setopt_safe(CURLOPT_SSL_VERIFYPEER, 0);
+        curl_easy_setopt_safe(CURLOPT_SSL_VERIFYHOST, 0);
+    }
+}
+
 static obs_status setup_curl(http_request *request,
                            const request_params *params,
                            const request_computed_values *values)
@@ -466,6 +490,12 @@ static obs_status setup_curl(http_request *request,
     curl_easy_setopt_safe(CURLOPT_NOSIGNAL, 1);
     curl_easy_setopt_safe(CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt_safe(CURLOPT_TCP_NODELAY, 1);
+    if (params->request_option.keep_alive)
+    {
+        curl_easy_setopt_safe(CURLOPT_TCP_KEEPALIVE, 1);
+        curl_easy_setopt_safe(CURLOPT_TCP_KEEPIDLE, params->request_option.keep_idle);
+        curl_easy_setopt_safe(CURLOPT_TCP_KEEPINTVL, params->request_option.keep_intvl);
+    }
     if(params->request_option.ssl_cipher_list != NULL) {
          curl_easy_setopt_safe(CURLOPT_SSL_CIPHER_LIST, params->request_option.ssl_cipher_list);
     }
@@ -476,16 +506,7 @@ static obs_status setup_curl(http_request *request,
          curl_easy_setopt_safe(CURLOPT_PROXYUSERPWD, params->request_option.proxy_auth);
     }
     curl_easy_setopt_safe(CURLOPT_NETRC, CURL_NETRC_IGNORED);
-    if (1 == params->isCheckCA) {
-        curl_easy_setopt_safe(CURLOPT_SSL_VERIFYPEER, 1);
-        curl_easy_setopt_safe(CURLOPT_SSL_VERIFYHOST, 0);
-        curl_easy_setopt_safe(CURLOPT_SSL_CTX_DATA, (void *)params->bucketContext.certificate_info);
-        curl_easy_setopt_safe(CURLOPT_SSL_CTX_FUNCTION, *sslctx_function);
-    }
-    else {
-        curl_easy_setopt_safe(CURLOPT_SSL_VERIFYPEER, 0);
-        curl_easy_setopt_safe(CURLOPT_SSL_VERIFYHOST, 0);
-    }
+    setup_CheckCA(request, params, values);
 
     curl_easy_setopt_safe(CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt_safe(CURLOPT_MAXREDIRS, 10);
@@ -518,13 +539,13 @@ static obs_status setup_curl(http_request *request,
     append_standard_header(contentDispositionHeader);
     append_standard_header(contentEncodingHeader);
     append_standard_header(expiresHeader);
+    append_standard_header(userAgent);
     append_standard_header(ifModifiedSinceHeader);
     append_standard_header(ifUnmodifiedSinceHeader);
     append_standard_header(ifMatchHeader);
     append_standard_header(ifNoneMatchHeader);
     append_standard_header(rangeHeader);
     append_standard_header(authorizationHeader);
-    append_standard_header(userAgent);
     append_standard_header(websiteredirectlocationHeader);
     int i;
     for (i = 0; i < values->amzHeadersCount; i++) {
@@ -643,6 +664,7 @@ static obs_status request_get(const request_params *params,
     request->properties_callback = params->properties_callback;
     request->toS3Callback = params->toObsCallback;
     request->toS3CallbackBytesRemaining = params->toObsCallbackTotalSize;
+    request->progress_total_size = params->toObsCallbackTotalSize;
     request->fromS3Callback = params->fromObsCallback;
     request->complete_callback = params->complete_callback;
     request->progressCallback = params->progressCallback;
@@ -807,7 +829,7 @@ static obs_status compose_auth_header(const request_params *params,
             }
         }
     }
-    COMMLOG(OBS_LOGWARN, "%s request_perform : StringToSign:  %.*s", __FUNCTION__, buf_len, signbuf);
+    //COMMLOG(OBS_LOGWARN, "%s request_perform : StringToSign:  %.*s", __FUNCTION__, buf_len, signbuf);
 
     if(params->use_api == OBS_USE_API_S3)
     {
@@ -836,8 +858,9 @@ static obs_status compose_auth_header(const request_params *params,
 
 
 
-static void request_release(http_request *request)
+static void request_release(http_request **p_request)
 {
+    http_request *request = *p_request;
 #if defined __GNUC__ || defined LINUX
     pthread_mutex_lock(&requestStackMutexG);
 #else
@@ -855,6 +878,7 @@ static void request_release(http_request *request)
         ReleaseMutex(hmutex);
 #endif
         request_destroy(request);
+        request = NULL;
     }
     else {
         requestStackG[requestStackCountG++] = request;
@@ -872,7 +896,7 @@ static void request_release(http_request *request)
 
 void request_finish_log_amz(struct curl_slist* tmp, OBS_LOGLEVEL logLevel)
 {
-	if (0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key", 42))
+	if (0 == strncmp(tmp->data, "x-amz-server-side-encryption-customer-key:", 42))
 	{
 		COMMLOG(logLevel, "x-amz-server-side-encryption-customer-key:***********");
 	}
@@ -898,7 +922,7 @@ void request_finish_log_amz(struct curl_slist* tmp, OBS_LOGLEVEL logLevel)
 
 void request_finish_log_obs(struct curl_slist* tmp, OBS_LOGLEVEL logLevel)
 {
-	if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key", 42))
+	if (0 == strncmp(tmp->data, "x-obs-server-side-encryption-customer-key:", 42))
 	{
 		COMMLOG(logLevel, "x-obs-server-side-encryption-customer-key:***********");
 	}
@@ -914,7 +938,7 @@ void request_finish_log_obs(struct curl_slist* tmp, OBS_LOGLEVEL logLevel)
 	{
 		COMMLOG(logLevel, "x-obs-copy-source-server-side-encryption-customer-key-md5:************");
 	}
-	else if (0 == strncmp(tmp->data, "x-obs-security-token:", strlen("x-amz-security-token:"))) {
+	else if (0 == strncmp(tmp->data, "x-obs-security-token:", strlen("x-obs-security-token:"))) {
 		COMMLOG(logLevel, "x-obs-security-token:************");
 	}
 	else {
@@ -937,9 +961,59 @@ void request_finish_log(struct curl_slist* tmp, OBS_LOGLEVEL logLevel) {
 	}
 }
 
-
-void request_finish(http_request *request)
+obs_status compose_headers(const request_params *params,
+    request_computed_values *values)
 {
+    obs_status status = OBS_STATUS_OK;
+    if ((status = encode_key(params->copySourceKey, values->urlEncodedSrcKey)) != OBS_STATUS_OK) {
+        return_obs_status(status);
+    }
+    if ((status = compose_obs_headers(params, values)) != OBS_STATUS_OK) {
+        return_obs_status(status);
+    }
+    if ((status = compose_standard_headers(params, values)) != OBS_STATUS_OK) {
+        return_obs_status(status);
+    }
+    if ((status = encode_key(params->key, values->urlEncodedKey)) != OBS_STATUS_OK) {
+        return_obs_status(status);
+    }
+    return status;
+}
+
+int is_retry(http_request *request, int is_retry)
+{
+    if (request)
+    {
+        bool curl_retry = obs_status_is_retryable(request->status) ? true : false;
+        bool request_retry = (request->httpResponseCode == 408 || request->httpResponseCode > 499) ? true : false;
+        if (curl_retry || request_retry)
+        {
+            if (is_retry)
+            {
+                uint64_t wait_time = pow(2, RETRY_NUM - is_retry + 1) * 50;
+#ifdef WIN32
+                Sleep(wait_time);
+#else
+                usleep(wait_time * LINUX_USTOMS);
+#endif
+            }
+            return --is_retry;
+
+        }
+        else {
+            is_retry = 0;
+        }
+    }
+    else
+    {
+        is_retry = 0;
+    }
+    return is_retry;
+}
+
+void request_finish(http_request **p_request)
+{
+    http_request *request= *p_request;
     request_headers_done(request);
     OBS_LOGLEVEL logLevel;
     int is_true = 0;
@@ -973,7 +1047,8 @@ void request_finish(http_request *request)
     (*(request->complete_callback))
         (request->status, &(request->errorParser.obsErrorDetails),
          request->callback_data);
-    request_release(request);
+    request_release(p_request);
+    *p_request = NULL;
 }
 
 int request_progress_callback(void *clientp,   curl_off_t  dltotal,   curl_off_t  dlnow,   curl_off_t  ultotal,   curl_off_t  ulnow) {
@@ -988,7 +1063,11 @@ int request_progress_callback(void *clientp,   curl_off_t  dltotal,   curl_off_t
         COMMLOG(OBS_LOGDEBUG, "\nulnow %d", (int)ulnow);
     }
     if(ulnow > 0 && request->progressCallback) {
-        request->progressCallback((uint64_t)ulnow, request->callback_data);
+        request->progressCallback((uint64_t)ulnow, request->progress_total_size,request->callback_data);
+    }
+
+    if (dlnow > 0 && request->progressCallback) {
+        request->progressCallback((uint64_t)dlnow, request->progress_total_size, request->callback_data);
     }
 
 #ifdef WIN32
@@ -1026,85 +1105,81 @@ void request_perform(const request_params *params)
     http_request *request = NULL;
     obs_status status = OBS_STATUS_OK;
     int is_true = 0;
-    COMMLOG(OBS_LOGINFO, "Ente request_perform object key= %s\n!",params->key);
+    int retry = RETRY_NUM;
+    COMMLOG(OBS_LOGINFO, "Ente request_perform object key= %s\n!", params->key);
     request_computed_values computed;
-    memset_s(&computed,sizeof(request_computed_values), 0, sizeof(request_computed_values));
+    memset_s(&computed, sizeof(request_computed_values), 0, sizeof(request_computed_values));
     char errorBuffer[CURL_ERROR_SIZE];
     memset_s(errorBuffer, sizeof(errorBuffer), 0, CURL_ERROR_SIZE);
-    char authTmpParams[1024] = {0};
-    char authTmpActualHeaders[1024] = {0};
+    char authTmpParams[1024] = { 0 };
+    char authTmpActualHeaders[1024] = { 0 };
     temp_auth_info stTempAuthInfo;
-    memset_s(&stTempAuthInfo,sizeof(temp_auth_info), 0, sizeof(temp_auth_info));
+    memset_s(&stTempAuthInfo, sizeof(temp_auth_info), 0, sizeof(temp_auth_info));
     stTempAuthInfo.temp_auth_headers = authTmpActualHeaders;
     stTempAuthInfo.tempAuthParams = authTmpParams;
-    
-     if ((status = encode_key(params->copySourceKey, computed.urlEncodedSrcKey)) != OBS_STATUS_OK) {
-        return_status(status);
-    }
 
-    if ((status = compose_obs_headers(params, &computed)) != OBS_STATUS_OK) {
-        return_status(status);
-    }
-    if ((status = compose_standard_headers(params, &computed)) != OBS_STATUS_OK) {
-        return_status(status);
-    }
-    if ((status = encode_key(params->key, computed.urlEncodedKey)) != OBS_STATUS_OK) {
-        return_status(status);
-    }
-    COMMLOG(OBS_LOGINFO, "Enter get_object object computed key= %s\n!",computed.urlEncodedKey);
+
+    if ((status = compose_headers(params, &computed)) != OBS_STATUS_OK)
+        return;
+
+    COMMLOG(OBS_LOGINFO, "Enter get_object object computed key= %s\n!", computed.urlEncodedKey);
     canonicalize_obs_headers(&computed, params->use_api);
-    canonicalize_resource(params, computed.urlEncodedKey,computed.canonicalizedResource, 
+    canonicalize_resource(params, computed.urlEncodedKey, computed.canonicalizedResource,
         sizeof(computed.canonicalizedResource));
     if (params->temp_auth)
     {
-        if ((status = compose_temp_header(params, &computed, &stTempAuthInfo )) != OBS_STATUS_OK) {
+        if ((status = compose_temp_header(params, &computed, &stTempAuthInfo)) != OBS_STATUS_OK) {
             return_status(status);
         }
     }
     else if ((status = compose_auth_header(params, &computed)) != OBS_STATUS_OK)
     {
-         return_status(status);
-    }
-    
-    if ((status = request_get(params, &computed, &request, &stTempAuthInfo)) != OBS_STATUS_OK){
         return_status(status);
     }
-    
-    is_true = ((params->temp_auth) && (params->temp_auth->temp_auth_callback !=NULL)) ;
-    if (is_true) {
-            (params->temp_auth->temp_auth_callback)(request->uri,
-                    authTmpActualHeaders,params->temp_auth->callback_data);
-            request_release(request);
-            return_status(status);
+
+    if ((status = request_get(params, &computed, &request, &stTempAuthInfo)) != OBS_STATUS_OK) {
+        return_status(status);
     }
-    CURLcode setoptResult =  curl_easy_setopt(request->curl,CURLOPT_ERRORBUFFER,errorBuffer);
-    if (setoptResult != CURLE_OK){
-        COMMLOG(OBS_LOGWARN, "%s curl_easy_setopt failed! CURLcode = %d", __FUNCTION__,setoptResult);
+
+    is_true = ((params->temp_auth) && (params->temp_auth->temp_auth_callback != NULL));
+    if (is_true) {
+        (params->temp_auth->temp_auth_callback)(request->uri,
+            authTmpActualHeaders, params->temp_auth->callback_data);
+        request_release(&request);
+        return_status(status);
+    }
+    CURLcode setoptResult = curl_easy_setopt(request->curl, CURLOPT_ERRORBUFFER, errorBuffer);
+    if (setoptResult != CURLE_OK) {
+        COMMLOG(OBS_LOGWARN, "%s curl_easy_setopt failed! CURLcode = %d", __FUNCTION__, setoptResult);
     }
 
     request_set_opt_for_progress(request);
 
     char* accessmode = "Virtual Hosting";
-    if(params->bucketContext.uri_style == OBS_URI_STYLE_PATH)
-    {   
-        accessmode="Path";
+    if (params->bucketContext.uri_style == OBS_URI_STYLE_PATH)
+    {
+        accessmode = "Path";
     }
-    COMMLOG(OBS_LOGINFO, "%s OBS SDK Version= %s; Endpoint = http://%s; Access Mode = %s", __FUNCTION__, OBS_SDK_VERSION, 
-        params->bucketContext.host_name,accessmode); 
+    COMMLOG(OBS_LOGINFO, "%s OBS SDK Version= %s; Endpoint = http://%s; Access Mode = %s", __FUNCTION__, OBS_SDK_VERSION,
+        params->bucketContext.host_name, accessmode);
     COMMLOG(OBS_LOGINFO, "%s start curl_easy_perform now", __FUNCTION__);
-    CURLcode code = curl_easy_perform(request->curl);
-    is_true = ((code != CURLE_OK) && (request->status == OBS_STATUS_OK));
-    if (is_true ) {
-        request->status = request_curl_code_to_status(code);
-        char *proxyBuf = strstr(errorBuffer, "proxy:");
-        if (NULL != proxyBuf) {
-            errno_t err = strcpy_s(proxyBuf, CURL_ERROR_SIZE - (proxyBuf - errorBuffer), "proxy: *****");
-            CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
+    while (retry > 0)
+    {
+        CURLcode code = curl_easy_perform(request->curl);
+        is_true = ((code != CURLE_OK) && (request->status == OBS_STATUS_OK));
+        if (is_true) {
+            request->status = request_curl_code_to_status(code);
+            char *proxyBuf = strstr(errorBuffer, "proxy:");
+            if (NULL != proxyBuf) {
+                errno_t err = strcpy_s(proxyBuf, CURL_ERROR_SIZE - (proxyBuf - errorBuffer), "proxy: *****");
+                CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
+            }
+            COMMLOG(OBS_LOGWARN, "%s curl_easy_perform code = %d,status = %d,errorBuffer = %s", __FUNCTION__, code,
+                request->status, errorBuffer);
         }
-        COMMLOG(OBS_LOGWARN, "%s curl_easy_perform code = %d,status = %d,errorBuffer = %s", __FUNCTION__,code,
-        request->status,errorBuffer);
+        request_finish(&request);
+        retry = is_retry(request, retry);
     }
-    request_finish(request);
 }
 
 static obs_status compose_api_version_uri(char *buffer, int buffer_size,

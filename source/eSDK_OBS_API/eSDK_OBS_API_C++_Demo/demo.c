@@ -1892,6 +1892,14 @@ void test_bucket_option(char *bucket_name)
 }
 
 // put object ---------------------------------------------------------------
+static void progress_callback(uint64_t now, uint64_t total, void* callback_data)
+{
+    if (total)
+    {
+        printf("progress is %d%% \n", (now * 100) / total);
+    }
+}
+
 static void test_put_object_from_file(char *bucket_name, char *key, char *file_name)
 {
     uint64_t content_length = 0;
@@ -1918,7 +1926,8 @@ static void test_put_object_from_file(char *bucket_name, char *key, char *file_n
     obs_put_object_handler putobjectHandler =
     { 
         { &response_properties_callback, &put_file_complete_callback },
-        &put_file_data_callback
+        &put_file_data_callback,
+        &progress_callback
     };
     
     put_object(&option, key, content_length, &put_properties, 0, &putobjectHandler, &data);
@@ -1964,7 +1973,8 @@ static void test_put_object_from_buffer(char *bucket_name, char *key)
     obs_put_object_handler putobjectHandler =
     { 
         { &response_properties_callback, &put_buffer_complete_callback },
-          &put_buffer_data_callback
+          &put_buffer_data_callback,
+          &progress_callback
     };
 
     put_object(&option, key, buffer_size, &put_properties,0,&putobjectHandler,&data);
@@ -2007,7 +2017,8 @@ static void test_put_object_by_strorageclass(char *key, char *file_name, char *b
     obs_put_object_handler putobjectHandler =
     { 
         { &response_properties_callback, &put_file_complete_callback },
-        &put_file_data_callback
+        &put_file_data_callback,
+        &progress_callback
     };
     
     put_object(&option,key,content_length,&put_properties,0,&putobjectHandler,&data);
@@ -2068,7 +2079,8 @@ static void test_put_object_by_kms_encrypt(char *bucket_name, char *key)
     obs_put_object_handler putobjectHandler =
     { 
         { &response_properties_callback, &put_buffer_complete_callback },
-          &put_buffer_data_callback
+          &put_buffer_data_callback,
+          &progress_callback
     };
 
     put_object(&option, key, buffer_size, &put_properties,&encryption_params,&putobjectHandler,&data);
@@ -2121,7 +2133,8 @@ static void test_put_object_by_aes_encrypt(char *bucket_name, char *key)
     obs_put_object_handler putobjectHandler =
     { 
         { &response_properties_callback, &put_buffer_complete_callback },
-          &put_buffer_data_callback
+          &put_buffer_data_callback,
+         &progress_callback
     };
 
     put_object(&option, key, buffer_size, &put_properties,
@@ -2921,6 +2934,7 @@ static void test_upload_file(char *bucket_name, char *filename, char *key)
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     
+    option.request_options.server_cert_path = NULL;    //set server cert , example: /etc/certs/cabundle.pem
 
     obs_put_properties putProperties={0};
     init_put_properties(&putProperties);
@@ -2936,10 +2950,19 @@ static void test_upload_file(char *bucket_name, char *filename, char *key)
 
     obs_upload_file_server_callback server_callback;
     init_server_callback(&server_callback);
-    server_callback.callback_url = NULL;
+
+    cJSON *body = NULL;
+    char *out = NULL;
+    body = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(body, "bucket", "test_json");
+    cJSON_AddStringToObject(body, "etag", "test_etag");
+    out = cJSON_PrintUnformatted(body);
+
+    server_callback.callback_url = "http://xxxxxx";
     server_callback.callback_host = NULL;
-    server_callback.callback_body = NULL;
-    server_callback.callback_body_type = NULL;
+    server_callback.callback_body = out;
+    server_callback.callback_body_type = "application/json";
 
     obs_upload_file_response_handler Handler =
     { 
@@ -2955,6 +2978,7 @@ static void test_upload_file(char *bucket_name, char *filename, char *key)
     {
         printf("test upload file  %s %s faied(%s).\n", filename, key, obs_get_status_name(ret_status));
     }
+    cJSON_Delete(body);
 }
 
 

@@ -248,7 +248,7 @@ void get_bucket_website_configuration(const obs_options *options,
     params.fromObsCallback = &get_bucket_websiteconf_data_callback;
     params.complete_callback = &get_bucket_websiteconf_complete_callback;
     params.callback_data = websiteconf_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "website";
     params.temp_auth = options->temp_auth;

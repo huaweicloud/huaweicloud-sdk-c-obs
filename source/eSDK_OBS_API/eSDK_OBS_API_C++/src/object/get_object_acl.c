@@ -480,7 +480,7 @@ void get_object_acl(const obs_options *options, manager_acl_info *aclinfo, obs_r
     params.properties_callback = &getAclPropertiesCallback;
     params.complete_callback = &getAclCompleteCallback;
     params.callback_data = gaData;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.use_api = use_api;
     request_perform(&params);

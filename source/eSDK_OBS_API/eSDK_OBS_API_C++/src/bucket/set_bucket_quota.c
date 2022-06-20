@@ -85,7 +85,7 @@ void set_bucket_quota(const obs_options *options, uint64_t storage_quota,
     params.toObsCallbackTotalSize = quota_data->docLen;
     params.complete_callback = &update_bucket_common_complete_callback;
     params.callback_data = quota_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "quota";
     params.temp_auth = options->temp_auth;

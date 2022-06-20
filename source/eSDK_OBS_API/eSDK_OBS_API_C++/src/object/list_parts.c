@@ -337,7 +337,7 @@ void list_parts(const obs_options *options, char *key, list_part_info *listpart,
     params.properties_callback = &ListPartsPropertiesCallback;
     params.complete_callback = &ListPartsCompleteCallback;
     params.callback_data = lpData;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.use_api = use_api;
     request_perform(&params);

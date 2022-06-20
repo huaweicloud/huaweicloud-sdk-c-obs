@@ -355,7 +355,7 @@ void set_notification_configuration(const obs_options *options,
     params.complete_callback = &set_notification_complete_callback;
     params.toObsCallbackTotalSize = sncData->doc_len;
     params.callback_data = sncData;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "notification";
     params.temp_auth = options->temp_auth;

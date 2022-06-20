@@ -100,7 +100,7 @@ void set_bucket_version_configuration(const obs_options *options, const char *ve
     params.toObsCallbackTotalSize = version_data->docLen;
     params.complete_callback = &update_bucket_common_complete_callback;
     params.callback_data = version_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "versioning";
     params.temp_auth = options->temp_auth;

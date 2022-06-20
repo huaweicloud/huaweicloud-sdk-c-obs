@@ -1,27 +1,17 @@
-/** **************************************************************************
- *
- * Copyright 2008 Bryan Ischo <bryan@ischo.com>
- *
- * This file is part of libs3.
- *
- * libs3 is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License as published by the Free
- * Software Foundation, version 3 of the License.
- *
- * In addition, as a special exception, the copyright holders give
- * permission to link the code of this library and its programs with the
- * OpenSSL library, and distribute linked combinations including the two.
- *
- * libs3 is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
- * details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * version 3 along with libs3, in a file named COPYING.  If not, see
- * <http://www.gnu.org/licenses/>.
- *
- ************************************************************************** **/
+/*********************************************************************************
+* Copyright 2022 Huawei Technologies Co.,Ltd.
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+* this file except in compliance with the License.  You may obtain a copy of the
+* License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software distributed
+* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+* CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations under the License.
+**********************************************************************************
+*/
 
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
@@ -916,6 +906,7 @@ obs_status request_compose_properties(request_computed_values *values, const req
 obs_status request_compose_encrypt_params_s3(request_computed_values *values, const request_params *params, int *len)
 {
     obs_status status = OBS_STATUS_OK;
+	int sign_len = 0;
     if(params->encryption_params->encryption_type == OBS_ENCRYPTION_KMS) {
         if(params->encryption_params->kms_server_side_encryption) {
             if ((status = headers_append(len, values, 1, 
@@ -948,9 +939,9 @@ obs_status request_compose_encrypt_params_s3(request_computed_values *values, co
             }
             char buffer[SSEC_KEY_MD5_LENGTH] = {0};
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
-            base64Decode(params->encryption_params->ssec_customer_key,
+            sign_len = base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5, SSEC_KEY_MD5_LENGTH);
+            compute_md5(buffer, sign_len, ssec_key_md5, SSEC_KEY_MD5_LENGTH);
             if ((status = headers_append(len, values,1, 
                              "x-amz-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL)) !=OBS_STATUS_OK) {
@@ -972,9 +963,9 @@ obs_status request_compose_encrypt_params_s3(request_computed_values *values, co
             }
             char buffer[SSEC_KEY_MD5_LENGTH] = {0};
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
-            base64Decode(params->encryption_params->ssec_customer_key,
+            sign_len = base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5, SSEC_KEY_MD5_LENGTH);
+            compute_md5(buffer, sign_len,ssec_key_md5, SSEC_KEY_MD5_LENGTH);
             status = headers_append(len, values,1, 
                              "x-amz-copy-source-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL);
@@ -986,6 +977,7 @@ obs_status request_compose_encrypt_params_s3(request_computed_values *values, co
 obs_status request_compose_encrypt_params_obs(request_computed_values *values, const request_params *params, int *len)
 {
     obs_status status = OBS_STATUS_OK;
+	int sign_len = 0;
     if(params->encryption_params->encryption_type == OBS_ENCRYPTION_KMS) {
         if(params->encryption_params->kms_server_side_encryption) {
             if ((status = headers_append(len, values, 1, 
@@ -1018,9 +1010,9 @@ obs_status request_compose_encrypt_params_obs(request_computed_values *values, c
             }
             char buffer[SSEC_KEY_MD5_LENGTH] = {0};
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
-            base64Decode(params->encryption_params->ssec_customer_key,
+            sign_len = base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5, SSEC_KEY_MD5_LENGTH);
+            compute_md5(buffer, sign_len,ssec_key_md5, SSEC_KEY_MD5_LENGTH);
             if ((status = headers_append(len, values,1, 
                              "x-obs-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL)) !=OBS_STATUS_OK) {
@@ -1042,9 +1034,9 @@ obs_status request_compose_encrypt_params_obs(request_computed_values *values, c
             }
             char buffer[SSEC_KEY_MD5_LENGTH] = {0};
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
-            base64Decode(params->encryption_params->ssec_customer_key,
+            sign_len = base64Decode(params->encryption_params->ssec_customer_key,
                 strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
-            compute_md5(buffer,strlen(buffer),ssec_key_md5, SSEC_KEY_MD5_LENGTH);
+            compute_md5(buffer, sign_len,ssec_key_md5, SSEC_KEY_MD5_LENGTH);
             status = headers_append(len, values,1, 
                              "x-obs-copy-source-server-side-encryption-customer-key-md5: %s", 
                              ssec_key_md5, NULL);
@@ -1515,42 +1507,20 @@ obs_status add_callback_header(const request_params *params,
 }
 
 obs_status basecode_callback_header(const request_params *params,
-    request_computed_values *values, char * callback_str,
+    request_computed_values *values,const char * callback_str,
     int callback_len, int *len)
 {
     obs_status status = OBS_STATUS_OK;
     char *out = (char *)malloc(sizeof(char) * HEAD_CALLBACK_LEN);
     memset_s(out, HEAD_CALLBACK_LEN, 0, HEAD_CALLBACK_LEN);
-    base64Encode((unsigned char *)callback_str, callback_len, out);
+    base64Encode((const unsigned char *)callback_str, callback_len, out);
     add_callback_header(params, values, out, len);
     complete_multi_part_upload_data* cmuData =(complete_multi_part_upload_data*)(params->callback_data);
     cmuData->server_callback = true;
-    free(callback_str);
     free(out);
     return status;
 }
 
-int compose_callback_params_header(char * param_str, const char * param_name,char *callback_str, int callback_index)
-{
-    int param_len = 0;
-    int param_name_len = 0;
-    int ret = 0;
-    if (param_str)
-    {
-        if (callback_index != 1)
-        {
-            callback_str[callback_index] = ',';
-            callback_index++;
-        }
-        param_len = strlen(param_str);
-        param_name_len = strlen(param_name) - 2;
-        ret = snprintf_s(callback_str + callback_index, param_len + param_name_len + 1,
-            _TRUNCATE, param_name, param_str);
-        CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-        callback_index += param_len + param_name_len;
-    }
-    return callback_index;
-}
 bool check_callback_param(obs_upload_file_server_callback server_callback)
 {
     bool is_ture = (
@@ -1559,38 +1529,47 @@ bool check_callback_param(obs_upload_file_server_callback server_callback)
         server_callback.callback_body ||
         server_callback.callback_body_type
         );
-    if (!is_ture)
-        return true;
+    if (is_ture)
+        return true;                                // no server_callback_param
     else
         return false;
+}
+
+void add_server_callback_to_json(cJSON * root, const char * callback_key,const char * callback_value)
+{
+    if (callback_value)
+    {
+        cJSON_AddStringToObject(root, callback_key, callback_value);
+        COMMLOG(OBS_LOGDEBUG, "server callback param %s is %s", callback_key, callback_value);
+    }
+    else
+    {
+        COMMLOG(OBS_LOGDEBUG, "server callback param %s is NULL", callback_key);
+    }
+}
+
+void get_server_callback(cJSON * root ,obs_upload_file_server_callback server_callback) 
+{
+    add_server_callback_to_json(root, "callbackUrl", server_callback.callback_url);
+    add_server_callback_to_json(root, "callbackHost", server_callback.callback_host);
+    add_server_callback_to_json(root, "callbackBody", server_callback.callback_body);
+    add_server_callback_to_json(root, "callbackBodyType", server_callback.callback_body_type);
 }
 
 obs_status compose_callback_header(const request_params *params,
     request_computed_values *values, int *len)
 {
-    if (check_callback_param(params->put_properties->server_callback))
-        return OBS_STATUS_OK;
-
-    char *callback_str = (char *)malloc(sizeof(char) * HEAD_CALLBACK_LEN);
-    memset_s(callback_str, HEAD_CALLBACK_LEN, 0, HEAD_CALLBACK_LEN);
-    callback_str[0] = '{';
-    int callback_index = 1;
-    int params_len = 0;
-    int ret = 0;
     obs_status status = OBS_STATUS_OK;
-
-    callback_index = compose_callback_params_header(params->put_properties->server_callback.callback_url,
-        "\"callbackUrl\": \"%s\"", callback_str,callback_index);
-    callback_index = compose_callback_params_header(params->put_properties->server_callback.callback_host,
-        "\"callbackHost\": \"%s\"", callback_str, callback_index);
-    callback_index = compose_callback_params_header(params->put_properties->server_callback.callback_body,
-        "\"callbackBody\": \"%s\"", callback_str, callback_index);
-    callback_index = compose_callback_params_header(params->put_properties->server_callback.callback_body_type,
-        "\"callbackBodyType\": \"%s\"", callback_str, callback_index);
-    callback_str[callback_index] = '}';
-    callback_str[callback_index+1] = '\0';
-    callback_index ++;
-    status = basecode_callback_header(params, values, callback_str, callback_index, len);
+    if (!check_callback_param(params->put_properties->server_callback))
+        return OBS_STATUS_OK;
+    cJSON *root = NULL;
+    char *callback_str = NULL;
+    root = cJSON_CreateObject();
+    get_server_callback(root, params->put_properties->server_callback);
+    callback_str = cJSON_Print(root);
+    status = basecode_callback_header(params, values, callback_str, strlen(callback_str), len);
+    cJSON_Delete(root);
+    free(callback_str);
     return status;
 }
 
@@ -1905,4 +1884,10 @@ obs_status compose_temp_header(const request_params* params,
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     COMMLOG(OBS_LOGINFO, "Leave compose_temp_header successful \n");
     return OBS_STATUS_OK;
+}
+
+bool is_check_ca(const obs_options *options)
+{
+    bool checkCA = (options->bucket_options.certificate_info || options->request_options.server_cert_path) ? true : false;
+    return checkCA;
 }

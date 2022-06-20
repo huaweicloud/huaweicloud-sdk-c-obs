@@ -54,7 +54,7 @@ void set_bucket_policy(const obs_options *options, const char *policy, obs_respo
     params.toObsCallbackTotalSize = policy_data->docLen;
     params.complete_callback = &update_bucket_common_complete_callback;
     params.callback_data = policy_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "policy";
     params.temp_auth = options->temp_auth;

@@ -137,7 +137,7 @@ void get_bucket_storage_info(const obs_options *options, int capacity_length, ch
     params.fromObsCallback = &get_bucket_storageInfo_data_callback;
     params.complete_callback = &get_bucket_storageInfo_complete_callback;
     params.callback_data = gbsiData;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "storageinfo";
     params.temp_auth = options->temp_auth;

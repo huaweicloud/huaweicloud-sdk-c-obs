@@ -249,7 +249,7 @@ void restore_object(const obs_options *options, obs_object_info *object_info, co
     params.properties_callback = &restoreObjectPropertiesCallback;
     params.complete_callback = &setCompleteCallback;
     params.callback_data = data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.use_api = use_api;
     request_perform(&params);

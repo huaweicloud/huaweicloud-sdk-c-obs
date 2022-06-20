@@ -42,7 +42,7 @@ void delete_bucket_lifecycle_configuration(const obs_options *options, obs_respo
     params.httpRequestType = http_request_type_delete;
     params.properties_callback = handler->properties_callback;
     params.complete_callback = handler->complete_callback;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "lifecycle";
     params.temp_auth = options->temp_auth;

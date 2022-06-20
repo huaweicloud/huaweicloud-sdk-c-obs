@@ -58,7 +58,7 @@ void modify_object(const obs_options *options, char *key, uint64_t content_lengt
 	params.properties_callback = handler->response_handler.properties_callback;
 	params.complete_callback = handler->response_handler.complete_callback;
 	params.callback_data = callback_data;
-	params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+	params.isCheckCA = is_check_ca(options);
 	params.storageClassFormat = storage_class;
 	params.use_api = use_api;
 	request_perform(&params);
@@ -106,7 +106,7 @@ void truncate_object(const obs_options *options, char *key, uint64_t object_leng
 	params.properties_callback = handler->properties_callback;
 	params.complete_callback = handler->complete_callback;
 	params.callback_data = callback_data;
-	params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+	params.isCheckCA = is_check_ca(options);
 	params.storageClassFormat = no_need_storage_class;
 	params.use_api = use_api;
 
@@ -152,7 +152,7 @@ void rename_object(const obs_options *options, char *key, char *new_object_name,
 	params.properties_callback = handler->properties_callback;
 	params.complete_callback = handler->complete_callback;
 	params.callback_data = callback_data;
-	params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+	params.isCheckCA = is_check_ca(options);
 	params.storageClassFormat = storage_class;
 	params.use_api = use_api;
 	request_perform(&params);

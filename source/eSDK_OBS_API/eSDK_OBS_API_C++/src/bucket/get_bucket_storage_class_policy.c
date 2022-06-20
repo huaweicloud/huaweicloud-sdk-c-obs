@@ -137,7 +137,7 @@ void get_bucket_storage_class_policy(const obs_options *options,
     params.fromObsCallback = &get_bucket_storage_class_data_callback;
     params.complete_callback = &get_bucket_storage_class_complete_callback;
     params.callback_data = storage_class_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     if (use_api == OBS_USE_API_S3) {
         params.subResource = "storagePolicy";

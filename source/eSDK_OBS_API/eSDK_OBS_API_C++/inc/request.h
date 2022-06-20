@@ -1,27 +1,17 @@
-/** **************************************************************************
- *
- * Copyright 2008 Bryan Ischo <bryan@ischo.com>
- *
- * This file is part of libs3.
- *
- * libs3 is free software: you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License as published by the Free
- * Software Foundation, version 3 of the License.
- *
- * In addition, as a special exception, the copyright holders give
- * permission to link the code of this library and its programs with the
- * OpenSSL library, and distribute linked combinations including the two.
- *
- * libs3 is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
- * details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * version 3 along with libs3, in a file named COPYING.  If not, see
- * <http://www.gnu.org/licenses/>.
- *
- ************************************************************************** **/
+/*********************************************************************************
+* Copyright 2022 Huawei Technologies Co.,Ltd.
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+* this file except in compliance with the License.  You may obtain a copy of the
+* License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software distributed
+* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+* CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations under the License.
+**********************************************************************************
+*/
 #ifndef REQUEST_H
 #define REQUEST_H
 
@@ -34,8 +24,8 @@
 
 
 #ifdef WIN32
-#define LIBOBS_VER_MAJOR "3.21"
-#define LIBOBS_VER_MINOR "8"
+#define LIBOBS_VER_MAJOR "3.22"
+#define LIBOBS_VER_MINOR "5"
 #endif
 
 #if defined __GNUC__ || defined LINUX
@@ -48,13 +38,18 @@
 #define DOMAIN_LEN 254
 #define HEAD_CALLBACK_LEN 8192
 
-#define OBS_SDK_VERSION "3.21.8"
-#define USER_AGENT_VALUE  "obs-sdk-c-3.21.8" ;
+#define OBS_SDK_VERSION "3.22.5"
+#define USER_AGENT_VALUE  "obs-sdk-c-3.22.5" ;
 
 #define DEFAULT_LOW_SPEED_LIMIT    (1)
 #define DEFAULT_LOW_SPEED_TIME_S   (300)
 #define DEFAULT_CONNECTTIMEOUT_MS  (60000)
 #define DEFAULT_TIMEOUT_S          (0)
+#define DEFAULT_TCP_KEEPIDLE       (120)
+#define DEFAULT_TCP_KEEPINVTL      (60)
+#define RETRY_NUM                  (3)
+#define RETRY_BASE                 (50) //retry base tiem is 50ms
+#define LINUX_USTOMS               (1000) // us -> ms
 
 #define signbuf_append(format, ...)                             \
     if (snprintf_s(&(signbuf[*len]), buf_len - (*len), _TRUNCATE,format, __VA_ARGS__) > 0) \
@@ -92,6 +87,11 @@
     return
 
 
+#define return_obs_status(status)                                           \
+    (*(params->complete_callback))(status, 0, params->callback_data);     \
+    COMMLOG(OBS_LOGWARN, "%s status = %d", __FUNCTION__,status);\
+    return status
+
 typedef enum
 {
     http_request_type_get,
@@ -125,6 +125,7 @@ typedef struct http_request
     obs_get_object_data_callback *fromS3Callback;
     obs_response_complete_callback *complete_callback;
     obs_progress_callback_internal *progressCallback;
+    uint64_t progress_total_size;
     void *callback_data;
     response_headers_handler responseHeadersHandler;
     int propertiesCallbackMade;
@@ -181,7 +182,7 @@ typedef struct request_params
 
     void *callback_data;
 
-    int isCheckCA;
+    bool isCheckCA;
 
     obs_storage_class_format storageClassFormat;
 
@@ -264,7 +265,7 @@ obs_status request_curl_code_to_status(CURLcode code);
 
 void request_destroy();
 
-void request_finish(http_request * request);
+void request_finish(http_request ** request);
 
 void request_api_deinitialize();
 

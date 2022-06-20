@@ -98,7 +98,7 @@ obs_status obs_runonce_request_context(obs_request_context *request_context,
                 return OBS_STATUS_InternalError;
             }
             
-            request_finish(request);
+            request_finish(&request);
             status = CURLM_CALL_MULTI_PERFORM;
         }
     } while (status == CURLM_CALL_MULTI_PERFORM);
@@ -137,7 +137,7 @@ void obs_destroy_request_context(obs_request_context *request_context)
     if (r) do {
         r->status = OBS_STATUS_Interrupted;
         http_request *rNext = r->next;
-        request_finish(r);
+        request_finish(&r);
         r = rNext;
     } while (r != rFirst);
 

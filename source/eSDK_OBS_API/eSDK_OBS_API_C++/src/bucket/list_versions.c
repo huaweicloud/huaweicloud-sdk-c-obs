@@ -427,7 +427,7 @@ void list_versions(const obs_options *options, const char *prefix, const char *k
     params.fromObsCallback = &list_versions_data_callback;
     params.complete_callback = &list_versions_complete_callback;
     params.callback_data = lvData;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.queryParams = queryParams[0] ? queryParams : 0;
     params.temp_auth = options->temp_auth;

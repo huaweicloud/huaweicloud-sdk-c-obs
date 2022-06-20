@@ -67,7 +67,7 @@ void set_object_acl_by_head(const obs_options *options, obs_object_info *object_
     params.properties_callback = handler->properties_callback;
     params.complete_callback = handler->complete_callback;
     params.callback_data = callback_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = default_storage_class;
     params.use_api = use_api;
     request_perform(&params);

@@ -391,7 +391,7 @@ void get_bucket_cors_configuration(const obs_options *options, obs_cors_handler 
     params.fromObsCallback = &get_cors_data_callback;
     params.complete_callback = &get_cors_complete_callback;
     params.callback_data = gbccDataEx;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "cors";
     params.temp_auth = options->temp_auth;

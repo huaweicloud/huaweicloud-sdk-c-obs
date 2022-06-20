@@ -203,7 +203,7 @@ void set_bucket_logging_configuration_common(const obs_options *options, char *t
     params.toObsCallbackTotalSize = bucket_logging_data->xml_document_len;
     params.complete_callback = &set_common_complete_callback;
     params.callback_data = bucket_logging_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "logging";
     params.temp_auth = options->temp_auth;

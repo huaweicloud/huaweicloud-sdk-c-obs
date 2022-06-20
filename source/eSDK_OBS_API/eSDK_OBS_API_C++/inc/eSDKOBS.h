@@ -17,6 +17,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
+#include "cJSON.h"
 #if defined __GNUC__ || defined LINUX
 #include <sys/select.h>
 #else 
@@ -861,7 +863,7 @@ typedef void (obs_upload_file_callback)(obs_status status, char *result_message,
             obs_upload_file_part_info * upload_info_list, void *callback_data);
 
 typedef void (obs_progress_callback)(double progress, uint64_t uploadedSize, uint64_t fileTotalSize, void *callback_data);
-typedef void (obs_progress_callback_internal)(uint64_t now, void *callback_data);
+typedef void (obs_progress_callback_internal)(uint64_t now, uint64_t total, void *callback_data);
 
 typedef obs_status (obs_list_objects_callback)(int is_truncated, const char *next_marker,
             int contents_count,  const obs_list_objects_content *contents,
@@ -925,6 +927,7 @@ typedef struct obs_put_object_handler
 {
     obs_response_handler response_handler;
     obs_put_object_data_callback *put_object_data_callback;
+    obs_progress_callback_internal *progress_callback;
 } obs_put_object_handler;
 typedef struct obs_append_object_handler
 {
@@ -1064,6 +1067,9 @@ typedef struct obs_http_request_option
     int speed_time;
     int connect_time;
     int max_connected_time;
+    bool keep_alive;
+    int keep_idle;
+    int keep_intvl;
     char *proxy_host;
     char *proxy_auth;
     char *ssl_cipher_list;
@@ -1071,6 +1077,7 @@ typedef struct obs_http_request_option
     obs_bbr_switch   bbr_switch;
 	obs_auth_switch  auth_switch;
     long buffer_size;
+    char* server_cert_path;
 } obs_http_request_option;
 
 typedef struct temp_auth_configure

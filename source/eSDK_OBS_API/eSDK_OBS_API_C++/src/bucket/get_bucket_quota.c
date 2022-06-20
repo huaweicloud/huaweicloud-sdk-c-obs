@@ -137,7 +137,7 @@ void get_bucket_quota(const obs_options *options, uint64_t *storagequota_return,
     params.fromObsCallback = &get_bucket_quotadata_callback;
     params.complete_callback = &get_bucket_quota_complete_callback;
     params.callback_data = bucket_quota_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "quota";
     params.temp_auth = options->temp_auth;

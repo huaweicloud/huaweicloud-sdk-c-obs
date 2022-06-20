@@ -216,6 +216,9 @@ void init_obs_options(obs_options *options)
     options->request_options.max_connected_time = DEFAULT_TIMEOUT_S;
     options->request_options.connect_time = DEFAULT_CONNECTTIMEOUT_MS;
     options->request_options.speed_limit = DEFAULT_LOW_SPEED_LIMIT;
+    options->request_options.keep_alive = false;
+    options->request_options.keep_idle = DEFAULT_TCP_KEEPIDLE;
+    options->request_options.keep_intvl = DEFAULT_TCP_KEEPINVTL;
     options->request_options.proxy_auth = NULL;
     options->request_options.proxy_host = NULL;
     options->request_options.ssl_cipher_list = NULL;
@@ -223,6 +226,7 @@ void init_obs_options(obs_options *options)
     options->request_options.bbr_switch = OBS_BBR_CLOSE;
 	options->request_options.auth_switch = OBS_NEGOTIATION_TYPE;
     options->request_options.buffer_size = 16 * 1024L;
+    options->request_options.server_cert_path = NULL;
         
     options->bucket_options.access_key = NULL;
     options->bucket_options.secret_access_key =NULL;

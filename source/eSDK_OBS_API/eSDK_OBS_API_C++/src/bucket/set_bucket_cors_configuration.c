@@ -249,7 +249,7 @@ void set_bucket_cors_configuration(const obs_options *options, obs_bucket_cors_c
     params.complete_callback = &set_cors_complete_callback;
     params.toObsCallbackTotalSize = sbccData->doc_len;
     params.callback_data = sbccData;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "cors";
     params.put_properties = &put_properties;

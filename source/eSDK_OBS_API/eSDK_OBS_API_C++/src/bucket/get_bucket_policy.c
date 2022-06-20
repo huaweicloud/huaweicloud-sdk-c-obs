@@ -95,7 +95,7 @@ void get_bucket_policy(const obs_options *options, int policy_return_size,
     params.fromObsCallback = &get_bucket_policy_data_callback;
     params.complete_callback = &get_bucket_policy_complete_callback;
     params.callback_data = policy_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.subResource = "policy";
     params.temp_auth = options->temp_auth;

@@ -109,7 +109,7 @@ static void compose_complete_multi_part_upload_data(complete_multi_part_upload_d
             256 * part_number - cmuData->docLen, _TRUNCATE,
             "<PartNumber>%u</PartNumber>", complete_upload_Info[uiIdx].part_number);
         (void)add_xml_element_in_bufflen(cmuData->doc, &cmuData->docLen, "ETag", complete_upload_Info[uiIdx].etag,
-            NEED_FORMALIZE, ADD_NAME_CONTENT, buffer_len);
+            NOT_NEED_FORMALIZE, ADD_NAME_CONTENT, buffer_len);
         (void)add_xml_element_in_bufflen(cmuData->doc, &cmuData->docLen, "Part",
             NULL, NOT_NEED_FORMALIZE, ADD_TAIL_ONLY, buffer_len);
     }
@@ -280,7 +280,7 @@ void complete_multi_part_upload(const obs_options *options, char *key, const cha
     params.toObsCallbackTotalSize = cmuData->docLen;
     params.fromObsCallback = &complete_multi_part_upload_data_from_obs_callback;
     params.callback_data = cmuData;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.use_api = use_api;
     request_perform(&params);

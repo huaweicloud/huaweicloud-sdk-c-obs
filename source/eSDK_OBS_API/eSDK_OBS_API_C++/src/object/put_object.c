@@ -55,11 +55,11 @@ void put_object(const obs_options *options, char *key, uint64_t content_length,
     params.toObsCallbackTotalSize = content_length;
     params.properties_callback = handler->response_handler.properties_callback;
     params.complete_callback = handler->response_handler.complete_callback;
+    params.progressCallback = handler->progress_callback;
     params.callback_data = callback_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = storage_class;
     params.use_api = use_api;
-
     request_perform(&params);
     COMMLOG(OBS_LOGINFO, "Leave put_object successfully !");
 }

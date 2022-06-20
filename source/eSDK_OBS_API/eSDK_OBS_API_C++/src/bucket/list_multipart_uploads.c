@@ -367,7 +367,7 @@ void list_multipart_uploads(const obs_options *options, const char *prefix, cons
     params.fromObsCallback = &list_multipart_uploads_data_callback;
     params.complete_callback = &list_multipart_uploads_complete_callback;
     params.callback_data = lmu_data;
-    params.isCheckCA = options->bucket_options.certificate_info ? 1 : 0;
+    params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.queryParams = queryParams[0] ? queryParams : 0;
     params.subResource = "uploads";

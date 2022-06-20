@@ -984,7 +984,7 @@ static int  uploadPartCallback(int buffer_size, char * buffer, void *callback_da
 }
 
 
-static void uploadProgressCallback(uint64_t ulnow, void *callback_data){
+static void uploadProgressCallback(uint64_t ulnow, uint64_t utotal, void *callback_data){
     upload_file_callback_data * cbd =  (upload_file_callback_data *)callback_data;
 
     upload_file_progress_info *progressInfo = cbd->progressInfo;
@@ -1952,7 +1952,7 @@ void pause_upload_file(int *pause_flag)
 }
 
 void upload_file(const obs_options *options, char *key, server_side_encryption_params *encryption_params,
-    obs_upload_file_configuration *upload_file_config, obs_upload_file_server_callback server_callback, 
+    obs_upload_file_configuration *upload_file_config, obs_upload_file_server_callback server_callback,
     obs_upload_file_response_handler *handler, void *callback_data)
 {
     COMMLOG(OBS_LOGERROR, "*pause_upload_flag is %d",
