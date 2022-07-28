@@ -32,6 +32,7 @@
 #include "eSDKOBS.h"
 #include "demo_common.h"
 #include "securec.h"
+#include "cJSON.h"
 
 FILE **uploadFilePool = NULL;
 
@@ -2979,6 +2980,7 @@ static void test_upload_file(char *bucket_name, char *filename, char *key)
         printf("test upload file  %s %s faied(%s).\n", filename, key, obs_get_status_name(ret_status));
     }
     cJSON_Delete(body);
+    cJSON_free(out);
 }
 
 
@@ -3802,6 +3804,7 @@ int main(int argc, char **argv)
     char bucket_obj_acl[]="bucket-obj-acl";
 
     /*------ obs init------*/
+    set_obs_log_path("/var/log/OBS_SDK_C", false);                   //此行代码用于示例设置日志文件路径功能，在实际使用中请注释该行
     obs_initialize(OBS_INIT_ALL);
     set_online_request_max_count(10);
 

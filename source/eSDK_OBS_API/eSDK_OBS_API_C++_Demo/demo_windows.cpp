@@ -29,6 +29,7 @@
 #include <process.h>
 
 #include "eSDKOBS.h"
+#include "cJSON.h"
 
 #ifndef SLEEP_UNITS_PER_SECOND
 #define SLEEP_UNITS_PER_SECOND 1
@@ -4653,6 +4654,7 @@ static void test_upload_file(int argc, char **argv, int optindex)
         &uploadFileResultCallback
     };
     cJSON_Delete(body);
+    cJSON_free(out);
     upload_file(&option, key, 0, &uploadFileInfo, server_callback, &Handler, 0);
     if (statusG == OBS_STATUS_OK) {
         printf("test upload file successfully. \n");
@@ -5434,6 +5436,7 @@ int main(int argc, char **argv)
     const char *command = argv[optind++];
     printf("command = %s\n", command);
 
+    set_obs_log_path("D:\\log", false);                   //此行代码用于示例设置日志文件路径功能，在实际使用中请注释该行
     obs_initialize(OBS_INIT_ALL);
 
 	if (!strcmp(command, "create_bucket")) {

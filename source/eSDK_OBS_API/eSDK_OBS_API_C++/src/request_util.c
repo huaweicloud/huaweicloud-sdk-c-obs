@@ -1569,7 +1569,7 @@ obs_status compose_callback_header(const request_params *params,
     callback_str = cJSON_Print(root);
     status = basecode_callback_header(params, values, callback_str, strlen(callback_str), len);
     cJSON_Delete(root);
-    free(callback_str);
+    cJSON_free(callback_str);
     return status;
 }
 

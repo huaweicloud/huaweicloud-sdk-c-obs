@@ -43,6 +43,7 @@ int use_api_index = -1;
 obs_s3_switch *api_switch=NULL;
 
 #if defined __GNUC__ || defined LINUX
+#include <unistd.h>
 static pthread_mutex_t requestStackMutexG;
 static pthread_mutex_t use_api_mutex;
 #else
@@ -1122,7 +1123,7 @@ void request_perform(const request_params *params)
     if ((status = compose_headers(params, &computed)) != OBS_STATUS_OK)
         return;
 
-    COMMLOG(OBS_LOGINFO, "Enter get_object object computed key= %s\n!", computed.urlEncodedKey);
+    COMMLOG(OBS_LOGINFO, "Enter request_perform object computed key= %s\n!", computed.urlEncodedKey);
     canonicalize_obs_headers(&computed, params->use_api);
     canonicalize_resource(params, computed.urlEncodedKey, computed.canonicalizedResource,
         sizeof(computed.canonicalizedResource));
