@@ -32,6 +32,7 @@
 #include "eSDKOBS.h"
 #include "demo_common.h"
 #include "securec.h"
+#include "cJSON.h"
 
 extern int64_t parseIso8601Time(const char *str);
 
@@ -4928,6 +4929,7 @@ void *test_multi_thread_upload_file(void *pause_file)
         printf("test upload file faied(%s).\n", obs_get_status_name(ret_status));
     }
     cJSON_Delete(body);
+    cJSON_free(out);
     printf("pause_flag = %d, filename=%s\n", *(pause_upload_flag->pause_flag), pause_upload_flag->filename);
     return ((void*)0);
 }
@@ -6180,6 +6182,7 @@ int main(int argc, char **argv)
     const char *command = argv[optind++];
     printf("command = %s\n", command);
 
+    set_obs_log_path("/var/log/OBS_SDK_C", false);                   //此行代码用于示例设置日志文件路径功能，在实际使用中请注释该行
     obs_initialize(OBS_INIT_ALL);
     
     initialize_break_point_lock();

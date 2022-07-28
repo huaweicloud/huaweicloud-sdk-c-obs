@@ -58,6 +58,15 @@ do{\
     }\
 }while(0)
 
+#define CHECK_ERR_RETURN(err) \
+    if (err!=EOK)\
+    {\
+        return -1;\
+    }
+
+
+
+
 typedef enum
 {
     OBS_LOGDEBUG = 0,

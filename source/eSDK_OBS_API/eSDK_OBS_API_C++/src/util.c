@@ -744,7 +744,11 @@ int pcre_replace(const char* src,char ** destOut)
         offset=ovector[count*2 + 1];
         count++;
     }
-    CHECK_NULL_FREE(re);
+    if (re != NULL)
+    {
+        pcre_free(re);
+        re = NULL;
+    }
     if(count == 0)
     {
         return 0;

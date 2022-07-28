@@ -18,7 +18,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
-#include "cJSON.h"
 #if defined __GNUC__ || defined LINUX
 #include <sys/select.h>
 #else 
@@ -52,7 +51,7 @@ extern "C" {
 #define ARRAY_LENGTH_512 512
 #define ARRAY_LENGTH_1024 1024
 #define ARRAY_LENGTH_2014 2014
-#define SLEEP_TIMES_FOR_LINUX 100
+#define SLEEP_TIMES_FOR_LINUX 1
 #define SLEEP_TIMES_FOR_WIN32 0.05
 #define SLEEP_TIMES_FOR_WAIT 0
 
@@ -1489,7 +1488,7 @@ eSDK_OBS_API void rename_object(const obs_options *options, char *key, char *new
 
 eSDK_OBS_API void compute_md5(const char *buffer, int64_t buffer_size, char *outbuffer, int64_t max_out_put_buffer_size);
 
-eSDK_OBS_API int set_obs_log_path(const char *log_path);
+eSDK_OBS_API int set_obs_log_path(const char *log_path, bool only_set_log_conf);
 
 eSDK_OBS_API void set_openssl_callback(obs_openssl_switch switch_flag);
 

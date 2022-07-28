@@ -109,7 +109,7 @@ static void compose_complete_multi_part_upload_data(complete_multi_part_upload_d
             256 * part_number - cmuData->docLen, _TRUNCATE,
             "<PartNumber>%u</PartNumber>", complete_upload_Info[uiIdx].part_number);
         (void)add_xml_element_in_bufflen(cmuData->doc, &cmuData->docLen, "ETag", complete_upload_Info[uiIdx].etag,
-            NOT_NEED_FORMALIZE, ADD_NAME_CONTENT, buffer_len);
+            NEED_FORMALIZE, ADD_NAME_CONTENT, buffer_len);
         (void)add_xml_element_in_bufflen(cmuData->doc, &cmuData->docLen, "Part",
             NULL, NOT_NEED_FORMALIZE, ADD_TAIL_ONLY, buffer_len);
     }

@@ -1384,7 +1384,9 @@ void startUploadThreads_linux(upload_params * pstUploadParams, int partCount, vo
     for (i = 0; i < partCount; i++) {
         while (1) {
             if(*(pstUploadParams->pause_upload_flag) == 1) {
+                pthread_mutex_lock(&g_mutexThreadCheckpoint);
                 err = pthread_cancel(arrThread[i]);
+                pthread_mutex_unlock(&g_mutexThreadCheckpoint);
                 if(err != 0) {
                     COMMLOG(OBS_LOGINFO, "cancel thread failed i[%d]\n",i);
                 }

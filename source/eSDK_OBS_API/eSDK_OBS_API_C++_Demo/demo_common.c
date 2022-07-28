@@ -128,6 +128,14 @@ obs_status response_properties_callback(const obs_response_properties *propertie
 {
     (void) callback_data;
 
+    if (properties == NULL && callback_data != NULL)
+    {
+        obs_sever_callback_data *data = (obs_sever_callback_data *)callback_data;
+        printf("server_callback buf is %s ,len is %d",
+            data->buffer, data->buffer_len);
+        return OBS_STATUS_OK;
+    }
+
     if (!showResponsePropertiesG) {
         return OBS_STATUS_OK;
     }
@@ -1336,6 +1344,13 @@ void downloadFileResultCallback(obs_status status,
 obs_status concurrent_response_properties_callback(
         const obs_response_properties *properties, void *callback_data)
 {
+    if (properties == NULL && callback_data != NULL)
+    {
+        obs_sever_callback_data *data = (obs_sever_callback_data *)callback_data;
+        printf("server_callback buf is %s ,len is %d",
+            data->buffer, data->buffer_len);
+        return OBS_STATUS_OK;
+    }
     test_concurrent_upload_file_callback_data *concurrent_callback_data =
         (test_concurrent_upload_file_callback_data*)callback_data;
 

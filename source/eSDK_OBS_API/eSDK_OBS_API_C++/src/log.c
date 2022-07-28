@@ -27,11 +27,13 @@
 #define SECTION_PATH     "LogPath"
 #define PATH_VALUE       "LogPath"
 #define OBS_LOG_PATH_LEN   257
+#define LOG_CONF_MESSAGELEN 1024
 
 
 static char OBS_LOG_PATH[OBS_LOG_PATH_LEN]={0};
+static bool ONLY_SET_LOGCONF = true;
 
-int set_obs_log_path(const char *log_path)
+int set_obs_log_path(const char *log_path, bool only_set_log_conf)
 {
     if( log_path == NULL || strlen(log_path)> OBS_LOG_PATH_LEN)
     {
@@ -44,6 +46,7 @@ int set_obs_log_path(const char *log_path)
     {
         return 0;
     }
+    ONLY_SET_LOGCONF = only_set_log_conf;
     return 1;
 }
 
@@ -261,6 +264,95 @@ int GET_LOG_PATH(char *logPath, const char *tempLogPath) {
     return err;
 }
 
+int copy_file(char *source, char *target)
+{
+    int ret = 0;
+    FILE *fp_src = fopen(source, "r");
+    if (fp_src == NULL)
+    {
+        return -1;
+    }
+    FILE *fp_tar = fopen(target, "w");
+    if (fp_tar == NULL)
+    {
+        return -1;
+    }
+    char* temp_arr = (char*)malloc(sizeof(char)*LOG_CONF_MESSAGELEN);
+
+    while (fgets(temp_arr, LOG_CONF_MESSAGELEN, fp_src))
+    {
+        if(strstr(temp_arr, "LogPath=") != NULL)
+        {
+            ret = snprintf_s(temp_arr, LOG_CONF_MESSAGELEN, LOG_CONF_MESSAGELEN - 1, "LogPath=\.\/");
+            CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
+        }
+            fputs(temp_arr, fp_tar);
+    }
+    fclose(fp_src);
+    fclose(fp_tar);
+    free(temp_arr);
+    return ret;
+}
+
+int MoveConf(const char * buf)
+{
+    errno_t err = EOK;
+    int ret = 0;
+    char* source_conf = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
+    char* target_conf = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
+    if ((source_conf == NULL) || (target_conf == NULL))
+    {
+        return -1;
+    }
+    err = memset_s(source_conf, MAX_MSG_SIZE, 0, MAX_MSG_SIZE);
+    CHECK_ERR_RETURN(err);
+    err = memset_s(target_conf, MAX_MSG_SIZE, 0, MAX_MSG_SIZE);
+    CHECK_ERR_RETURN(err);
+#ifdef WIN32
+    GetModuleFileNameA(NULL, source_conf, MAX_MSG_SIZE - 1);
+    char* chr = strrchr(source_conf, '\\');
+    if (NULL != chr) {
+        *(chr + 1) = '\0';
+    }
+    ret = snprintf_s(target_conf, MAX_MSG_SIZE, MAX_MSG_SIZE - 1, "%s\\OBS.ini", buf);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
+    err = strcat_s(source_conf, MAX_MSG_SIZE, "OBS.ini");
+    CHECK_ERR_RETURN(err);
+#else
+    getCurrentPath(source_conf);
+    ret = snprintf_s(target_conf, MAX_MSG_SIZE, MAX_MSG_SIZE - 1, "%s\/OBS.ini", buf);
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
+    err = strcat_s(source_conf, MAX_MSG_SIZE, "\/OBS.ini");
+    CHECK_ERR_RETURN(err);
+#endif
+    copy_file(source_conf, target_conf);
+    free(source_conf);
+    free(target_conf);
+    return 0;
+}
+
+int GetConfPath(char *buf)
+{
+    errno_t err = EOK;
+    bool log_path = (OBS_LOG_PATH[0] != 0) ? true : false;
+    if (log_path) {
+        err = memcpy_s(buf, sizeof(char)*MAX_MSG_SIZE, OBS_LOG_PATH, MAX_MSG_SIZE);
+        CHECK_ERR_RETURN(err);
+    }
+    else
+    {
+#if defined __GNUC__ || defined LINUX
+        getCurrentPath(buf);
+#else
+        GetModuleFileNameA(NULL, buf, MAX_MSG_SIZE - 1);
+#endif
+    }
+    if (log_path && (!ONLY_SET_LOGCONF))
+    {
+        MoveConf(buf);
+    }
+}
+
 int SetConfPath(char* currentPath, char* buf, char* confPath, char* logPath, char* tempLogPath) 
 {
 	errno_t err = EOK;
@@ -374,6 +466,7 @@ int LOG_INIT()
     memset_s(tempLogPath, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE*sizeof(char));
 
 #if defined __GNUC__ || defined LINUX
+    GetConfPath(buf);
     if( OBS_LOG_PATH[0] != 0 ) {
         memcpy_s(buf, sizeof(char)*MAX_MSG_SIZE, OBS_LOG_PATH, MAX_MSG_SIZE);
     }
@@ -410,20 +503,7 @@ int LOG_INIT()
     }
 #else
 	errno_t err =EOK;
-    if( OBS_LOG_PATH[0] != 0 )  {
-        err = memcpy_s(buf, sizeof(char)*MAX_MSG_SIZE, OBS_LOG_PATH, MAX_MSG_SIZE);
-        if (err != EOK)
-        {
-            CHECK_NULL_FREE(buf);
-            CHECK_NULL_FREE(confPath);
-            CHECK_NULL_FREE(logPath);
-            CHECK_NULL_FREE(tempLogPath);
-            return -1;
-        }
-    }
-    else {
-        GetModuleFileNameA(NULL,buf,MAX_MSG_SIZE-1);
-    }
+    GetConfPath(buf);
 
     char* currentPath = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
 	int ret = SetConfPath(currentPath, buf, confPath, logPath, tempLogPath);
@@ -505,5 +585,4 @@ void CheckAndLogNeg(int ret, const char* name, const char* funcName, unsigned lo
         COMMLOG(OBS_LOGWARN, "%s failed in %s.(%ld)", name, funcName, line);
     }
 }
-
 
