@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -107,30 +107,34 @@
     <ProjectGuid>{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>obs</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -150,18 +154,18 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;</IncludePath>
-    <LibraryPath>$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib</LibraryPath>
-    <ExcludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;$(MSBuildToolsPath32);$(VCInstallDir)atlmfc\lib;$(VCInstallDir)lib;</ExcludePath>
+    <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib;$(LibraryPath)</LibraryPath>
+    <ExcludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;$(MSBuildToolsPath32);$(VCInstallDir)atlmfc\lib;$(VCInstallDir)lib;$(ExcludePath)</ExcludePath>
     <OutDir>$(SolutionDir)..\..\build\vc100\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)..\..\build\vc100\$(Configuration)\$(ProjectName)\</IntDir>
     <TargetName>libeSDKOBS</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;</IncludePath>
-    <LibraryPath>$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib</LibraryPath>
-    <ExcludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;$(MSBuildToolsPath32);$(VCInstallDir)atlmfc\lib;$(VCInstallDir)lib;</ExcludePath>
+    <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib;$(LibraryPath)</LibraryPath>
+    <ExcludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;$(MSBuildToolsPath32);$(VCInstallDir)atlmfc\lib;$(VCInstallDir)lib;$(ExcludePath)</ExcludePath>
     <OutDir>$(SolutionDir)..\..\build\vc100\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)..\..\build\vc100\$(Configuration)\$(ProjectName)\</IntDir>
     <TargetName>libeSDKOBS</TargetName>
@@ -184,7 +188,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;OBS_EXPORTS;_CRT_SECURE_NO_WARNINGS;HUAWEISECUREC_WXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\..\..\..\open_src\openssl-1.0.2k\include;..\..\..\..\..\open_src\curl-7.52.1\include;..\..\inc;..\..\inc\mingw;..\..\..\..\..\open_src\libxml2-2.9.4\include;..\..\..\..\..\open_src\pcre-8.39\include;..\..\..\..\..\open_src\libxml2-2.9.4\source\os400\iconv;..\..\..\..\..\platform\huaweisecurec\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\..\..\..\open_src\openssl-1.0.2k\include;..\..\..\..\..\open_src\curl-7.52.1\include;..\..\inc;..\..\include;..\..\..\..\..\open_src\libxml2-2.9.4\include;..\..\..\..\..\open_src\pcre-8.39\include;..\..\..\..\..\open_src\libxml2-2.9.4\source\os400\iconv;..\..\..\..\..\platform\huaweisecurec\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include;..\..\inc\mingw</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <CallingConvention>Cdecl</CallingConvention>
       <AdditionalOptions>/wd4430 %(AdditionalOptions)</AdditionalOptions>
@@ -201,10 +205,10 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\..\..\..\open_src\curl-7.52.1\lib\windows\x86;..\..\..\..\..\open_src\openssl-1.0.2k\lib\windows\x86;..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug;..\..\..\..\..\open_src\pcre-8.39\lib\windows\x86;$(WindowsSdkDir)\Lib;..\..\..\..\..\open_src\libxml2-2.9.4\lib\windows\x86;..\..\build\vc100\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\..\..\..\open_src\curl-7.52.1\lib\windows\x86;..\..\..\..\..\open_src\openssl-1.0.2k\lib\windows\x86;..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug;..\..\..\..\..\open_src\pcre-8.39\lib\windows\x86;$(WindowsSdkDir)\Lib;..\..\..\..\..\open_src\libxml2-2.9.4\lib\windows\x86;..\..\build\vc100\Debug;..\..\lib\win32_x86_msvc\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>
       </IgnoreAllDefaultLibraries>
-      <AdditionalDependencies>libcurl.lib;libeay32.lib;ssleay32.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libcurl.lib;libeay32.lib;ssleay32.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
       <IgnoreSpecificDefaultLibraries>MSVCRT.lib</IgnoreSpecificDefaultLibraries>
     </Link>
@@ -215,7 +219,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;OBS_EXPORTS;_CRT_SECURE_NO_WARNINGS;HUAWEISECUREC_WXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\..\..\..\open_src\openssl-1.0.2k\include;..\..\..\..\..\open_src\curl-7.52.1\include;..\..\inc;..\..\inc\mingw;..\..\..\..\..\open_src\libxml2-2.9.4\include;..\..\..\..\..\open_src\pcre-8.39\include;..\..\..\..\..\open_src\libxml2-2.9.4\source\os400\iconv;..\..\..\..\..\platform\huaweisecurec\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\..\..\..\open_src\openssl-1.0.2k\include;..\..\..\..\..\open_src\curl-7.52.1\include;..\..\inc;..\..\inc\mingw;..\..\..\..\..\open_src\libxml2-2.9.4\include;..\..\..\..\..\open_src\pcre-8.39\include;..\..\..\..\..\open_src\libxml2-2.9.4\source\os400\iconv;..\..\..\..\..\platform\huaweisecurec\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include;..\..\include</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <CallingConvention>Cdecl</CallingConvention>
       <AdditionalOptions>/wd4430 %(AdditionalOptions)</AdditionalOptions>
@@ -232,11 +236,11 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\..\..\..\open_src\curl-7.52.1\lib\windows\x86;..\..\..\..\..\open_src\openssl-1.0.2k\lib\windows\x86;..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug;..\..\..\..\..\open_src\pcre-8.39\lib\windows\x86;$(WindowsSdkDir)\Lib;..\..\..\..\..\open_src\libxml2-2.9.4\lib\windows\x86;..\..\build\vc100\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\..\..\..\open_src\curl-7.52.1\lib\windows\x86;..\..\..\..\..\open_src\openssl-1.0.2k\lib\windows\x86;..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug_x64;..\..\..\..\..\open_src\pcre-8.39\lib\windows\x86;$(WindowsSdkDir)\Lib;..\..\..\..\..\open_src\libxml2-2.9.4\lib\windows\x86;..\..\build\vc100\Debug;..\..\lib\win64_x64_msvc\release;..\..\build\vc100\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>
       </IgnoreAllDefaultLibraries>
-      <AdditionalDependencies>libcurl.lib;libeay32.lib;ssleay32.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
+      <AdditionalDependencies>cjson.lib;libcurl.lib;libeay32.lib;ssleay32.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <IgnoreSpecificDefaultLibraries>MSVCRT.lib</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
@@ -261,7 +265,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\release;$(WindowsSdkDir)\Lib;..\..\lib\win32_x86_msvc\release;..\..\build\vc100\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libcurl.lib;libeay32.lib;ssleay32.lib;eSDKLogAPI.lib;pcre.lib;libiconv.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libcurl.lib;libeay32.lib;ssleay32.lib;eSDKLogAPI.lib;pcre.lib;libiconv.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
     </Link>
   </ItemDefinitionGroup>
@@ -286,7 +290,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\release_x64;$(WindowsSdkDir)\Lib\x64;..\..\build\vc100\Release;..\..\lib\win64_x64_msvc\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libcurl.lib;libeay32.lib;ssleay32.lib;eSDKLogAPI.lib;pcre.lib;libiconv.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libcurl.lib;libeay32.lib;ssleay32.lib;eSDKLogAPI.lib;pcre.lib;libiconv.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <AdditionalOptions>/SAFESEH:NO %(AdditionalOptions)</AdditionalOptions>
     </Link>
