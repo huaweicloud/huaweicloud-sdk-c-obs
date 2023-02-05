@@ -43,6 +43,8 @@ pthread_mutex_t g_mutexThreadCheckpoint_download;
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#define OBS_MAX_PARTCOUNT_SIZE 65536
+
 void initialize_break_point_lock()
 {
 #if defined __GNUC__ || defined LINUX
@@ -66,9 +68,25 @@ void deinitialize_break_point_lock()
 
 }
 
-int getUploadFileSummary(upload_file_summary *pstUploadFileSummay, const char * file_name)
+#if defined (WIN32)
+int getFileSummaryWindows(struct _stati64 * pstatbuf, obs_upload_file_configuration * obs_upload_file_config)
 {
-    if (file_name == NULL)
+    int ret_stat = -1;
+    if (obs_upload_file_config->filename_code == UPLOAD_FILENAME_ANSI)
+    {
+        ret_stat = _stati64(obs_upload_file_config->upload_file, pstatbuf);
+    }
+    else
+    {
+        ret_stat = _wstati64((wchar_t*)obs_upload_file_config->upload_file, pstatbuf);
+    }
+    return ret_stat;
+}
+#endif
+
+int getUploadFileSummary(upload_file_summary *pstUploadFileSummay, obs_upload_file_configuration * obs_upload_file_config)
+{
+    if (obs_upload_file_config->upload_file == NULL)
     {
         return -1;
     }
@@ -78,10 +96,10 @@ int getUploadFileSummary(upload_file_summary *pstUploadFileSummay, const char * 
 
 #if defined __GNUC__ || defined LINUX  
         struct stat statbuf;
-        ret_stat = stat(file_name, &statbuf);
+        ret_stat = stat(obs_upload_file_config->upload_file, &statbuf);
 #else
         struct _stati64 statbuf;
-        ret_stat = _stati64(file_name, &statbuf);
+        ret_stat = getFileSummaryWindows(&statbuf, obs_upload_file_config);
 #endif
         if (ret_stat == -1)
         {
@@ -298,12 +316,12 @@ int parse_xmlnode_partsinfo(upload_file_part_info ** uploadPartList, xmlNodePtr 
 
 int readCheckpointFile(upload_file_summary * pstUploadFileSummary,
     upload_file_part_info ** uploadPartList,
-    int *partCount, char * file_name)
+    int *partCount, char * file_name, size_t file_name_len)
 {
     xmlNodePtr curNode;
     xmlDocPtr doc;
 
-    if (check_file_is_valid(file_name) == -1)
+    if (file_name_len == 0 || check_file_is_valid(file_name) == -1)
     {
         return -1;
     }
@@ -485,6 +503,10 @@ int setPartList(upload_file_summary *pstUploadFileSummaryNew, uint64_t uploadPar
     //we should start to upload the whole file
 
     //calculate the total count of the parts and the last part size
+    if (uploadPartsize == 0){
+        COMMLOG(OBS_LOGERROR, "divided by zero in function: %s,line %d", __FUNCTION__, __LINE__);
+        return -1;
+    }
     partCountTemp = (int)(pstUploadFileSummaryNew->fileSize / uploadPartsize);
     lastPartSize = pstUploadFileSummaryNew->fileSize % uploadPartsize;
 
@@ -1018,11 +1040,26 @@ static void uploadProgressCallback(uint64_t ulnow, uint64_t utotal, void *callba
 }
 
 #if defined (WIN32)
+void uploadfile_open(int *fd, char *filename, upload_filename_code code)
+{
+    if (code == UPLOAD_FILENAME_ANSI)
+    {
+        (void)_sopen_s(fd, filename, _O_RDONLY | _O_BINARY, _SH_DENYWR, _S_IREAD);
+    }
+    else
+    {
+        (void)_wsopen_s(fd, (wchar_t*)filename, _O_RDONLY | _O_BINARY, _SH_DENYWR, _S_IREAD);
+    }
+}
+#endif
+
+#if defined (WIN32)
 unsigned __stdcall UploadThreadProc_win32(void* param)
 {
     upload_file_for_win32 *tmp = (upload_file_for_win32*)param;
     upload_file_proc_data *pstPara = tmp->upload_data;
     char * uploadFileName = pstPara->stUploadParams->fileNameUpload;
+    upload_filename_code filename_code = pstPara->stUploadParams->fileNameUploadCode;
     uint64_t start_byte = pstPara->stUploadFilePartInfo->start_byte;
     uint64_t part_size = pstPara->stUploadFilePartInfo->part_size;
     int part_num = pstPara->stUploadFilePartInfo->part_num;
@@ -1044,7 +1081,7 @@ unsigned __stdcall UploadThreadProc_win32(void* param)
             }
             break;
         } else {
-            (void)_sopen_s(&fd, uploadFileName, _O_RDONLY | _O_BINARY, _SH_DENYWR, _S_IREAD);
+            uploadfile_open(&fd, uploadFileName, filename_code);
 
             if (fd == -1)
             {
@@ -1088,8 +1125,16 @@ unsigned __stdcall UploadThreadProc_win32(void* param)
                     char pathToUpdate[ARRAY_LENGTH_2014];
                     char contentToSet[ARRAY_LENGTH_64];
 
-                    sprintf_s(pathToUpdate, ARRAY_LENGTH_2014, "%s%u/%s", "uploadinfo/partsinfo/part", part_num + 1, "uploadStatus");
-                    sprintf_s(contentToSet, ARRAY_LENGTH_64, "%s", "UPLOADING");
+                    int ret = sprintf_s(pathToUpdate, ARRAY_LENGTH_2014, "%s%u/%s", "uploadinfo/partsinfo/part", part_num + 1, "uploadStatus");
+                    if (ret < 0) {
+                        COMMLOG(OBS_LOGWARN, "snprintf_s failed in function: %s, line: %s", __FUNCTION__, __LINE__);
+                    } else {
+                    }
+                    ret = sprintf_s(contentToSet, ARRAY_LENGTH_64, "%s", "UPLOADING");
+                    if (ret < 0) {
+                        COMMLOG(OBS_LOGWARN, "snprintf_s failed in function: %s, line: %s", __FUNCTION__, __LINE__);
+                    } else {
+                    }
                     EnterCriticalSection(&g_csThreadCheckpoint);
                     updateCheckPoint(pathToUpdate, contentToSet, pstPara->stUploadParams->fileNameCheckpoint);
                     LeaveCriticalSection(&g_csThreadCheckpoint);
@@ -1202,8 +1247,16 @@ void *UploadThreadProc_linux(void* param)
             char pathToUpdate[1024];
             char contentToSet[32];
 
-            sprintf_s(pathToUpdate, ARRAY_LENGTH_1024, "%s%d/%s", "uploadinfo/partsinfo/part", part_num, "uploadStatus");
-            sprintf_s(contentToSet, ARRAY_LENGTH_32, "%s", "UPLOADING");
+            int ret = sprintf_s(pathToUpdate, ARRAY_LENGTH_1024, "%s%d/%s", "uploadinfo/partsinfo/part", part_num, "uploadStatus");
+            if (ret < 0) {
+                COMMLOG(OBS_LOGWARN, "snprintf_s failed in function: %s, line: %s", __FUNCTION__, __LINE__);
+            } else {
+            }
+            ret = sprintf_s(contentToSet, ARRAY_LENGTH_32, "%s", "UPLOADING");
+            if (ret < 0) {
+                COMMLOG(OBS_LOGWARN, "snprintf_s failed in function: %s, line: %s", __FUNCTION__, __LINE__);
+            } else {
+            }
             pthread_mutex_lock(&g_mutexThreadCheckpoint);
             updateCheckPoint(pathToUpdate, contentToSet, pstPara->stUploadParams->fileNameCheckpoint);
             pthread_mutex_unlock(&g_mutexThreadCheckpoint);
@@ -1449,7 +1502,10 @@ void startUploadThreads(upload_params * pstUploadParams,
         }
         return;
     }
-
+    if (partCount <= 0 || partCount > OBS_MAX_PARTCOUNT_SIZE){
+        COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+        return;
+    }
     uint64_t *uploadFileProgress = (uint64_t *)malloc(sizeof(uint64_t)*partCount);
     if (uploadFileProgress == NULL) {
         COMMLOG(OBS_LOGWARN, "startUploadThreads: uploadFileProgress malloc failed!\n");
@@ -1694,7 +1750,7 @@ int set_isFirstTime(const obs_options *options, char *key, obs_upload_file_confi
         return isFirstTime;
     }
 
-    readCheckPointResult = readCheckpointFile(&stUploadFileSummaryOld, pstUploadPartList, partCount, checkpointFilename);
+    readCheckPointResult = readCheckpointFile(&stUploadFileSummaryOld, pstUploadPartList, partCount, checkpointFilename, sizeof(checkpointFilename));
     if (readCheckPointResult == 0)//read success
     {
         isFirstTime = set_isFirstTimeSuccess(options, key, isFirstTime, uploadfileChanged, pstUploadFileSum,
@@ -1921,12 +1977,14 @@ int upload_file_setParams(upload_file_summary *stUploadFileSum, const obs_option
     stUploadParams->enable_check_point = upload_file_config->enable_check_point;
     stUploadParams->callBackData = callback_data;
     stUploadParams->fileNameUpload = upload_file_config->upload_file;
+    stUploadParams->fileNameUploadCode = upload_file_config->filename_code;
     stUploadParams->objectName = key;
     stUploadParams->options = options;
     stUploadParams->pstServerSideEncryptionParams = encryption_params;
     stUploadParams->response_handler = &(handler->response_handler);
     stUploadParams->upload_id = upload_id;
     stUploadParams->progress_callback = handler->progress_callback;
+    
 
     return is_ture;
 }
@@ -1984,7 +2042,7 @@ void upload_file(const obs_options *options, char *key, server_side_encryption_p
         CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     }
     //get the summary of the upload file 
-    retVal = getUploadFileSummary(&stUploadFileSum, upload_file_config->upload_file);
+    retVal = getUploadFileSummary(&stUploadFileSum, upload_file_config);
     if ((retVal == -1) || (stUploadFileSum.fileSize == 0))
     {
         COMMLOG(OBS_LOGERROR, "the upload file is not exist or it's size is 0\n");

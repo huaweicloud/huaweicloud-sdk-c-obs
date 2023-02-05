@@ -25,7 +25,7 @@
 #include <string>
 #include <map>
 
-// ²úÆ·½á¹¹Ìå
+// äº§å“ç»“æ„ä½“
 class eSDKLog;
 //lint -e1554 -e1540
 class PRODUCT_DATA
@@ -64,7 +64,7 @@ typedef std::map<std::string, PRODUCT_DATA> PRODUCT_MAP;
 
 namespace eSDK
 {
-	//ÈÕÖ¾¹ÜÀíµ¥ÊµÀı
+	//æ—¥å¿—ç®¡ç†å•å®ä¾‹
 	class LoggerMgr
 	{
 	private:

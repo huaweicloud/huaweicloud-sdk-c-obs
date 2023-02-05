@@ -3,7 +3,7 @@ CXX=gcc
 EXTRA_LIB_DIR=-L../lib
 EXTRA_INCLUDE_DIR=-I../include
 
-LIB=-leSDKOBS -lsecurec
+LIB=-lcjson -leSDKOBS -lsecurec
 LINKOPT=$(EXTRA_LIB_DIR) $(LIB) $(SPEC_LIB)
 
 TARGET_DEMO=demo
@@ -14,9 +14,9 @@ SRC_TEST=demo_common.c object_test.c
 
 all: demo object_test
 $(TARGET_DEMO):
-	$(CXX) $(SRC_DEMO) $(EXTRA_INCLUDE_DIR) $(LINKOPT) $(PTHREAD) -fstack-protector --param ssp-buffer-size=4 -Wstack-protector -fPIC -o $(TARGET_DEMO)
+	$(CXX) $(SRC_DEMO) $(EXTRA_INCLUDE_DIR) $(LINKOPT) $(PTHREAD) -fstack-protector-strong -fPIE -pie -Wl,-z,noexecstack,-z,relro,-z,now --param ssp-buffer-size=4 -Wstack-protector -fPIC -o $(TARGET_DEMO)
 
 $(TARGET_TEST):
-	$(CXX) $(SRC_TEST) $(EXTRA_INCLUDE_DIR) $(LINKOPT) $(PTHREAD) -fstack-protector --param ssp-buffer-size=4 -Wstack-protector -fPIC -o $(TARGET_TEST)
+	$(CXX) $(SRC_TEST) $(EXTRA_INCLUDE_DIR) $(LINKOPT) $(PTHREAD) -fstack-protector-strong -fPIE -pie -Wl,-z,noexecstack,-z,relro,-z,now --param ssp-buffer-size=4 -Wstack-protector -fPIC -o $(TARGET_TEST)
 clean:
 	rm -f object_test demo;rm -f *.o

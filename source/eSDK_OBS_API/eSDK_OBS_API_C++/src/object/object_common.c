@@ -28,8 +28,6 @@
 #if defined __GNUC__ || defined LINUX
 #include <unistd.h>
 #include <pthread.h>
-pthread_mutex_t g_mutexThreadCheckpoint;
-pthread_mutex_t g_mutexThreadCheckpoint_download;
 #endif
 
 #if defined WIN32

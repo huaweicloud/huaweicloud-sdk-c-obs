@@ -274,6 +274,7 @@ typedef struct _upload_params
     uint64_t totalFileSize;
     uint64_t uploadedSize;
     int *pause_upload_flag;
+    upload_filename_code fileNameUploadCode;
 }upload_params;
 
 typedef struct
@@ -318,6 +319,7 @@ typedef struct _upload_file_callback_data
     void * callbackDataIn;//the callback data pass from client
     upload_file_progress_info *progressInfo;
     obs_progress_callback *progressCallback;
+    upload_filename_code filename_code;
 }upload_file_callback_data;
 
 typedef struct

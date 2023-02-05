@@ -33,7 +33,7 @@ void delete_object(const obs_options *options, obs_object_info *object_info,
     int amp = 0;
     if (object_info->version_id)
     {
-        safe_append("versionId", object_info->version_id, handler->complete_callback);
+        safe_append("versionId", object_info->version_id, strlen(object_info->version_id), handler->complete_callback);
     }
 
     if (!options->bucket_options.bucket_name)

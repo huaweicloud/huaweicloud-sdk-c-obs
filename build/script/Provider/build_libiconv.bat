@@ -1,6 +1,6 @@
 @echo off
 
-rem 设置变量
+rem 璁剧疆鍙橀噺
 set libiconv_version=libiconv-1.15
 SET LIBICONV_PATH=%cd%\..\..\..\third_party_groupware\eSDK_Storage_Plugins\%libiconv_version%\source
 SET SOLUTION="%LIBICONV_PATH%\windows\libiconv\libiconv.sln"
@@ -19,7 +19,7 @@ SET ACTION=Rebuild
 ::D:\esdk_obs_c\third_party_groupware\eSDK_Storage_Plugins\libxml2-2.9.4\win32\VC10\libxml2.sln
 echo -----------start to compile iconv-----------
 
-rem 编译系统工程
+rem 缂栬瘧绯荤粺宸ョ▼
 "C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv" %SOLUTION% /%ACTION% %SOLUTION_CONFIG%
 
 xCOPY "%LIBICONV_PATH%\windows\libiconv\Release\lib\*.lib" "%LIBICONV_PATH%\..\..\build\%libiconv_version%\%OUTPUT_TAG%\lib\" /y

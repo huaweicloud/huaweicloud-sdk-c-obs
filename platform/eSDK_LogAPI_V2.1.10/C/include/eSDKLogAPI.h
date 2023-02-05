@@ -14,12 +14,12 @@
 */
 #ifndef eSDK_LOG_API_H
 #define eSDK_LOG_API_H
-// ÏÂÁĞ ifdef ¿éÊÇ´´½¨Ê¹´Ó DLL µ¼³ö¸ü¼òµ¥µÄ
-// ºêµÄ±ê×¼·½·¨¡£´Ë DLL ÖĞµÄËùÓĞÎÄ¼ş¶¼ÊÇÓÃÃüÁîĞĞÉÏ¶¨ÒåµÄ LOGMANAGER_EXPORTS
-// ·ûºÅ±àÒëµÄ¡£ÔÚÊ¹ÓÃ´Ë DLL µÄ
-// ÈÎºÎÆäËûÏîÄ¿ÉÏ²»Ó¦¶¨Òå´Ë·ûºÅ¡£ÕâÑù£¬Ô´ÎÄ¼şÖĞ°üº¬´ËÎÄ¼şµÄÈÎºÎÆäËûÏîÄ¿¶¼»á½«
-// LOGMANAGER_API º¯ÊıÊÓÎªÊÇ´Ó DLL µ¼ÈëµÄ£¬¶ø´Ë DLL Ôò½«ÓÃ´Ëºê¶¨ÒåµÄ
-// ·ûºÅÊÓÎªÊÇ±»µ¼³öµÄ¡£
+// ä¸‹åˆ— ifdef å—æ˜¯åˆ›å»ºä½¿ä» DLL å¯¼å‡ºæ›´ç®€å•çš„
+// å®çš„æ ‡å‡†æ–¹æ³•ã€‚æ­¤ DLL ä¸­çš„æ‰€æœ‰æ–‡ä»¶éƒ½æ˜¯ç”¨å‘½ä»¤è¡Œä¸Šå®šä¹‰çš„ LOGMANAGER_EXPORTS
+// ç¬¦å·ç¼–è¯‘çš„ã€‚åœ¨ä½¿ç”¨æ­¤ DLL çš„
+// ä»»ä½•å…¶ä»–é¡¹ç›®ä¸Šä¸åº”å®šä¹‰æ­¤ç¬¦å·ã€‚è¿™æ ·ï¼Œæºæ–‡ä»¶ä¸­åŒ…å«æ­¤æ–‡ä»¶çš„ä»»ä½•å…¶ä»–é¡¹ç›®éƒ½ä¼šå°†
+// LOGMANAGER_API å‡½æ•°è§†ä¸ºæ˜¯ä» DLL å¯¼å…¥çš„ï¼Œè€Œæ­¤ DLL åˆ™å°†ç”¨æ­¤å®å®šä¹‰çš„
+// ç¬¦å·è§†ä¸ºæ˜¯è¢«å¯¼å‡ºçš„ã€‚
 
 #ifdef WIN32
 	#ifdef eSDK_LOGAPI_EXPORTS
@@ -48,68 +48,68 @@ extern "C"
 
 #if defined ANDROID
 	/**
-	 *³õÊ¼»¯
+	 *åˆå§‹åŒ–
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚandroid³õÊ¼»¯Êı¾İ
+	 *è¯¥å‡½æ•°ç”¨äºandroidåˆå§‹åŒ–æ•°æ®
 	 *
-	 *@param[in] 	sdkname		Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
-	 *@param[in] 	iniInfo		ÈÕÖ¾ÅäÖÃÎÄ¼şÄÚÈİ
-	 *@param[in] 	logLevel	logLevel[0]½Ó¿ÚÈÕÖ¾¼¶±ğ, logLevel[1]²Ù×÷ÈÕÖ¾¼¶±ğ, logLevel[2]ÔËĞĞÈÕÖ¾¼¶±ğ£¬²Î¿¼Ã¶¾ÙLOGLEVEL
-	 *@param[in] 	logPath		ÈÕÖ¾±£´æÂ·¾¶£¨Èç£ºD:\log\£©£¬±ØĞëÊÇ¾ø¶ÔÂ·¾¶£¬ÈçÒªÊ¹ÓÃÄ¬ÈÏÅäÖÃÇëÓÃINVALID_LOG_LEVEL
-	 *@return		0	³É¹¦
-	 *@return		·Ç0	Ê§°Ü£¨Çë²Î¿¼´íÎó·µ»ØÂëÃ¶¾ÙÀàĞÍRetCode£©
-	 *@attention	androidÊ¹ÓÃ±¾APIÇ°ÏÈ³õÊ¼»¯¡£iniInfoÎª¿Õ×Ö·û´®Ê±£¬Çëµ÷ÓÃsetLogPropertyExÉèÖÃÈÕÖ¾ÊôĞÔ
-	 *@par			ÎŞ
+	 *@param[in] 	sdkname		ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
+	 *@param[in] 	iniInfo		æ—¥å¿—é…ç½®æ–‡ä»¶å†…å®¹
+	 *@param[in] 	logLevel	logLevel[0]æ¥å£æ—¥å¿—çº§åˆ«, logLevel[1]æ“ä½œæ—¥å¿—çº§åˆ«, logLevel[2]è¿è¡Œæ—¥å¿—çº§åˆ«ï¼Œå‚è€ƒæšä¸¾LOGLEVEL
+	 *@param[in] 	logPath		æ—¥å¿—ä¿å­˜è·¯å¾„ï¼ˆå¦‚ï¼šD:\log\ï¼‰ï¼Œå¿…é¡»æ˜¯ç»å¯¹è·¯å¾„ï¼Œå¦‚è¦ä½¿ç”¨é»˜è®¤é…ç½®è¯·ç”¨INVALID_LOG_LEVEL
+	 *@return		0	æˆåŠŸ
+	 *@return		é0	å¤±è´¥ï¼ˆè¯·å‚è€ƒé”™è¯¯è¿”å›ç æšä¸¾ç±»å‹RetCodeï¼‰
+	 *@attention	androidä½¿ç”¨æœ¬APIå‰å…ˆåˆå§‹åŒ–ã€‚iniInfoä¸ºç©ºå­—ç¬¦ä¸²æ—¶ï¼Œè¯·è°ƒç”¨setLogPropertyExè®¾ç½®æ—¥å¿—å±æ€§
+	 *@par			æ— 
 	**/
 	eSDK_LOG_API int _STD_CALL_ LogInitForAndroid(const char* sdkname, const char* iniInfo, unsigned int logLevel[LOG_CATEGORY], const char* logPath);
 #else
 	/**
-	 *³õÊ¼»¯
+	 *åˆå§‹åŒ–
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚ³õÊ¼»¯Êı¾İ
+	 *è¯¥å‡½æ•°ç”¨äºåˆå§‹åŒ–æ•°æ®
 	 *
-	 *@param[in] 	sdkname		Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
-	 *@param[in] 	iniFile		ÈÕÖ¾ÅäÖÃÎÄ¼şÂ·¾¶£¨°üÀ¨ÅäÖÃÎÄ¼şÃû£¬Èç£ºD:\eSDKClientLogCfg.ini£©
-	 *@param[in] 	logLevel	logLevel[0]½Ó¿ÚÈÕÖ¾¼¶±ğ, logLevel[1]²Ù×÷ÈÕÖ¾¼¶±ğ, logLevel[2]ÔËĞĞÈÕÖ¾¼¶±ğ£¬²Î¿¼Ã¶¾ÙLOGLEVEL(¸Ã²ÎÊıÄ¿Ç°Ã»ÓĞĞ§¹û£¬ÈÕÖ¾¼¶±ğÒÔÅäÖÃÎÄ¼şÎª×¼)
-	 *@param[in] 	logPath		ÈÕÖ¾±£´æÂ·¾¶£¨Èç£ºD:\log\£©£¬±ØĞëÊÇ¾ø¶ÔÂ·¾¶£¬ÈçÒªÊ¹ÓÃÄ¬ÈÏÅäÖÃÇëÓÃINVALID_LOG_LEVEL
-	 *@return		0	³É¹¦
-	 *@return		·Ç0	Ê§°Ü£¨Çë²Î¿¼´íÎó·µ»ØÂëÃ¶¾ÙÀàĞÍRetCode£©
-	 *@attention	Ê¹ÓÃ±¾APIÇ°ÏÈ³õÊ¼»¯¡£ÒÆ¶¯¶Ë£ºiniFileÎª¿Õ×Ö·û´®Ê±£¬Çëµ÷ÓÃsetLogPropertyExÉèÖÃÈÕÖ¾ÊôĞÔ
-	 *@par			ÎŞ
+	 *@param[in] 	sdkname		ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
+	 *@param[in] 	iniFile		æ—¥å¿—é…ç½®æ–‡ä»¶è·¯å¾„ï¼ˆåŒ…æ‹¬é…ç½®æ–‡ä»¶åï¼Œå¦‚ï¼šD:\eSDKClientLogCfg.iniï¼‰
+	 *@param[in] 	logLevel	logLevel[0]æ¥å£æ—¥å¿—çº§åˆ«, logLevel[1]æ“ä½œæ—¥å¿—çº§åˆ«, logLevel[2]è¿è¡Œæ—¥å¿—çº§åˆ«ï¼Œå‚è€ƒæšä¸¾LOGLEVEL(è¯¥å‚æ•°ç›®å‰æ²¡æœ‰æ•ˆæœï¼Œæ—¥å¿—çº§åˆ«ä»¥é…ç½®æ–‡ä»¶ä¸ºå‡†)
+	 *@param[in] 	logPath		æ—¥å¿—ä¿å­˜è·¯å¾„ï¼ˆå¦‚ï¼šD:\log\ï¼‰ï¼Œå¿…é¡»æ˜¯ç»å¯¹è·¯å¾„ï¼Œå¦‚è¦ä½¿ç”¨é»˜è®¤é…ç½®è¯·ç”¨INVALID_LOG_LEVEL
+	 *@return		0	æˆåŠŸ
+	 *@return		é0	å¤±è´¥ï¼ˆè¯·å‚è€ƒé”™è¯¯è¿”å›ç æšä¸¾ç±»å‹RetCodeï¼‰
+	 *@attention	ä½¿ç”¨æœ¬APIå‰å…ˆåˆå§‹åŒ–ã€‚ç§»åŠ¨ç«¯ï¼šiniFileä¸ºç©ºå­—ç¬¦ä¸²æ—¶ï¼Œè¯·è°ƒç”¨setLogPropertyExè®¾ç½®æ—¥å¿—å±æ€§
+	 *@par			æ— 
 	**/
 	eSDK_LOG_API int _STD_CALL_ LogInit(const char* sdkname, const char* iniFile, unsigned int logLevel[LOG_CATEGORY], const char* logPath);
 #endif
 
 	/**
-	 *È¥³õÊ¼»¯
+	 *å»åˆå§‹åŒ–
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚ½ø³Ì²»Ê¹ÓÃ±¾APIºó£¬È¥³õÊ¼»¯Êı¾İ
+	 *è¯¥å‡½æ•°ç”¨äºè¿›ç¨‹ä¸ä½¿ç”¨æœ¬APIåï¼Œå»åˆå§‹åŒ–æ•°æ®
 	 *
-	 *@param[in] 	sdkname		Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
-	 *@return		0	³É¹¦
-	 *@return		·Ç0	Ê§°Ü£¨Çë²Î¿¼´íÎó·µ»ØÂëÃ¶¾ÙÀàĞÍRetCode£©
-	 *@attention	½áÊø½ø³ÌÇ°ÏÈµ÷ÓÃ±¾½Ó¿Ú
-	 *@par			ÎŞ
+	 *@param[in] 	sdkname		ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
+	 *@return		0	æˆåŠŸ
+	 *@return		é0	å¤±è´¥ï¼ˆè¯·å‚è€ƒé”™è¯¯è¿”å›ç æšä¸¾ç±»å‹RetCodeï¼‰
+	 *@attention	ç»“æŸè¿›ç¨‹å‰å…ˆè°ƒç”¨æœ¬æ¥å£
+	 *@par			æ— 
 	**/
 	eSDK_LOG_API int _STD_CALL_ LogFini(const char* sdkname);
 
 	/**
-	 *½Ó¿ÚÀàÈÕÖ¾info½Ó¿Ú
+	 *æ¥å£ç±»æ—¥å¿—infoæ¥å£
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚĞ´interfaceÏÂµÄinfoÈÕÖ¾
+	 *è¯¥å‡½æ•°ç”¨äºå†™interfaceä¸‹çš„infoæ—¥å¿—
 	 *
-	 *@param[in]	sdkname			ÌîĞ´½Ó¿ÚËùÊôµÄ²úÆ·£¬ÈçUCµÄ½Ó¿ÚÌîĞ´UC¡£°üÀ¨UC¡¢IVS¡¢TP¡¢FusionSphere¡¢ StorageµÈ
-	 *@param[in]	interfaceType	½Ó¿ÚÀàĞÍ£¬ÖµÎª1ºÍ2£ºÆäÖĞ1±êÊ¶Îª±±Ïò½Ó¿Ú£»2±êÊ¶ÎªÄÏÏò½Ó¿Ú
-	 *@param[in]	protocolType	½Ó¿ÚÀàĞÍ£¬ÖµÎªSOAP£¨Ï¸·ÖParlayX£©¡¢Rest¡¢COM¡¢Native¡¢HTTP+XML£¬SMPP
-	 *@param[in]	interfaceName	½Ó¿ÚÃû³Æ
-	 *@param[in]	TransactionID	Î¨Ò»±êÊ¶½Ó¿ÚÏûÏ¢ËùÊôÊÂÎñ£¬²»´æÔÚÊ±Îª¿Õ
-	 *@param[in]	reqTime			ÇëÇóÊ±¼ä
-	 *@param[in]	RespTime		Ó¦´ğÊ±¼ä
-	 *@param[in]	resultCode		½Ó¿Ú·µ»Ø½á¹ûÂë
-	 *@param[in]	params			ÇëÇóºÍÏìÓ¦²ÎÊı£¬¸ñÊ½Îª¡°paramname=value¡±µÈ,¹Ø¼ü×ÖĞèÒªÓÃ*Ìæ»»
-	 *@param[in]	...				Ö±½Ó´«Èë²ÎÊıµÄ±äÁ¿Ãû³Æ
-	 *@attention	µ÷ÓÃÇ°È·±£ÒÑ¾­µ÷ÓÃLogInit
-	 *@par			ÎŞ
+	 *@param[in]	sdkname			å¡«å†™æ¥å£æ‰€å±çš„äº§å“ï¼Œå¦‚UCçš„æ¥å£å¡«å†™UCã€‚åŒ…æ‹¬UCã€IVSã€TPã€FusionSphereã€ Storageç­‰
+	 *@param[in]	interfaceType	æ¥å£ç±»å‹ï¼Œå€¼ä¸º1å’Œ2ï¼šå…¶ä¸­1æ ‡è¯†ä¸ºåŒ—å‘æ¥å£ï¼›2æ ‡è¯†ä¸ºå—å‘æ¥å£
+	 *@param[in]	protocolType	æ¥å£ç±»å‹ï¼Œå€¼ä¸ºSOAPï¼ˆç»†åˆ†ParlayXï¼‰ã€Restã€COMã€Nativeã€HTTP+XMLï¼ŒSMPP
+	 *@param[in]	interfaceName	æ¥å£åç§°
+	 *@param[in]	TransactionID	å”¯ä¸€æ ‡è¯†æ¥å£æ¶ˆæ¯æ‰€å±äº‹åŠ¡ï¼Œä¸å­˜åœ¨æ—¶ä¸ºç©º
+	 *@param[in]	reqTime			è¯·æ±‚æ—¶é—´
+	 *@param[in]	RespTime		åº”ç­”æ—¶é—´
+	 *@param[in]	resultCode		æ¥å£è¿”å›ç»“æœç 
+	 *@param[in]	params			è¯·æ±‚å’Œå“åº”å‚æ•°ï¼Œæ ¼å¼ä¸ºâ€œparamname=valueâ€ç­‰,å…³é”®å­—éœ€è¦ç”¨*æ›¿æ¢
+	 *@param[in]	...				ç›´æ¥ä¼ å…¥å‚æ•°çš„å˜é‡åç§°
+	 *@attention	è°ƒç”¨å‰ç¡®ä¿å·²ç»è°ƒç”¨LogInit
+	 *@par			æ— 
 	**/
 	eSDK_LOG_API void _STD_CALL_ Log_Interface_Info(
 		const char* sdkname,
@@ -124,23 +124,23 @@ extern "C"
 		...
 		);
 	/**
-	 *½Ó¿ÚÀàÈÕÖ¾error½Ó¿Ú
+	 *æ¥å£ç±»æ—¥å¿—erroræ¥å£
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚĞ´interfaceÏÂµÄerrorÈÕÖ¾
+	 *è¯¥å‡½æ•°ç”¨äºå†™interfaceä¸‹çš„erroræ—¥å¿—
 	 *
-	 *@param[in]	sdkname			ÌîĞ´½Ó¿ÚËùÊôµÄ²úÆ·£¬ÈçUCµÄ½Ó¿ÚÌîĞ´UC¡£°üÀ¨UC¡¢IVS¡¢TP¡¢FusionSphere¡¢ StorageµÈ
-	 *@param[in]	interfaceType	½Ó¿ÚÀàĞÍ£¬ÖµÎª1ºÍ2£ºÆäÖĞ1±êÊ¶Îª±±Ïò½Ó¿Ú£»2±êÊ¶ÎªÄÏÏò½Ó¿Ú
-	 *@param[in]	protocolType	½Ó¿ÚÀàĞÍ£¬ÖµÎªSOAP£¨Ï¸·ÖParlayX£©¡¢Rest¡¢COM¡¢Native¡¢HTTP+XML£¬SMPP
-	 *@param[in]	interfaceName	½Ó¿ÚÃû³Æ
-	 *@param[in]	TransactionID	Î¨Ò»±êÊ¶½Ó¿ÚÏûÏ¢ËùÊôÊÂÎñ£¬²»´æÔÚÊ±Îª¿Õ
-	 *@param[in]	reqTime			ÇëÇóÊ±¼ä
-	 *@param[in]	RespTime		Ó¦´ğÊ±¼ä
-	 *@param[in]	resultCode		½Ó¿Ú·µ»Ø½á¹ûÂë
-	 *@param[in]	params			ÇëÇóºÍÏìÓ¦²ÎÊı£¬¸ñÊ½Îª¡°paramname=%d¡±µÈ,¹Ø¼ü×ÖĞèÒªÓÃ*Ìæ»»
-	 *@param[in]	...				Ö±½Ó´«Èë²ÎÊıµÄ±äÁ¿Ãû³Æ
-	 *@attention	µ÷ÓÃÇ°È·±£ÒÑ¾­µ÷ÓÃLogInit
-	 *@par			ÎŞ
-	 *@par			ÎŞ
+	 *@param[in]	sdkname			å¡«å†™æ¥å£æ‰€å±çš„äº§å“ï¼Œå¦‚UCçš„æ¥å£å¡«å†™UCã€‚åŒ…æ‹¬UCã€IVSã€TPã€FusionSphereã€ Storageç­‰
+	 *@param[in]	interfaceType	æ¥å£ç±»å‹ï¼Œå€¼ä¸º1å’Œ2ï¼šå…¶ä¸­1æ ‡è¯†ä¸ºåŒ—å‘æ¥å£ï¼›2æ ‡è¯†ä¸ºå—å‘æ¥å£
+	 *@param[in]	protocolType	æ¥å£ç±»å‹ï¼Œå€¼ä¸ºSOAPï¼ˆç»†åˆ†ParlayXï¼‰ã€Restã€COMã€Nativeã€HTTP+XMLï¼ŒSMPP
+	 *@param[in]	interfaceName	æ¥å£åç§°
+	 *@param[in]	TransactionID	å”¯ä¸€æ ‡è¯†æ¥å£æ¶ˆæ¯æ‰€å±äº‹åŠ¡ï¼Œä¸å­˜åœ¨æ—¶ä¸ºç©º
+	 *@param[in]	reqTime			è¯·æ±‚æ—¶é—´
+	 *@param[in]	RespTime		åº”ç­”æ—¶é—´
+	 *@param[in]	resultCode		æ¥å£è¿”å›ç»“æœç 
+	 *@param[in]	params			è¯·æ±‚å’Œå“åº”å‚æ•°ï¼Œæ ¼å¼ä¸ºâ€œparamname=%dâ€ç­‰,å…³é”®å­—éœ€è¦ç”¨*æ›¿æ¢
+	 *@param[in]	...				ç›´æ¥ä¼ å…¥å‚æ•°çš„å˜é‡åç§°
+	 *@attention	è°ƒç”¨å‰ç¡®ä¿å·²ç»è°ƒç”¨LogInit
+	 *@par			æ— 
+	 *@par			æ— 
 	**/
 	eSDK_LOG_API void _STD_CALL_ Log_Interface_Error(
 		const char* sdkname,
@@ -156,22 +156,22 @@ extern "C"
 		);
 
 	/**
-	 *²Ù×÷Àà½Ó¿ÚDebug½Ó¿Ú
+	 *æ“ä½œç±»æ¥å£Debugæ¥å£
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚĞ´operateÏÂµÄDebugÈÕÖ¾
+	 *è¯¥å‡½æ•°ç”¨äºå†™operateä¸‹çš„Debugæ—¥å¿—
 	 *
-	 *@param[in] 	sdkname		Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
-	 *@param[in]	moduleName		ÄÚ²¿Ä£¿éÃû³Æ£¬ÔİÊ±·ÖÎª£ºlogin¡¢config¡¢log¡¢version¡£
-	 *@param[in]	userName			²Ù×÷ÓÃ»§Ãû¡£
-	 *@param[in]	clientFlag			²Ù×÷¿Í»§¶Ë±êÊ¶£¬Ò»°ãÎª¿Í»§¶ËIP¡£
-	 *@param[in]	resultCode			²Ù×÷½á¹ûÂë¡£
-	 *@param[in]	keyInfo		¹Ø¼üÃèÊöĞÅÏ¢£º
-	 *									²éÑ¯Àà²Ù×÷£¬ĞèÒª°üÀ¨²éÑ¯¶ÔÏó±êÊ¶¡¢Ãû³Æ¡¢Ïà¹ØÊôĞÔÃû³ÆºÍÊôĞÔÖµ¡£
-	 *									ÉèÖÃÀà²Ù×÷£¬ĞèÒª°üÀ¨ÉèÖÃ¶ÔÏó±êÊ¶¡¢Ãû³Æ¡¢Ïà¹ØÊôĞÔÃû³ÆºÍÊôĞÔĞÂÖµºÍ¾ÉÖµ¡£
-	 *									´´½¨Àà²Ù×÷£¬ĞèÒª°üÀ¨´´½¨Éæ¼°¶ÔÏó±êÊ¶¡¢Ãû³Æ¡£
-	 *									É¾³ıÀà²Ù×÷£¬ĞèÒª°üÀ¨É¾³ıÉæ¼°¶ÔÏó±êÊ¶¡¢Ãû³Æ¡£
-	 *@attention	µ÷ÓÃÇ°È·±£ÒÑ¾­µ÷ÓÃLogInit
-	 *@par			ÎŞ
+	 *@param[in] 	sdkname		ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
+	 *@param[in]	moduleName		å†…éƒ¨æ¨¡å—åç§°ï¼Œæš‚æ—¶åˆ†ä¸ºï¼šloginã€configã€logã€versionã€‚
+	 *@param[in]	userName			æ“ä½œç”¨æˆ·åã€‚
+	 *@param[in]	clientFlag			æ“ä½œå®¢æˆ·ç«¯æ ‡è¯†ï¼Œä¸€èˆ¬ä¸ºå®¢æˆ·ç«¯IPã€‚
+	 *@param[in]	resultCode			æ“ä½œç»“æœç ã€‚
+	 *@param[in]	keyInfo		å…³é”®æè¿°ä¿¡æ¯ï¼š
+	 *									æŸ¥è¯¢ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬æŸ¥è¯¢å¯¹è±¡æ ‡è¯†ã€åç§°ã€ç›¸å…³å±æ€§åç§°å’Œå±æ€§å€¼ã€‚
+	 *									è®¾ç½®ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬è®¾ç½®å¯¹è±¡æ ‡è¯†ã€åç§°ã€ç›¸å…³å±æ€§åç§°å’Œå±æ€§æ–°å€¼å’Œæ—§å€¼ã€‚
+	 *									åˆ›å»ºç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬åˆ›å»ºæ¶‰åŠå¯¹è±¡æ ‡è¯†ã€åç§°ã€‚
+	 *									åˆ é™¤ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬åˆ é™¤æ¶‰åŠå¯¹è±¡æ ‡è¯†ã€åç§°ã€‚
+	 *@attention	è°ƒç”¨å‰ç¡®ä¿å·²ç»è°ƒç”¨LogInit
+	 *@par			æ— 
 	**/
 	eSDK_LOG_API void _STD_CALL_ Log_Operate_Debug(	
 		const char* sdkname,
@@ -185,22 +185,22 @@ extern "C"
 		);
 
 	/**
-	 *²Ù×÷Àà½Ó¿ÚInfo½Ó¿Ú
+	 *æ“ä½œç±»æ¥å£Infoæ¥å£
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚĞ´operateÏÂµÄInfoÈÕÖ¾
+	 *è¯¥å‡½æ•°ç”¨äºå†™operateä¸‹çš„Infoæ—¥å¿—
 	 *
-	 *@param[in] 	sdkname		Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
-	 *@param[in]	moduleName		ÄÚ²¿Ä£¿éÃû³Æ£¬ÔİÊ±·ÖÎª£ºlogin¡¢config¡¢log¡¢version¡£
-	 *@param[in]	userName			²Ù×÷ÓÃ»§Ãû¡£
-	 *@param[in]	clientFlag			²Ù×÷¿Í»§¶Ë±êÊ¶£¬Ò»°ãÎª¿Í»§¶ËIP¡£
-	 *@param[in]	resultCode			²Ù×÷½á¹ûÂë¡£
-	 *@param[in]	keyInfo		¹Ø¼üÃèÊöĞÅÏ¢£º
-	 *									²éÑ¯Àà²Ù×÷£¬ĞèÒª°üÀ¨²éÑ¯¶ÔÏó±êÊ¶¡¢Ãû³Æ¡¢Ïà¹ØÊôĞÔÃû³ÆºÍÊôĞÔÖµ¡£
-	 *									ÉèÖÃÀà²Ù×÷£¬ĞèÒª°üÀ¨ÉèÖÃ¶ÔÏó±êÊ¶¡¢Ãû³Æ¡¢Ïà¹ØÊôĞÔÃû³ÆºÍÊôĞÔĞÂÖµºÍ¾ÉÖµ¡£
-	 *									´´½¨Àà²Ù×÷£¬ĞèÒª°üÀ¨´´½¨Éæ¼°¶ÔÏó±êÊ¶¡¢Ãû³Æ¡£
-	 *									É¾³ıÀà²Ù×÷£¬ĞèÒª°üÀ¨É¾³ıÉæ¼°¶ÔÏó±êÊ¶¡¢Ãû³Æ¡£
-	 *@attention	µ÷ÓÃÇ°ÏÈµ÷ÓÃLogInit
-	 *@par			ÎŞ
+	 *@param[in] 	sdkname		ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
+	 *@param[in]	moduleName		å†…éƒ¨æ¨¡å—åç§°ï¼Œæš‚æ—¶åˆ†ä¸ºï¼šloginã€configã€logã€versionã€‚
+	 *@param[in]	userName			æ“ä½œç”¨æˆ·åã€‚
+	 *@param[in]	clientFlag			æ“ä½œå®¢æˆ·ç«¯æ ‡è¯†ï¼Œä¸€èˆ¬ä¸ºå®¢æˆ·ç«¯IPã€‚
+	 *@param[in]	resultCode			æ“ä½œç»“æœç ã€‚
+	 *@param[in]	keyInfo		å…³é”®æè¿°ä¿¡æ¯ï¼š
+	 *									æŸ¥è¯¢ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬æŸ¥è¯¢å¯¹è±¡æ ‡è¯†ã€åç§°ã€ç›¸å…³å±æ€§åç§°å’Œå±æ€§å€¼ã€‚
+	 *									è®¾ç½®ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬è®¾ç½®å¯¹è±¡æ ‡è¯†ã€åç§°ã€ç›¸å…³å±æ€§åç§°å’Œå±æ€§æ–°å€¼å’Œæ—§å€¼ã€‚
+	 *									åˆ›å»ºç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬åˆ›å»ºæ¶‰åŠå¯¹è±¡æ ‡è¯†ã€åç§°ã€‚
+	 *									åˆ é™¤ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬åˆ é™¤æ¶‰åŠå¯¹è±¡æ ‡è¯†ã€åç§°ã€‚
+	 *@attention	è°ƒç”¨å‰å…ˆè°ƒç”¨LogInit
+	 *@par			æ— 
 	**/
 	eSDK_LOG_API void _STD_CALL_ Log_Operate_Info(
 		const char* sdkname,
@@ -211,25 +211,25 @@ extern "C"
 		const char* keyInfo,
 		const char* params,
 		...
-		);//²Ù×÷ÀàÈÕÖ¾½Ó¿Ú
+		);//æ“ä½œç±»æ—¥å¿—æ¥å£
 
 	/**
-	 *²Ù×÷Àà½Ó¿ÚWarn½Ó¿Ú
+	 *æ“ä½œç±»æ¥å£Warnæ¥å£
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚĞ´operateÏÂµÄWarnÈÕÖ¾
+	 *è¯¥å‡½æ•°ç”¨äºå†™operateä¸‹çš„Warnæ—¥å¿—
 	 *
-	 *@param[in] 	sdkname		Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
-	 *@param[in]	moduleName		ÄÚ²¿Ä£¿éÃû³Æ£¬ÔİÊ±·ÖÎª£ºlogin¡¢config¡¢log¡¢version¡£
-	 *@param[in]	userName			²Ù×÷ÓÃ»§Ãû¡£
-	 *@param[in]	clientFlag			²Ù×÷¿Í»§¶Ë±êÊ¶£¬Ò»°ãÎª¿Í»§¶ËIP¡£
-	 *@param[in]	resultCode			²Ù×÷½á¹ûÂë¡£
-	 *@param[in]	keyInfo		¹Ø¼üÃèÊöĞÅÏ¢£º
-	 *									²éÑ¯Àà²Ù×÷£¬ĞèÒª°üÀ¨²éÑ¯¶ÔÏó±êÊ¶¡¢Ãû³Æ¡¢Ïà¹ØÊôĞÔÃû³ÆºÍÊôĞÔÖµ¡£
-	 *									ÉèÖÃÀà²Ù×÷£¬ĞèÒª°üÀ¨ÉèÖÃ¶ÔÏó±êÊ¶¡¢Ãû³Æ¡¢Ïà¹ØÊôĞÔÃû³ÆºÍÊôĞÔĞÂÖµºÍ¾ÉÖµ¡£
-	 *									´´½¨Àà²Ù×÷£¬ĞèÒª°üÀ¨´´½¨Éæ¼°¶ÔÏó±êÊ¶¡¢Ãû³Æ¡£
-	 *									É¾³ıÀà²Ù×÷£¬ĞèÒª°üÀ¨É¾³ıÉæ¼°¶ÔÏó±êÊ¶¡¢Ãû³Æ¡£
-	 *@attention	µ÷ÓÃÇ°È·±£ÒÑ¾­µ÷ÓÃLogInit
-	 *@par			ÎŞ
+	 *@param[in] 	sdkname		ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
+	 *@param[in]	moduleName		å†…éƒ¨æ¨¡å—åç§°ï¼Œæš‚æ—¶åˆ†ä¸ºï¼šloginã€configã€logã€versionã€‚
+	 *@param[in]	userName			æ“ä½œç”¨æˆ·åã€‚
+	 *@param[in]	clientFlag			æ“ä½œå®¢æˆ·ç«¯æ ‡è¯†ï¼Œä¸€èˆ¬ä¸ºå®¢æˆ·ç«¯IPã€‚
+	 *@param[in]	resultCode			æ“ä½œç»“æœç ã€‚
+	 *@param[in]	keyInfo		å…³é”®æè¿°ä¿¡æ¯ï¼š
+	 *									æŸ¥è¯¢ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬æŸ¥è¯¢å¯¹è±¡æ ‡è¯†ã€åç§°ã€ç›¸å…³å±æ€§åç§°å’Œå±æ€§å€¼ã€‚
+	 *									è®¾ç½®ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬è®¾ç½®å¯¹è±¡æ ‡è¯†ã€åç§°ã€ç›¸å…³å±æ€§åç§°å’Œå±æ€§æ–°å€¼å’Œæ—§å€¼ã€‚
+	 *									åˆ›å»ºç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬åˆ›å»ºæ¶‰åŠå¯¹è±¡æ ‡è¯†ã€åç§°ã€‚
+	 *									åˆ é™¤ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬åˆ é™¤æ¶‰åŠå¯¹è±¡æ ‡è¯†ã€åç§°ã€‚
+	 *@attention	è°ƒç”¨å‰ç¡®ä¿å·²ç»è°ƒç”¨LogInit
+	 *@par			æ— 
 	**/
 	eSDK_LOG_API void _STD_CALL_ Log_Operate_Warn(
 		const char* sdkname,
@@ -240,24 +240,24 @@ extern "C"
 		const char* keyInfo,
 		const char* params,
 		...
-		);//²Ù×÷ÀàÈÕÖ¾½Ó¿Ú
+		);//æ“ä½œç±»æ—¥å¿—æ¥å£
 	/**
-	 *²Ù×÷Àà½Ó¿ÚError½Ó¿Ú
+	 *æ“ä½œç±»æ¥å£Erroræ¥å£
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚĞ´operateÏÂµÄErrorÈÕÖ¾
+	 *è¯¥å‡½æ•°ç”¨äºå†™operateä¸‹çš„Erroræ—¥å¿—
 	 *
-	 *@param[in] 	sdkname		Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
-	 *@param[in]	moduleName		ÄÚ²¿Ä£¿éÃû³Æ£¬ÔİÊ±·ÖÎª£ºlogin¡¢config¡¢log¡¢version¡£
-	 *@param[in]	userName			²Ù×÷ÓÃ»§Ãû¡£
-	 *@param[in]	clientFlag			²Ù×÷¿Í»§¶Ë±êÊ¶£¬Ò»°ãÎª¿Í»§¶ËIP¡£
-	 *@param[in]	resultCode			²Ù×÷½á¹ûÂë¡£
-	 *@param[in]	keyInfo		¹Ø¼üÃèÊöĞÅÏ¢£º
-	 *									²éÑ¯Àà²Ù×÷£¬ĞèÒª°üÀ¨²éÑ¯¶ÔÏó±êÊ¶¡¢Ãû³Æ¡¢Ïà¹ØÊôĞÔÃû³ÆºÍÊôĞÔÖµ¡£
-	 *									ÉèÖÃÀà²Ù×÷£¬ĞèÒª°üÀ¨ÉèÖÃ¶ÔÏó±êÊ¶¡¢Ãû³Æ¡¢Ïà¹ØÊôĞÔÃû³ÆºÍÊôĞÔĞÂÖµºÍ¾ÉÖµ¡£
-	 *									´´½¨Àà²Ù×÷£¬ĞèÒª°üÀ¨´´½¨Éæ¼°¶ÔÏó±êÊ¶¡¢Ãû³Æ¡£
-	 *									É¾³ıÀà²Ù×÷£¬ĞèÒª°üÀ¨É¾³ıÉæ¼°¶ÔÏó±êÊ¶¡¢Ãû³Æ¡£
-	 *@attention	µ÷ÓÃÇ°ÏÈµ÷ÓÃLogInit
-	 *@par			ÎŞ
+	 *@param[in] 	sdkname		ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
+	 *@param[in]	moduleName		å†…éƒ¨æ¨¡å—åç§°ï¼Œæš‚æ—¶åˆ†ä¸ºï¼šloginã€configã€logã€versionã€‚
+	 *@param[in]	userName			æ“ä½œç”¨æˆ·åã€‚
+	 *@param[in]	clientFlag			æ“ä½œå®¢æˆ·ç«¯æ ‡è¯†ï¼Œä¸€èˆ¬ä¸ºå®¢æˆ·ç«¯IPã€‚
+	 *@param[in]	resultCode			æ“ä½œç»“æœç ã€‚
+	 *@param[in]	keyInfo		å…³é”®æè¿°ä¿¡æ¯ï¼š
+	 *									æŸ¥è¯¢ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬æŸ¥è¯¢å¯¹è±¡æ ‡è¯†ã€åç§°ã€ç›¸å…³å±æ€§åç§°å’Œå±æ€§å€¼ã€‚
+	 *									è®¾ç½®ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬è®¾ç½®å¯¹è±¡æ ‡è¯†ã€åç§°ã€ç›¸å…³å±æ€§åç§°å’Œå±æ€§æ–°å€¼å’Œæ—§å€¼ã€‚
+	 *									åˆ›å»ºç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬åˆ›å»ºæ¶‰åŠå¯¹è±¡æ ‡è¯†ã€åç§°ã€‚
+	 *									åˆ é™¤ç±»æ“ä½œï¼Œéœ€è¦åŒ…æ‹¬åˆ é™¤æ¶‰åŠå¯¹è±¡æ ‡è¯†ã€åç§°ã€‚
+	 *@attention	è°ƒç”¨å‰å…ˆè°ƒç”¨LogInit
+	 *@par			æ— 
 	**/
 	eSDK_LOG_API void _STD_CALL_ Log_Operate_Error(
 		const char* sdkname,
@@ -268,71 +268,71 @@ extern "C"
 		const char* keyInfo,
 		const char* params,
 		...
-		);//²Ù×÷ÀàÈÕÖ¾½Ó¿Ú
+		);//æ“ä½œç±»æ—¥å¿—æ¥å£
 
 	/**
-	 *ÔËĞĞÀàDebug½Ó¿Ú
+	 *è¿è¡Œç±»Debugæ¥å£
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚĞ´runÏÂµÄDebugÈÕÖ¾
+	 *è¯¥å‡½æ•°ç”¨äºå†™runä¸‹çš„Debugæ—¥å¿—
 	 *
-	 *@param[in] 	sdkname		Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
+	 *@param[in] 	sdkname		ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
 	 *@param[in]	param 
-	 *@attention	µ÷ÓÃÇ°ÏÈµ÷ÓÃLogInit
-	 *@par			ÎŞ
+	 *@attention	è°ƒç”¨å‰å…ˆè°ƒç”¨LogInit
+	 *@par			æ— 
 	**/
-	eSDK_LOG_API void _STD_CALL_ Log_Run_Debug(const char* sdkname, const char* param);//ÔËĞĞÀàÈÕÖ¾½Ó¿Ú
+	eSDK_LOG_API void _STD_CALL_ Log_Run_Debug(const char* sdkname, const char* param, size_t paramLen);//è¿è¡Œç±»æ—¥å¿—æ¥å£
 	/**
-	 *ÔËĞĞÀàInfo½Ó¿Ú
+	 *è¿è¡Œç±»Infoæ¥å£
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚĞ´runÏÂµÄInfoÈÕÖ¾
+	 *è¯¥å‡½æ•°ç”¨äºå†™runä¸‹çš„Infoæ—¥å¿—
 	 *
-	 *@param[in] 	sdkname		Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
+	 *@param[in] 	sdkname		ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
 	 *@param[in]	param 
-	 *@attention	µ÷ÓÃÇ°ÏÈµ÷ÓÃLogInit
-	 *@par			ÎŞ
+	 *@attention	è°ƒç”¨å‰å…ˆè°ƒç”¨LogInit
+	 *@par			æ— 
 	 **/
-	eSDK_LOG_API void _STD_CALL_ Log_Run_Info(const char* sdkname, const char* param);//ÔËĞĞÀàÈÕÖ¾½Ó¿Ú
+	eSDK_LOG_API void _STD_CALL_ Log_Run_Info(const char* sdkname, const char* param, size_t paramLen);//è¿è¡Œç±»æ—¥å¿—æ¥å£
 	/**
-	 *ÔËĞĞÀàWarn½Ó¿Ú
+	 *è¿è¡Œç±»Warnæ¥å£
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚĞ´runÏÂµÄWarnÈÕÖ¾
+	 *è¯¥å‡½æ•°ç”¨äºå†™runä¸‹çš„Warnæ—¥å¿—
 	 *
-	 *@param[in] 	sdkname		Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
+	 *@param[in] 	sdkname		ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
 	 *@param[in]	param 
-	 *@attention	µ÷ÓÃÇ°ÏÈµ÷ÓÃinit
-	 *@par			ÎŞ
+	 *@attention	è°ƒç”¨å‰å…ˆè°ƒç”¨init
+	 *@par			æ— 
 	**/
-	eSDK_LOG_API void _STD_CALL_ Log_Run_Warn(const char* sdkname, const char* param);//ÔËĞĞÀàÈÕÖ¾½Ó¿Ú
+	eSDK_LOG_API void _STD_CALL_ Log_Run_Warn(const char* sdkname, const char* param, size_t paramLen);//è¿è¡Œç±»æ—¥å¿—æ¥å£
 	/**
-	 *ÔËĞĞÀàError½Ó¿Ú
+	 *è¿è¡Œç±»Erroræ¥å£
 	 * 
-	 *¸Ãº¯ÊıÓÃÓÚĞ´runÏÂµÄErrorÈÕÖ¾
+	 *è¯¥å‡½æ•°ç”¨äºå†™runä¸‹çš„Erroræ—¥å¿—
 	 *
-	 *@param[in] 	sdkname		Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
+	 *@param[in] 	sdkname		ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
 	 *@param[in]	param 
-	 *@attention	µ÷ÓÃÇ°ÏÈµ÷ÓÃLogInit
-	 *@par			ÎŞ
+	 *@attention	è°ƒç”¨å‰å…ˆè°ƒç”¨LogInit
+	 *@par			æ— 
 	**/
-	eSDK_LOG_API void _STD_CALL_ Log_Run_Error(const char* sdkname, const char* param);//ÔËĞĞÀàÈÕÖ¾½Ó¿Ú
+	eSDK_LOG_API void _STD_CALL_ Log_Run_Error(const char* sdkname, const char* param, size_t paramLen);//è¿è¡Œç±»æ—¥å¿—æ¥å£
 
-// ÒÆ¶¯¶ËISV³õÊ¼»¯½Ó¿Ú
+// ç§»åŠ¨ç«¯ISVåˆå§‹åŒ–æ¥å£
 #if defined(ANDROID) || defined(TARGET_MAC_OS) || defined(TARGET_OS_IPHONE)
 
 	/**
-	 *ÉèÖÃÈÕÖ¾ÊôĞÔ
+	 *è®¾ç½®æ—¥å¿—å±æ€§
 	 * 
-	 *³õÊ¼»¯Ê±iniFile»òiniInfoÎª¿Õ£¬Ôòµ÷ÓÃ´Ëº¯ÊıÉèÖÃÈÕÖ¾ÊôĞÔ
+	 *åˆå§‹åŒ–æ—¶iniFileæˆ–iniInfoä¸ºç©ºï¼Œåˆ™è°ƒç”¨æ­¤å‡½æ•°è®¾ç½®æ—¥å¿—å±æ€§
 	 *
-	 *@param[in] 	sdkname				Ê¹ÓÃÈÕÖ¾Ä£¿éµÄ²úÆ·Ãû×Ö£¬Í¬½ø³ÌÖĞµÄÎ¨Ò»±êÊ¾
-	 *@param[in] 	logSize				logSize[0]½Ó¿ÚÈÕÖ¾´óĞ¡£¬logSize[1]²Ù×÷ÈÕÖ¾´óĞ¡£¬logSize[2]ÔËĞĞÈÕÖ¾´óĞ¡
-	 *@param[in] 	logNum				logNum[0]½Ó¿ÚÈÕÖ¾ÊıÁ¿£¬logNum[1]²Ù×÷ÈÕÖ¾ÊıÁ¿£¬logNum[2]ÔËĞĞÈÕÖ¾ÊıÁ¿
-	 *@attention	µ÷ÓÃÇ°ÏÈµ÷ÓÃLogInit
-	 *@par			ÎŞ
+	 *@param[in] 	sdkname				ä½¿ç”¨æ—¥å¿—æ¨¡å—çš„äº§å“åå­—ï¼ŒåŒè¿›ç¨‹ä¸­çš„å”¯ä¸€æ ‡ç¤º
+	 *@param[in] 	logSize				logSize[0]æ¥å£æ—¥å¿—å¤§å°ï¼ŒlogSize[1]æ“ä½œæ—¥å¿—å¤§å°ï¼ŒlogSize[2]è¿è¡Œæ—¥å¿—å¤§å°
+	 *@param[in] 	logNum				logNum[0]æ¥å£æ—¥å¿—æ•°é‡ï¼ŒlogNum[1]æ“ä½œæ—¥å¿—æ•°é‡ï¼ŒlogNum[2]è¿è¡Œæ—¥å¿—æ•°é‡
+	 *@attention	è°ƒç”¨å‰å…ˆè°ƒç”¨LogInit
+	 *@par			æ— 
 	**/
 	eSDK_LOG_API int _STD_CALL_ setLogPropertyEx(const char* sdkname, unsigned int logSize[LOG_CATEGORY], unsigned int logNum[LOG_CATEGORY]);
 
 #endif
-// ÒÆ¶¯¶ËISV³õÊ¼»¯½Ó¿Ú
+// ç§»åŠ¨ç«¯ISVåˆå§‹åŒ–æ¥å£
 
 #ifdef __cplusplus
 }

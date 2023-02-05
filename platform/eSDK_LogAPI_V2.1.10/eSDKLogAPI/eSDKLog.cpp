@@ -85,9 +85,9 @@ bool eSDKLog::InitLog4cpp(const std::string& product, unsigned int logLevel[LOG_
 	m_logPath = logPath;
 	m_nInterfaceLevel = logLevel[LOG_CATEGORY_INTERFACE];
 
-	// ³õÊ¼»¯ÈÕÖ¾Â·¾¶
+	// åˆå§‹åŒ–æ—¥å¿—è·¯å¾„
 	std::string strInterfacePath = GetLog4cppPath(logPath, LOG_INTERFACE_FILE);
-	// ÅĞ¶ÏÂ·¾¶ÊÇ·ñÎª¿Õ£¬Èç¹ûÎª¿Õ£¬Ôò·µ»Øfalse
+	// åˆ¤æ–­è·¯å¾„æ˜¯å¦ä¸ºç©ºï¼Œå¦‚æœä¸ºç©ºï¼Œåˆ™è¿”å›false
 	D_IF_PATH_EMPTY(strInterfacePath);
 
 	std::string strOperationPath = GetLog4cppPath(logPath, LOG_OPERATE_FILE);
@@ -100,14 +100,14 @@ bool eSDKLog::InitLog4cpp(const std::string& product, unsigned int logLevel[LOG_
 	m_InstanceOperationName = product + LOG_OPERATE_INSTANCE;
 	m_InstanceRunName = product + LOG_RUN_INSTANCE;
 
-	// log4cppÏà¹ØµÄ¶ÔÏónewÖ®ºó²»ĞèÒªÊÖ¶¯ÊÍ·Å£¬ÄÚ´æ¹ÜÀí½»ÓÉlog4cpp
+	// log4cppç›¸å…³çš„å¯¹è±¡newä¹‹åä¸éœ€è¦æ‰‹åŠ¨é‡Šæ”¾ï¼Œå†…å­˜ç®¡ç†äº¤ç”±log4cpp
 	//interface log file
 	log4cpp::PatternLayout* pInterfaceLayout = new log4cpp::PatternLayout();
 	pInterfaceLayout->setConversionPattern(LOG_INTERFACE_PATTERN);
 	log4cpp::RollingFileAppender* rollfileAppenderInterface = new log4cpp::RollingFileAppender(
 		m_InstanceInterfaceName,
-		strInterfacePath,//±ØĞëÊ¹ÓÃ¾ø¶ÔÂ·¾¶
-		ConfigMgrInstance().GetLogSize_Interface()*1024,//µ¥Î»KB
+		strInterfacePath,//å¿…é¡»ä½¿ç”¨ç»å¯¹è·¯å¾„
+		ConfigMgrInstance().GetLogSize_Interface()*1024,//å•ä½KB
 		ConfigMgrInstance().GetLogNum_Interface(),
 		true,
 		mode);
@@ -122,8 +122,8 @@ bool eSDKLog::InitLog4cpp(const std::string& product, unsigned int logLevel[LOG_
 	pOperationLayout->setConversionPattern(LOG_OPERATION_PATTERN);
 	log4cpp::RollingFileAppender* rollfileAppenderOperation = new log4cpp::RollingFileAppender(
 		m_InstanceOperationName,
-		strOperationPath,//±ØĞëÊ¹ÓÃ¾ø¶ÔÂ·¾¶
-		ConfigMgrInstance().GetLogSize_Operation()*1024,//µ¥Î»KB
+		strOperationPath,//å¿…é¡»ä½¿ç”¨ç»å¯¹è·¯å¾„
+		ConfigMgrInstance().GetLogSize_Operation()*1024,//å•ä½KB
 		ConfigMgrInstance().GetLogNum_Operation(),
 		true,
 		mode);
@@ -138,8 +138,8 @@ bool eSDKLog::InitLog4cpp(const std::string& product, unsigned int logLevel[LOG_
 	pRunLayout->setConversionPattern(LOG_RUN_PATTERN);
 	log4cpp::RollingFileAppender* rollfileAppenderRun = new log4cpp::RollingFileAppender(
 		m_InstanceRunName,
-		strRunPath,//±ØĞëÊ¹ÓÃ¾ø¶ÔÂ·¾¶
-		ConfigMgrInstance().GetLogSize_Run()*1024,//µ¥Î»KB
+		strRunPath,//å¿…é¡»ä½¿ç”¨ç»å¯¹è·¯å¾„
+		ConfigMgrInstance().GetLogSize_Run()*1024,//å•ä½KB
 		ConfigMgrInstance().GetLogNum_Run(),
 		true,
 		mode);
@@ -313,7 +313,7 @@ std::string eSDKLog::GetLog4cppPath(const std::string& logPath, const std::strin
 {
 	std::string log4cppPath("");
 
-	// Ê¹ÓÃÄ¬ÈÏÈÕÖ¾Â·¾¶
+	// ä½¿ç”¨é»˜è®¤æ—¥å¿—è·¯å¾„
 	if (INVALID_LOG_PATH == logPath)
 	{
 		log4cppPath = eSDKTool::GetAppPath();
@@ -334,10 +334,10 @@ std::string eSDKLog::GetLog4cppPath(const std::string& logPath, const std::strin
 			log4cppPath = "";
 		}
 	}
-	// ´´½¨ÈÕÖ¾Â·¾¶
+	// åˆ›å»ºæ—¥å¿—è·¯å¾„
 	else
 	{
-		// Ïà¶ÔÄ¿Â¼ÅĞ¶Ï
+		// ç›¸å¯¹ç›®å½•åˆ¤æ–­
 		if (eSDKTool::IsRelativePath(logPath))
 		{
 			return log4cppPath;
@@ -361,12 +361,12 @@ std::string eSDKLog::GetLog4cppPath(const std::string& logPath, const std::strin
 			log4cppPath.append(".");
 			log4cppPath.append(strLogType);
 
-			// ÏÈÅĞ¶ÏÎÄ¼ş¼ĞÏÂÊÇ·ñÓĞÓëÈÕÖ¾ÎÄ¼şÍ¬ÃûµÄÎÄ¼ş¼Ğ modify by cwx298983 2016.02.29 Start
+			// å…ˆåˆ¤æ–­æ–‡ä»¶å¤¹ä¸‹æ˜¯å¦æœ‰ä¸æ—¥å¿—æ–‡ä»¶åŒåçš„æ–‡ä»¶å¤¹ modify by cwx298983 2016.02.29 Start
 			if (eSDKTool::IsDir(log4cppPath))
 			{
 				log4cppPath = "";
 			}
-			// ÏÈÅĞ¶ÏÎÄ¼ş¼ĞÏÂÊÇ·ñÓĞÓëÈÕÖ¾ÎÄ¼şÍ¬ÃûµÄÎÄ¼ş¼Ğ modify by cwx298983 2016.02.29 End
+			// å…ˆåˆ¤æ–­æ–‡ä»¶å¤¹ä¸‹æ˜¯å¦æœ‰ä¸æ—¥å¿—æ–‡ä»¶åŒåçš„æ–‡ä»¶å¤¹ modify by cwx298983 2016.02.29 End
 		}
 	}
 

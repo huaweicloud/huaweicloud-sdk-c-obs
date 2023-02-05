@@ -39,10 +39,10 @@ void append_object(const obs_options *options, char *key, uint64_t content_lengt
         return;
     }
     if (position) {
-        safe_append("position", position, handler->response_handler.complete_callback);
+        safe_append("position", position, strlen(position), handler->response_handler.complete_callback);
     }
     else {
-        safe_append("position", "0", handler->response_handler.complete_callback);
+        safe_append("position", "0", sizeof("0"), handler->response_handler.complete_callback);
     }
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));

@@ -66,7 +66,7 @@ void get_object(const obs_options *options, obs_object_info *object_info,
 
     int amp = 0;
     if (object_info->version_id) {
-        safe_append("versionId", object_info->version_id, handler->response_handler.complete_callback);
+        safe_append("versionId", object_info->version_id, strlen(object_info->version_id), handler->response_handler.complete_callback);
     }
 
     if (get_conditions && get_conditions->image_process_config)
@@ -82,7 +82,7 @@ void get_object(const obs_options *options, obs_object_info *object_info,
                 "%s%s", strToAppend, get_conditions->image_process_config->cmds_stylename);
             CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
-            safe_append("x-image-process", strToAppend, handler->response_handler.complete_callback);
+            safe_append("x-image-process", strToAppend, sizeof(strToAppend), handler->response_handler.complete_callback);
         }
     }
 

@@ -7,7 +7,7 @@ endif
 CXXFLAGS = -fPIC -fstack-protector-all -Wl,-z,relro,-z,now
 SHARED = -shared
 TARGET = libeSDKLogAPI.so
-INCLUDEDIR = -I ../../../platform/huaweisecurec/include -I ../output/include -I ../ -I ../vos -I../log4cpp
+INCLUDEDIR = -I ../../../platform/huaweisecurec/include -I ../output/include -I ../ -I ../vos -I ../log4cpp
 
 ../../../platform/huaweisecurec/src/%.o : ../../../platform/huaweisecurec/src/%.c
 	$(CXX) $(CXXFLAGS) $(INCLUDEDIR) -c -DENV_LINUX -DLOG4CPP_HAVE_SSTREAM $< -o $@ 

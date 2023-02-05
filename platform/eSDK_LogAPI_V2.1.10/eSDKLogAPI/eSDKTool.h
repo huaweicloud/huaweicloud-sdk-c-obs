@@ -39,7 +39,7 @@ using namespace std;
 	return retcode;\
 }
 
-//¹¤¾ßÀà
+//å·¥å…·ç±»
 class eSDKTool
 {
 private:
@@ -55,10 +55,10 @@ public:
 	static bool IsRelativePath(const std::string& path);
 	static bool CreateMultipleDirectory(const std::string& path);
 	static void getCurrentPath(std::string& strPath);
-	static void GetIPPort(const std::string& server,std::string& ip,unsigned short& port);//ÊäÈë¡°10.10.10.10:10¡±£¬½âÎö³ö¡°10.10.10.10¡±ºÍ10
-	static bool CheckIP4Valid(const std::string &ip);//¼ì²âIPµØÖ·ÊÇ·ñÕıÈ·
-	static void GetFileNameByPath(const std::string& strPath,std::string& strFile);//ÊäÈë¡°D:\\123.txt¡±£¬µÃ³ö¡°123.txt¡±
-	static void GetSrandNum(std::string& sRandNum); //»ñÈ¡Ëæ»ú×Ö·û´®×÷·Ö¸ô·û
+	static void GetIPPort(const std::string& server,std::string& ip,unsigned short& port);//è¾“å…¥â€œ10.10.10.10:10â€ï¼Œè§£æå‡ºâ€œ10.10.10.10â€å’Œ10
+	static bool CheckIP4Valid(const std::string &ip);//æ£€æµ‹IPåœ°å€æ˜¯å¦æ­£ç¡®
+	static void GetFileNameByPath(const std::string& strPath,std::string& strFile);//è¾“å…¥â€œD:\\123.txtâ€ï¼Œå¾—å‡ºâ€œ123.txtâ€
+	static void GetSrandNum(std::string& sRandNum); //è·å–éšæœºå­—ç¬¦ä¸²ä½œåˆ†éš”ç¬¦
 #if defined ANDROID
 	static void GetIniSectionItem(const char* Section, const char* Item, const char* FileInfo, std::string& iniValue);
 #else
@@ -66,7 +66,7 @@ public:
 #endif
     static bool IsPathFileExist(const std::string& path);
 
-	// ÅĞ¶ÏÊÇ·ñÎªÄ¿Â¼
+	// åˆ¤æ–­æ˜¯å¦ä¸ºç›®å½•
 	static bool IsDir(const std::string& path);
 
 #if defined(ANDROID) || defined(TARGET_MAC_OS) || defined(TARGET_OS_IPHONE)
@@ -78,7 +78,7 @@ public:
 	// std::string to Octal(int)
 };
 
-//¹¤¾ß·½·¨
+//å·¥å…·æ–¹æ³•
 
 #endif
 

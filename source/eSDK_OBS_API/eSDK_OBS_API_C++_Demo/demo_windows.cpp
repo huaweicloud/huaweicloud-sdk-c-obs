@@ -455,8 +455,20 @@ FILE * write_to_file(char *localfile)
 
 static obs_status response_properties_callback(const obs_response_properties *properties, void *callback_data)
 {
-    (void) callback_data;
-
+    if (properties == NULL)
+    {
+        printf("error! obs_response_properties is null!");
+        if(callback_data != NULL)
+        {
+            obs_sever_callback_data *data = (obs_sever_callback_data *)callback_data;
+            printf("server_callback buf is %s ,len is %d",
+                data->buffer, data->buffer_len);
+            return OBS_STATUS_OK;
+        }else {
+            printf("error! obs_sever_callback_data is null!");
+            return OBS_STATUS_OK;
+        }
+    }
     if (!showResponsePropertiesG) {
         return OBS_STATUS_OK;
     }
@@ -737,7 +749,8 @@ typedef struct __tempAuthResult
     char actualHeaders[1024];
 }tempAuthResult;
 
-void tempAuthCallBack_getResult(char * tempAuthUrl,char * tempAuthActualHeaders,void *callbackData)
+void tempAuthCallBack_getResult(char *tempAuthUrl, uint64_t tempAuthUrlLen, char *tempAuthActualHeaders,
+    uint64_t tempAuthActualHeadersLen, void *callbackData)
 {
     int urlLen = 0;
     tempAuthResult * ptrResult = (tempAuthResult *)callbackData;
@@ -4365,7 +4378,7 @@ static obs_status listPartsCallbackEx(obs_uploaded_parts_total_info* uploadedPar
     printf("ownerDisplayName: %s\n",uploadedParts->owner_display_name);
     printf("IsTruncated : %u\n", uploadedParts->is_truncated);
     printf("NextPartNumberMarker : %u\n", nextPartNumberMarker);
-    printf("Storage Class is : %s\n", uploadedParts->sorage_class);
+    printf("Storage Class is : %s\n", uploadedParts->storage_class);
 
     int i;
     for (i = 0; i < partsCount; i++) {
@@ -5443,7 +5456,7 @@ int main(int argc, char **argv)
     const char *command = argv[optind++];
     printf("command = %s\n", command);
 
-    set_obs_log_path("D:\\log", false);                   //此行代码用于示例设置日志文件路径功能，在实际使用中请注释该行
+    set_obs_log_path("D:\\log", false);                   //姝よ浠ｇ爜鐢ㄤ簬绀轰緥璁剧疆鏃ュ織鏂囦欢璺緞鍔熻兘锛屽湪瀹為檯浣跨敤涓娉ㄩ噴璇ヨ
     obs_initialize(OBS_INIT_ALL);
 
 	if (!strcmp(command, "create_bucket")) {

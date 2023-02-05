@@ -239,7 +239,7 @@ typedef struct get_bucket_storage_class_policy_data
     simple_xml simpleXml;
     obs_response_properties_callback *response_properties_callback;
     obs_response_complete_callback *response_complete_callback;
-    obs_get_bucket_storage_policy_callback *response_bucket_sorage_policy_callback;
+    obs_get_bucket_storage_policy_callback *response_bucket_storage_policy_callback;
     void *callback_data;
     obs_use_api use_api;
 

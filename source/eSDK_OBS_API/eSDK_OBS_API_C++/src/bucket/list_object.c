@@ -15,6 +15,7 @@
 #include "bucket.h"
 #include "request_util.h"
 #include <openssl/md5.h> 
+#define OBS_MAX_PREFIX_SIZE 65536
 
 obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element_path,
     const char *data, int data_len)
@@ -33,14 +34,19 @@ obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element
         one_object_content *contents = &(lbData->contents[lbData->contents_count]);
 
 #ifdef WIN32
-        char* strTmpSource = (char*)malloc(sizeof(char) * (data_len + 1));
+        int strTmpSourceLen = data_len + 1;
+        if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_PREFIX_SIZE){
+            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            return OBS_STATUS_OutOfMemory;
+        }
+        char* strTmpSource = (char*)malloc(sizeof(char) * strTmpSourceLen);
         if (NULL == strTmpSource)
         {
             COMMLOG(OBS_LOGERROR, "Malloc strTmpSource failed!");
             return OBS_STATUS_InternalError;
         }
-        memset_s(strTmpSource, data_len + 1, 0, data_len + 1);
-        if (ret = strncpy_s(strTmpSource, data_len + 1, data, data_len))
+        memset_s(strTmpSource, strTmpSourceLen, 0, strTmpSourceLen);
+        if (ret = strncpy_s(strTmpSource, strTmpSourceLen, data, data_len))
         {
             COMMLOG(OBS_LOGERROR, "in %s line %s strncpy_s error, code is %d.", __FUNCTION__, __LINE__, ret);
             return OBS_STATUS_InternalError;
@@ -91,14 +97,19 @@ obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element
             COMMLOG(OBS_LOGERROR, "prefix length more than 1024.");
             return OBS_STATUS_XmlParseFailure;
         }
-        char* common_Prefix = (char*)malloc(sizeof(char) * (data_len + 1));
+        int prefix_size = data_len + 1;
+        if (prefix_size <= 0 || prefix_size > OBS_MAX_PREFIX_SIZE){
+            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            return OBS_STATUS_OutOfMemory;
+        }
+        char* common_Prefix = (char*)malloc(sizeof(char) * prefix_size);
         if (NULL == common_Prefix) {
             COMMLOG(OBS_LOGERROR, "In prefix , common_prefixes is NULL.");
             return OBS_STATUS_XmlParseFailure;
         }
-        memset_s(common_Prefix, data_len + 1, 0, data_len + 1);
+        memset_s(common_Prefix, prefix_size, 0, prefix_size);
         int str_ret = 0;
-        snprintf_s(common_Prefix, data_len + 1, data_len, "%.*s", data_len, data);
+        snprintf_s(common_Prefix, prefix_size, data_len, "%.*s", data_len, data);
         char* strTmpOut = UTF8_To_String(common_Prefix);
         str_ret = strcat_s(lbData->common_prefixes[which], sizeof(lbData->common_prefixes[which]), strTmpOut);
         CHECK_NULL_FREE(common_Prefix);
@@ -271,12 +282,12 @@ static obs_status set_objects_query_params(const char *prefix, const char *marke
     int amp = 0;
     if (delimiter)
     {
-        safe_append_status("delimiter", delimiter);
+        safe_append_status("delimiter", delimiter, strlen(delimiter));
     }
 
     if (marker)
     {
-        safe_append_status("marker", marker);
+        safe_append_status("marker", marker, strlen(marker));
     }
 
     if (maxkeys)
@@ -285,12 +296,12 @@ static obs_status set_objects_query_params(const char *prefix, const char *marke
         char maxKeysString[64] = { 0 };
         int ret = snprintf_s(maxKeysString, sizeof(maxKeysString), _TRUNCATE, "%d", maxkeys);
         CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-        safe_append_status("max-keys", maxKeysString);
+        safe_append_status("max-keys", maxKeysString, sizeof(maxKeysString));
     }
 
     if (prefix)
     {
-        safe_append_status("prefix", prefix);
+        safe_append_status("prefix", prefix, strlen(prefix));
     }
     errno_t err = EOK;
     err = memcpy_s(query_params, QUERY_STRING_LEN, queryParams, QUERY_STRING_LEN);

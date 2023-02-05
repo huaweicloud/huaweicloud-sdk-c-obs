@@ -2,12 +2,12 @@
 
 ::Usage: build.bat packageName release|debug
 ::
-::obsµÄÄ¿Â¼½á¹¹£º
+::obsçš„ç›®å½•ç»“æ„ï¼š
 :: obs
-:: ©À©¤bin
-:: ©À©¤demo
-:: ©À©¤include
-::°²×°°üÀïµÄ½á¹¹ºÍ²¿Êğ½á¹¹Ò»ÖÂ¡£
+:: â”œâ”€bin
+:: â”œâ”€demo
+:: â”œâ”€include
+::å®‰è£…åŒ…é‡Œçš„ç»“æ„å’Œéƒ¨ç½²ç»“æ„ä¸€è‡´ã€‚
 
 SETLOCAL ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION
 
@@ -26,7 +26,7 @@ set "G_TARGET_PLATFORM=WIN32"
 set "G_SECUREC_DIR=%G_sln_DIR%\Release"
 set "G_3rd_PLATFORM=windows\x86"
 
-::»ñµÃµ±Ç°Ê±¼ä£¬×÷ÎªÉú³É°æ±¾µÄÄ¿Â¼Ãû
+::è·å¾—å½“å‰æ—¶é—´ï¼Œä½œä¸ºç”Ÿæˆç‰ˆæœ¬çš„ç›®å½•å
 for /F "tokens=1-4 delims=-/ " %%i in ('date /t') do (
    set Year=%%i
    set Month=%%j
@@ -38,7 +38,7 @@ for /F "tokens=1-2 delims=: " %%i in ('time /t') do (
    set Minute=%%j
 )
 
-::ÉèÖÃ¸÷±äÁ¿Ãû
+::è®¾ç½®å„å˜é‡å
 set WinRarRoot=C:\Program Files (x86)\WinRAR
 set Version=2.1.10
 set SDKTarget=eSDK_HWS_OBS_API_V%Version%_Windows_C.rar
@@ -187,7 +187,7 @@ goto:EOF
    for /f %%i in ('dir /b %G_BUILD_OUTPUT_DIR%\*.lib') do (
       xcopy /c /Y %G_BUILD_OUTPUT_DIR%%%i %L_TMP_PACKAGE_DIR%bin
    )
-   :: ´ò°ü°²È«¿âÎÄ¼ş
+   :: æ‰“åŒ…å®‰å…¨åº“æ–‡ä»¶
    xcopy /c /Y %G_OBS_3rd_depend_DIR%platform\huaweisecurec\include\*.h   %L_TMP_PACKAGE_DIR%demo\huaweisecurec\include
    xcopy /c /Y %G_BUILD_OUTPUT_DIR%huaweisecurec.lib %L_TMP_PACKAGE_DIR%demo\huaweisecurec\lib
    

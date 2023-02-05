@@ -69,7 +69,7 @@ static obs_status make_list_parts_callback(list_parts_data *lpData)
         uploadedPartsInfo.initiator_display_name = initiator_display_name;
         uploadedPartsInfo.owner_id = owner_id;
         uploadedPartsInfo.owner_display_name = owner_display_name;
-        uploadedPartsInfo.sorage_class = lpData->storage_class;
+        uploadedPartsInfo.storage_class = lpData->storage_class;
         uploadedPartsInfo.parts_count = parts_count;
 
         iRet = (*(lpData->list_parts_callback_ex))(&uploadedPartsInfo, parts, lpData->callback_data);
@@ -273,7 +273,7 @@ void list_parts(const obs_options *options, char *key, list_part_info *listpart,
     int amp = 0;
     if (listpart->upload_id) {
         safe_append_with_interface_log("uploadId", listpart->upload_id,
-            handler->response_handler.complete_callback);
+            strlen(listpart->upload_id), handler->response_handler.complete_callback);
     }
     else
     {
@@ -287,14 +287,14 @@ void list_parts(const obs_options *options, char *key, list_part_info *listpart,
         listpart->max_parts);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     safe_append_with_interface_log("max-parts", max_parts_string,
-        handler->response_handler.complete_callback);
+        sizeof(max_parts_string), handler->response_handler.complete_callback);
 
     char part_number_string[64] = { 0 };
     ret = snprintf_s(part_number_string, sizeof(part_number_string), _TRUNCATE, "%u",
         listpart->part_number_marker);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     safe_append_with_interface_log("part-number-marker", part_number_string,
-        handler->response_handler.complete_callback);
+        sizeof(part_number_string), handler->response_handler.complete_callback);
 
     list_parts_data *lpData = (list_parts_data *)malloc(sizeof(list_parts_data));
     if (!lpData) {

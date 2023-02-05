@@ -71,8 +71,8 @@ void VOS_DELETE(T* &m, unsigned long ulMuili = 0)
     m = NULL;
 };
 
-//��ȫ��̬���䵥ʵ���ڴ棬���ɵ������࣬�����ص��Ǹ���ָ��
-//���ͽ����ڼ̳���
+//安全动态分配单实例内存，生成的是子类，但返回的是父类指针
+//类型仅限于继承类
 template<class TBASE, class TREAL>
 TBASE* VOS_NEW_REAL(TBASE* &m)
 {
@@ -88,15 +88,15 @@ TBASE* VOS_NEW_REAL(TBASE* &m)
     return m;
 };
 
-//��ȫ�ͷŵ�ʵ���ڴ棬�����ǻ������ָ�룬��ʵ��ɾ�������������
-//���ͽ����ڼ̳���
-//������������������麯�������ֱ��ʹ��VOS_DELETE
+//安全释放单实例内存，参数是基类对象指针，但实际删除的是子类对象
+//类型仅限于继承类
+//若基类的析构函数是虚函数，则可直接使用VOS_DELETE
 template<class TBASE, class TREAL>
 void VOS_DELETE_REAL(TBASE* &m)
 {
     try
     {
-        TREAL* p = (TREAL*)m; /*lint !e1774*///ģ��,��ȫת��
+        TREAL* p = (TREAL*)m; /*lint !e1774*///模板,安全转化
         delete p;
     }
     catch(...)
@@ -107,7 +107,7 @@ void VOS_DELETE_REAL(TBASE* &m)
     m = NULL;
 };
 
-//����ָ�밲ȫת��Ϊ��ʵָ��
+//将空指针安全转化为真实指针
 
 template<class T>
 T* VOS_CAST(T* pVoid)

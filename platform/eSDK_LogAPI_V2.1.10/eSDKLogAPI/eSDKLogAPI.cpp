@@ -12,7 +12,7 @@
 * specific language governing permissions and limitations under the License.
 **********************************************************************************
 */
-// logManager.cpp : ¶¨Òå DLL Ó¦ÓÃ³ÌĞòµÄµ¼³öº¯Êı¡£
+// logManager.cpp : å®šä¹‰ DLL åº”ç”¨ç¨‹åºçš„å¯¼å‡ºå‡½æ•°ã€‚
 //
 #include "stdarg.h"
 #include "LoggerMgr.h"
@@ -27,7 +27,7 @@
 
 using namespace eSDK;
 
-// snprintf¶¨Òå
+// snprintfå®šä¹‰
 #if defined _MSC_VER  || defined WIN32
 # define SNPRINTF  _vsnprintf_s
 #endif 
@@ -37,17 +37,17 @@ using namespace eSDK;
 #endif
 
 #ifndef WIN64
-// µ¼³ö½Ó¿ÚÔ¤´¦Àí
+// å¯¼å‡ºæ¥å£é¢„å¤„ç†
 #pragma comment(linker, "/EXPORT:LogFini=_LogFini@4")
 #pragma comment(linker, "/EXPORT:LogInit=_LogInit@16")
 #pragma comment(linker, "/EXPORT:Log_Run_Debug=_Log_Run_Debug@8")
 #pragma comment(linker, "/EXPORT:Log_Run_Error=_Log_Run_Error@8")
 #pragma comment(linker, "/EXPORT:Log_Run_Info=_Log_Run_Info@8")
 #pragma comment(linker, "/EXPORT:Log_Run_Warn=_Log_Run_Warn@8")
-// µ¼³ö½Ó¿ÚÔ¤´¦Àí
+// å¯¼å‡ºæ¥å£é¢„å¤„ç†
 #endif
 
-// °²×¿¶ÁÈ¡ÎŞ·¨¶ÁÈ¡iniÎÄ¼ş£¬¹ÊÖ±½Ó´«ËÍiniÎÄ¼şÄÚÈİ
+// å®‰å“è¯»å–æ— æ³•è¯»å–iniæ–‡ä»¶ï¼Œæ•…ç›´æ¥ä¼ é€iniæ–‡ä»¶å†…å®¹
 #if defined ANDROID
 int _STD_CALL_ LogInitForAndroid(const char* product, const char* iniInfo, unsigned int logLevel[LOG_CATEGORY], const char* logPath)
 {
@@ -62,7 +62,7 @@ int _STD_CALL_ LogInitForAndroid(const char* product, const char* iniInfo, unsig
 
 	return RET_SUCCESS;
 }
-// °²×¿¶ÁÈ¡ÎŞ·¨¶ÁÈ¡iniÎÄ¼ş£¬¹ÊÖ±½Ó´«ËÍiniÎÄ¼şÄÚÈİ
+// å®‰å“è¯»å–æ— æ³•è¯»å–iniæ–‡ä»¶ï¼Œæ•…ç›´æ¥ä¼ é€iniæ–‡ä»¶å†…å®¹
 #else
 
 int _STD_CALL_ LogInit(const char* product, const char* iniFile, unsigned int logLevel[LOG_CATEGORY], const char* logPath)
@@ -360,47 +360,63 @@ void _STD_CALL_ Log_Operate_Error(
 }
 //lint +e438
 
-void _STD_CALL_ Log_Run_Debug(const char* product, const char* param)
+void _STD_CALL_ Log_Run_Debug(const char* product, const char* param, size_t paramLen)
 {
 	CheckPointerReturn(product);
 	CheckPointerReturn(param);
+	if(paramLen == 0){
+		(void)LOGMGRINSTANE().printRunlog(product, DEBUG_LEVEL, "length of log message is 0");
+		return;
+	}
 	std::string strDebugContent(param);
 	strDebugContent = "|" + strDebugContent;
 
 	(void)LOGMGRINSTANE().printRunlog(product,DEBUG_LEVEL,strDebugContent);
 }
 
-void _STD_CALL_ Log_Run_Info(const char* product, const char* param)
+void _STD_CALL_ Log_Run_Info(const char* product, const char* param, size_t paramLen)
 {
 	CheckPointerReturn(product);
 	CheckPointerReturn(param);
+	if(paramLen == 0){
+		(void)LOGMGRINSTANE().printRunlog(product, INFO_LEVEL, "length of log message is 0");
+		return;
+	}
 	std::string strInfoContent(param);
 	strInfoContent = "|" + strInfoContent;
 
 	(void)LOGMGRINSTANE().printRunlog(product,INFO_LEVEL,strInfoContent);
 }
 
-void _STD_CALL_ Log_Run_Warn(const char* product, const char* param)
+void _STD_CALL_ Log_Run_Warn(const char* product, const char* param, size_t paramLen)
 {
 	CheckPointerReturn(product);
 	CheckPointerReturn(param);
+	if(paramLen == 0){
+		(void)LOGMGRINSTANE().printRunlog(product, WARN_LEVEL, "length of log message is 0");
+		return;
+	}
 	std::string strWarnContent(param);
 	strWarnContent = "|" + strWarnContent;
 
 	(void)LOGMGRINSTANE().printRunlog(product,WARN_LEVEL,strWarnContent);
 }
 
-void _STD_CALL_ Log_Run_Error(const char* product, const char* param)
+void _STD_CALL_ Log_Run_Error(const char* product, const char* param, size_t paramLen)
 {
 	CheckPointerReturn(product);
 	CheckPointerReturn(param);
+	if(paramLen == 0){
+		(void)LOGMGRINSTANE().printRunlog(product, ERROR_LEVEL, "length of log message is 0");
+		return;
+	}
 	std::string strErrorContent(param);
 	strErrorContent = "|" + strErrorContent;
 
 	(void)LOGMGRINSTANE().printRunlog(product,ERROR_LEVEL,strErrorContent);
 }
 
-// ÒÆ¶¯¶ËISV³õÊ¼»¯½Ó¿Ú
+// ç§»åŠ¨ç«¯ISVåˆå§‹åŒ–æ¥å£
 #if defined(ANDROID) || defined(TARGET_MAC_OS) || defined(TARGET_OS_IPHONE)
 
 eSDK_LOG_API int _STD_CALL_ setLogPropertyEx(const char* product, unsigned int logSize[LOG_CATEGORY], unsigned int logNum[LOG_CATEGORY])
@@ -413,5 +429,5 @@ eSDK_LOG_API int _STD_CALL_ setLogPropertyEx(const char* product, unsigned int l
 }
 
 #endif
-// ÒÆ¶¯¶ËISV³õÊ¼»¯½Ó¿Ú
+// ç§»åŠ¨ç«¯ISVåˆå§‹åŒ–æ¥å£
 

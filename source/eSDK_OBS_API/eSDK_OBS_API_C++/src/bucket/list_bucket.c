@@ -243,7 +243,7 @@ void list_bucket_obs(const obs_options *options, obs_list_service_obs_handler *h
 
     if (options->request_options.auth_switch == OBS_NEGOTIATION_TYPE)
     {
-        if (get_api_version(NULL, options->bucket_options.host_name, options->bucket_options.protocol) ==
+        if (get_api_version(NULL, options->bucket_options.host_name, options->bucket_options.protocol, &options->request_options) ==
             OBS_STATUS_OK)
         {
             use_api = OBS_USE_API_OBS;

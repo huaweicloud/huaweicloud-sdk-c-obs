@@ -231,7 +231,7 @@ void set_common_acl(const obs_options *options, manager_acl_info *aclinfo, obs_t
         return;
     }
     if (aclinfo->object_info.version_id) {
-        safe_append("versionId", aclinfo->object_info.version_id, handler->complete_callback);
+        safe_append("versionId", aclinfo->object_info.version_id, strlen(aclinfo->object_info.version_id), handler->complete_callback);
     }
     set_acl_data *data = (set_acl_data *)malloc(sizeof(set_acl_data));
     if (!data) {

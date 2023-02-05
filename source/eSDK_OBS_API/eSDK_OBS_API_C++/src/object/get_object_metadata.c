@@ -44,7 +44,7 @@ void get_object_metadata(const obs_options *options, obs_object_info *object_inf
     int amp = 0;
     if (object_info->version_id) {
         safe_append_with_interface_log("versionId", object_info->version_id,
-            handler->complete_callback);
+            strlen(object_info->version_id), handler->complete_callback);
     }
     errno_t err = EOK;
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));

@@ -14,13 +14,13 @@
 */
 #include <curl/curl.h>
 #include <stdlib.h>
-#include <sys/select.h>
 #include "request.h"
 #include "request_context.h"
 #include "securec.h"
 
 #if defined __GNUC__ || defined LINUX
 #include <unistd.h>
+#include <sys/select.h>
 #endif
 
 #ifdef WIN32

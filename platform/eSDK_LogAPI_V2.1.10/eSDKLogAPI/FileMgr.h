@@ -44,7 +44,7 @@ namespace eSDK
 	public:
 		static FileMgr& Instance(void);
 	public:
-		//É¾³ýÎÄ¼þ
+		//åˆ é™¤æ–‡ä»¶
 		int DeleteFile(const std::string& fileName, eSDKLog* peSDKLog)const;
 	};
 }

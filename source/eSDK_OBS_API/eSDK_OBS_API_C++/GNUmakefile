@@ -261,7 +261,7 @@ $(BUILD)/obj/%.o: src/%.c
 	@ $(CC) $(CFLAGS) -M -MG -MQ $@ -DCOMPILINGDEPENDENCIES \
         -o $(BUILD)/dep/$(<:%.c=%.d) -c $<
 	@ mkdir -p $(dir $@)
-	$(VERBOSE_SHOW) $(CC) $(CFLAGS) -fstack-protector 			\
+	$(VERBOSE_SHOW) $(CC) $(CFLAGS) -fstack-protector-strong 			\
 									--param ssp-buffer-size=4	\
 									-Wl,-z,relro,-z,now 		\
 									-Wl,-z,noexecstack  		\
@@ -274,7 +274,7 @@ $(BUILD)/obj/%.do: src/%.c
 	@ $(CC) $(CFLAGS) -M -MG -MQ $@ -DCOMPILINGDEPENDENCIES \
         -o $(BUILD)/dep/$(<:%.c=%.dd) -c $<
 	@ mkdir -p $(dir $@)
-	$(VERBOSE_SHOW) $(CC) $(CFLAGS) -fstack-protector 			\
+	$(VERBOSE_SHOW) $(CC) $(CFLAGS) -fstack-protector-strong 			\
 									--param ssp-buffer-size=4	\
 									-Wl,-z,relro,-z,now 		\
 									-Wl,-z,noexecstack  		\
@@ -304,13 +304,13 @@ $(LIBOBS_SHARED): $(LIBOBS_SOURCES:%.c=$(BUILD)/obj/%.do)
 	@ mkdir -p $(dir $@)
 ifdef BUILD_FOR_MACOS
     $(VERBOSE_SHOW) $(CC) -shared  \
-						-fstack-protector 			\
+						-fstack-protector-strong 			\
 						--param ssp-buffer-size=4	\
 						-fPIC            			\
 						-o $@ $^  $(LDFLAGS)
 else
 	$(VERBOSE_SHOW) $(CC) -shared -Wl,-soname,libeSDKOBS.so \
-						-fstack-protector 			\
+						-fstack-protector-strong 			\
 						--param ssp-buffer-size=4	\
 						-Wl,-z,relro,-z,now 		\
 						-Wl,-z,noexecstack   		\
@@ -333,7 +333,7 @@ demo: $(BUILD)/bin/demo
 $(BUILD)/bin/demo: $(BUILD)/obj/demo.o $(LIBOBS_SHARED)
 	$(QUIET_ECHO) $@: Building executable
 	@ mkdir -p $(dir $@)
-	$(VERBOSE_SHOW) $(CC) -fstack-protector 		\
+	$(VERBOSE_SHOW) $(CC) -fstack-protector-strong 		\
 						--param ssp-buffer-size=4	\
 						-Wl,-z,relro,-z,now 		\
 						-Wl,-z,noexecstack  		\
@@ -361,7 +361,7 @@ test: $(BUILD)/bin/testsimplexml
 $(BUILD)/bin/testsimplexml: $(BUILD)/obj/testsimplexml.o $(LIBOBS_STATIC)
 	$(QUIET_ECHO) $@: Building executable
 	@ mkdir -p $(dir $@)
-	$(VERBOSE_SHOW) $(CC) -fstack-protector 		\
+	$(VERBOSE_SHOW) $(CC) -fstack-protector-strong 		\
 						--param ssp-buffer-size=4	\
 						-Wl,-z,relro,-z,now 		\
 						-Wl,-z,noexecstack  		\

@@ -14,10 +14,8 @@
 */
 
 #include <ctype.h>
-#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/utsname.h>
 #include "request.h"
 #include "request_context.h"
 #include "response_headers_handler.h"
@@ -26,7 +24,10 @@
 #include "pcre.h"
 #include <openssl/ssl.h>
 #include "eSDKOBS.h"
-
+#if defined __GNUC__ || defined LINUX
+#include <sys/utsname.h>
+#include <pthread.h>
+#endif
 #define countof(array) (sizeof(array)/sizeof(array[0]))
 #define REQUEST_STACK_SIZE 100
 #define ARRAY_LENGTH_1024 1024
@@ -310,28 +311,28 @@ void canonicalize_resource_subResource(const request_params *params, const char 
 	{
 		if (params->queryParams && strstr(params->queryParams, "length") != NULL)
 		{
-			append_request("?");
-			append_request(params->queryParams);
-			append_request("&");
-			append_request(subResource);
+			append_request("?", sizeof("?"));
+			append_request(params->queryParams, strlen(params->queryParams));
+			append_request("&", sizeof("&"));
+			append_request(subResource, strlen(subResource));
 		}
 	}
 	else if (strcmp(subResource, "rename") == 0)
 	{
 		if (params->queryParams && strstr(params->queryParams, "name") != NULL)
 		{
-			append_request("?");
+			append_request("?", sizeof("?"));
 			char decoded[3 * 1024];
 			urlDecode(decoded, params->queryParams, strlen(params->queryParams));
-			append_request(decoded);
-			append_request("&");
-			append_request(subResource);
+			append_request(decoded, sizeof(decoded));
+			append_request("&", sizeof("&"));
+			append_request(subResource, strlen(subResource));
 		}
 	}
 	else
 	{
-		append_request("?");
-		append_request(subResource);
+		append_request("?", sizeof("?"));
+		append_request(subResource, strlen(subResource));
 	}
 
 }
@@ -348,12 +349,12 @@ static void canonicalize_resource(const request_params *params,
 
     if (bucket_name && bucket_name[0]) {
         buffer[len++] = '/';
-        append_request(bucket_name);
+        append_request(bucket_name, strlen(bucket_name));
     }
 
-    append_request("/");
+    append_request("/", sizeof("/"));
     if (urlEncodedKey && urlEncodedKey[0]) {
-        append_request(urlEncodedKey);
+        append_request(urlEncodedKey, strlen(urlEncodedKey));
     }
 
     if (subResource && subResource[0]) {
@@ -519,11 +520,19 @@ static obs_status setup_curl(http_request *request,
     curl_easy_setopt_safe(CURLOPT_BUFFERSIZE, params->request_option.buffer_size);
 
     if ((params->httpRequestType == http_request_type_put) || (params->httpRequestType == http_request_type_post)) {
-        char header[256] = {0};
-        int ret = snprintf_s(header, sizeof(header),_TRUNCATE, "Content-Length: %llu",
+        size_t headerLen = 256;
+        char* header = (char *)malloc(sizeof(char) * headerLen);
+        if (header == NULL) {
+            COMMLOG(OBS_LOGERROR, "malloc failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+            return OBS_STATUS_OutOfMemory;
+        } else {
+            memset_s(header, headerLen, 0, headerLen);
+        }
+        int ret = snprintf_s(header, headerLen,_TRUNCATE, "Content-Length: %llu",
                  (unsigned long long) params->toObsCallbackTotalSize);
         CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         request->headers = curl_slist_append(request->headers, header);
+        CHECK_NULL_FREE(header);
         request->headers = curl_slist_append(request->headers, "Transfer-Encoding:");
     }
     else if (params->httpRequestType == http_request_type_copy) {
@@ -966,7 +975,15 @@ obs_status compose_headers(const request_params *params,
     request_computed_values *values)
 {
     obs_status status = OBS_STATUS_OK;
-    if ((status = encode_key(params->copySourceKey, values->urlEncodedSrcKey)) != OBS_STATUS_OK) {
+    uint64_t copySourceKeyLen=0;
+    uint64_t keyLen=0;
+    if(params->copySourceKey){
+        copySourceKeyLen = strlen(params->copySourceKey);
+    }
+    if(params->key){
+        keyLen = strlen(params->key);
+    }
+    if ((status = encode_key(params->copySourceKey, copySourceKeyLen, values->urlEncodedSrcKey)) != OBS_STATUS_OK) {
         return_obs_status(status);
     }
     if ((status = compose_obs_headers(params, values)) != OBS_STATUS_OK) {
@@ -975,7 +992,7 @@ obs_status compose_headers(const request_params *params,
     if ((status = compose_standard_headers(params, values)) != OBS_STATUS_OK) {
         return_obs_status(status);
     }
-    if ((status = encode_key(params->key, values->urlEncodedKey)) != OBS_STATUS_OK) {
+    if ((status = encode_key(params->key, keyLen, values->urlEncodedKey)) != OBS_STATUS_OK) {
         return_obs_status(status);
     }
     return status;
@@ -1110,18 +1127,36 @@ void request_perform(const request_params *params)
     COMMLOG(OBS_LOGINFO, "Ente request_perform object key= %s\n!", params->key);
     request_computed_values computed;
     memset_s(&computed, sizeof(request_computed_values), 0, sizeof(request_computed_values));
-    char errorBuffer[CURL_ERROR_SIZE];
-    memset_s(errorBuffer, sizeof(errorBuffer), 0, CURL_ERROR_SIZE);
+    char *errorBuffer = (char*)malloc(CURL_ERROR_SIZE*sizeof(char));
+    if(errorBuffer == NULL){
+        COMMLOG(OBS_LOGERROR, "malloc failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+        return;
+    }
+    int ret = memset_s(errorBuffer, CURL_ERROR_SIZE, 0, CURL_ERROR_SIZE);
+    if(ret != 0){
+        COMMLOG(OBS_LOGERROR, "memset_s failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+        CHECK_NULL_FREE(errorBuffer);
+        return;
+    }
     char authTmpParams[1024] = { 0 };
     char authTmpActualHeaders[1024] = { 0 };
     temp_auth_info stTempAuthInfo;
-    memset_s(&stTempAuthInfo, sizeof(temp_auth_info), 0, sizeof(temp_auth_info));
+    ret = memset_s(&stTempAuthInfo, sizeof(temp_auth_info), 0, sizeof(temp_auth_info));
+    if(ret != 0){
+        COMMLOG(OBS_LOGERROR, "memset_s failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+        CHECK_NULL_FREE(errorBuffer);
+        return;
+    }
     stTempAuthInfo.temp_auth_headers = authTmpActualHeaders;
     stTempAuthInfo.tempAuthParams = authTmpParams;
 
 
-    if ((status = compose_headers(params, &computed)) != OBS_STATUS_OK)
+    if ((status = compose_headers(params, &computed)) != OBS_STATUS_OK){
+        COMMLOG(OBS_LOGERROR, "compose_headers failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+        CHECK_NULL_FREE(errorBuffer);
         return;
+    }
+        
 
     COMMLOG(OBS_LOGINFO, "Enter request_perform object computed key= %s\n!", computed.urlEncodedKey);
     canonicalize_obs_headers(&computed, params->use_api);
@@ -1130,23 +1165,30 @@ void request_perform(const request_params *params)
     if (params->temp_auth)
     {
         if ((status = compose_temp_header(params, &computed, &stTempAuthInfo)) != OBS_STATUS_OK) {
+            CHECK_NULL_FREE(errorBuffer);
             return_status(status);
         }
     }
     else if ((status = compose_auth_header(params, &computed)) != OBS_STATUS_OK)
     {
+        CHECK_NULL_FREE(errorBuffer);
         return_status(status);
     }
 
     if ((status = request_get(params, &computed, &request, &stTempAuthInfo)) != OBS_STATUS_OK) {
+        CHECK_NULL_FREE(errorBuffer);
         return_status(status);
     }
 
     is_true = ((params->temp_auth) && (params->temp_auth->temp_auth_callback != NULL));
     if (is_true) {
         (params->temp_auth->temp_auth_callback)(request->uri,
-            authTmpActualHeaders, params->temp_auth->callback_data);
+            sizeof(request->uri),
+            authTmpActualHeaders,
+            sizeof(authTmpActualHeaders),
+            params->temp_auth->callback_data);
         request_release(&request);
+        CHECK_NULL_FREE(errorBuffer);
         return_status(status);
     }
     CURLcode setoptResult = curl_easy_setopt(request->curl, CURLOPT_ERRORBUFFER, errorBuffer);
@@ -1181,6 +1223,7 @@ void request_perform(const request_params *params)
         request_finish(&request);
         retry = is_retry(request, retry);
     }
+    CHECK_NULL_FREE(errorBuffer);
 }
 
 static obs_status compose_api_version_uri(char *buffer, int buffer_size,
@@ -1211,29 +1254,59 @@ size_t api_header_func(void *ptr, size_t size, size_t nmemb,
      return size*nmemb;
 }
 
-obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protocol)
+obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protocol, const obs_http_request_option *request_options)
 {
     COMMLOG(OBS_LOGINFO, "get api version start!");
     obs_status status = OBS_STATUS_ErrorUnknown;
-    char uri[MAX_URI_SIZE + 1] = {0};
+    uint64_t uriSize = MAX_URI_SIZE + 1;
+    char *uri = (char *)malloc(sizeof(char) * uriSize);
+    if (uri == NULL) {
+        COMMLOG(OBS_LOGERROR, "malloc failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+        return status;
+    } else {
+        int ret = memset_s(uri, uriSize, 0, uriSize);
+        if (ret != 0) {
+            CHECK_NULL_FREE(uri);
+            COMMLOG(OBS_LOGERROR, "memset_s failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+            return status;
+        }
+    }
+
     CURL *curl = NULL;
     long httpResponseCode = 0;
-    char errorBuffer[CURL_ERROR_SIZE];
-    memset_s(errorBuffer, sizeof(errorBuffer), 0, CURL_ERROR_SIZE);
+    char *errorBuffer = (char*)malloc(sizeof(char)*CURL_ERROR_SIZE);
+    if(errorBuffer == NULL){
+        CHECK_NULL_FREE(uri);
+        COMMLOG(OBS_LOGERROR, "malloc failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+        return status;
+    }else{
+        int ret = memset_s(errorBuffer, CURL_ERROR_SIZE, 0, CURL_ERROR_SIZE);
+        if (ret != 0) {
+            CHECK_NULL_FREE(uri);
+            CHECK_NULL_FREE(errorBuffer);
+            COMMLOG(OBS_LOGERROR, "memset_s failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+            return status;
+        }
+    }
     
 #define easy_setopt_safe(opt, val)                                 \
         if (curl_easy_setopt(curl, opt, val) != CURLE_OK) {                      \
             curl_easy_cleanup(curl);                                            \
+            CHECK_NULL_FREE(uri);                                                          \
+            CHECK_NULL_FREE(errorBuffer);                                                  \
             return OBS_STATUS_FailedToIInitializeRequest;                       \
         }
-
     
     if ((curl = curl_easy_init()) == NULL) {
-          return OBS_STATUS_FailedToIInitializeRequest;
+        CHECK_NULL_FREE(uri);                                                          
+        CHECK_NULL_FREE(errorBuffer);
+        return OBS_STATUS_FailedToIInitializeRequest;
     }
     obs_status statu = OBS_STATUS_OK;
-    if (( statu =compose_api_version_uri(uri,sizeof(uri),bucket_name,host_name,"apiversion",protocol)) != OBS_STATUS_OK) {
+    if (( statu =compose_api_version_uri(uri,uriSize,bucket_name,host_name,"apiversion",protocol)) != OBS_STATUS_OK) {
         curl_easy_cleanup(curl);
+        CHECK_NULL_FREE(uri);                                                          
+        CHECK_NULL_FREE(errorBuffer);
         return statu;
     }
     if (protocol == OBS_PROTOCOL_HTTPS) {
@@ -1251,10 +1324,18 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
     easy_setopt_safe(CURLOPT_URL, uri);
     easy_setopt_safe(CURLOPT_NOBODY, 1);
 
-    easy_setopt_safe(CURLOPT_LOW_SPEED_LIMIT, DEFAULT_LOW_SPEED_LIMIT);
-    easy_setopt_safe(CURLOPT_LOW_SPEED_TIME, DEFAULT_LOW_SPEED_TIME_S);
-    easy_setopt_safe(CURLOPT_CONNECTTIMEOUT_MS, DEFAULT_CONNECTTIMEOUT_MS);
-    easy_setopt_safe(CURLOPT_TIMEOUT, DEFAULT_TIMEOUT_S);
+    easy_setopt_safe(CURLOPT_LOW_SPEED_LIMIT, request_options->speed_limit);
+    easy_setopt_safe(CURLOPT_LOW_SPEED_TIME, request_options->speed_time);
+    easy_setopt_safe(CURLOPT_CONNECTTIMEOUT_MS, request_options->connect_time);
+    easy_setopt_safe(CURLOPT_TIMEOUT, request_options->max_connected_time);
+
+    
+    if (request_options->proxy_host != NULL) {
+		easy_setopt_safe(CURLOPT_PROXY, request_options->proxy_host);
+	}
+	if (request_options->proxy_auth != NULL) {
+		easy_setopt_safe(CURLOPT_PROXYUSERPWD, request_options->proxy_auth);
+	}
 
     CURLcode setoptResult =  curl_easy_setopt(curl,CURLOPT_ERRORBUFFER,errorBuffer);
     COMMLOG(OBS_LOGWARN, "curl_easy_setopt curl path= %s",uri);
@@ -1266,13 +1347,17 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
         obs_status sta = request_curl_code_to_status(code);
         COMMLOG(OBS_LOGWARN, "%s curl_easy_perform code = %d,status = %d,errorBuffer = %s", __FUNCTION__,code,
         sta,errorBuffer);
-        curl_easy_cleanup(curl);        
+        curl_easy_cleanup(curl); 
+        CHECK_NULL_FREE(uri);                                                          
+        CHECK_NULL_FREE(errorBuffer);       
         return sta;
     }
        
     if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE,
                           &httpResponseCode) != CURLE_OK) {
         curl_easy_cleanup(curl); 
+        CHECK_NULL_FREE(uri);                                                          
+        CHECK_NULL_FREE(errorBuffer);
         return OBS_STATUS_InternalError;
     }
     
@@ -1280,10 +1365,14 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
     if(status == OBS_STATUS_OK && httpResponseCode == 200)
     {
 		curl_easy_cleanup(curl); 
+        CHECK_NULL_FREE(uri);                                                          
+        CHECK_NULL_FREE(errorBuffer);
         return OBS_STATUS_OK;
     }
     else {
 		curl_easy_cleanup(curl); 
+        CHECK_NULL_FREE(uri);                                                          
+        CHECK_NULL_FREE(errorBuffer);
         return status;
     }
 }
@@ -1360,7 +1449,7 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
     if (use_api_index == -1) {
         use_api_index++;
         if(get_api_version(options->bucket_options.bucket_name,options->bucket_options.host_name,
-                           options->bucket_options.protocol) == OBS_STATUS_OK )
+                           options->bucket_options.protocol, &options->request_options) == OBS_STATUS_OK )
         {   
 			err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
             CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
@@ -1398,7 +1487,7 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
            if ( difftime(time_obs , api_switch[index].time_switch) > 900.00)
            {
                 if(get_api_version(options->bucket_options.bucket_name,options->bucket_options.host_name,
-                                   options->bucket_options.protocol) == OBS_STATUS_OK )
+                                   options->bucket_options.protocol, &options->request_options) == OBS_STATUS_OK )
                 {
                     api_switch[index].use_api = OBS_USE_API_OBS;
                     api_switch[index].time_switch = time_obs;
@@ -1418,7 +1507,7 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
         else {
             use_api_index++;
             if(get_api_version(options->bucket_options.bucket_name,options->bucket_options.host_name,
-                               options->bucket_options.protocol) == OBS_STATUS_OK )
+                               options->bucket_options.protocol, &options->request_options) == OBS_STATUS_OK )
             {
 				err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
                 CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);

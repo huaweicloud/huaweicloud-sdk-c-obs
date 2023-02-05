@@ -19,15 +19,17 @@
 #include <string.h>
 #include "util.h"
 #include "securec.h"
-#include <pthread.h>
 #include "log.h"
 #include "request.h"
 #include <openssl/ssl.h>
 #include "pcre.h"
-#include <sys/utsname.h>
 #include "request_util.h"
 #include "object.h"
 
+#if defined __GNUC__ || defined LINUX
+#include <sys/utsname.h>
+#include <pthread.h>
+#endif
 
 #define SSEC_KEY_MD5_LENGTH 64
 #ifdef WIN32
@@ -259,16 +261,30 @@ obs_status headers_append(int *len, request_computed_values *values, int isNewHe
         if (snprintf_s(&(values->amzHeadersRaw[*len]), sizeof(values->amzHeadersRaw) - (*len),
                     _TRUNCATE, format, chstr1, chstr2) > 0) 
         {
-            (*len) += snprintf_s(&(values->amzHeadersRaw[*len]),
-            sizeof(values->amzHeadersRaw) - (*len),_TRUNCATE, format, chstr1, chstr2);                           
+            int ret = snprintf_s(&(values->amzHeadersRaw[*len]),
+            sizeof(values->amzHeadersRaw) - (*len),_TRUNCATE, format, chstr1, chstr2);
+            if(ret < 0){
+                COMMLOG(OBS_LOGWARN, "snprintf_s failed in function: %s", __FUNCTION__);
+            }
+            else {
+                
+            }
+            (*len) += ret;                              
         }
     }
     else{
         if (snprintf_s(&(values->amzHeadersRaw[*len]), sizeof(values->amzHeadersRaw) - (*len),
             _TRUNCATE, format, chstr1) > 0) 
         {
-            (*len) += snprintf_s(&(values->amzHeadersRaw[*len]),
-            sizeof(values->amzHeadersRaw) - (*len), _TRUNCATE, format, chstr1);                           
+            int ret = snprintf_s(&(values->amzHeadersRaw[*len]),
+            sizeof(values->amzHeadersRaw) - (*len), _TRUNCATE, format, chstr1);   
+            if(ret < 0){
+                COMMLOG(OBS_LOGWARN, "snprintf_s failed in function: %s", __FUNCTION__);
+            }
+            else {
+                
+            }
+            (*len) += ret;                           
         }
     }
     if (*len >= (int) sizeof(values->amzHeadersRaw)) {               
@@ -434,18 +450,22 @@ const char *http_request_type_to_verb(http_request_type requestType)
 ** 但是有./的还是需要encode，原因在于./在libcurl去request的时候会被自动去掉，
 ** 从而会导致sdk计算的CanonicalizedResource和服务端计算的不一致，最终会签名不匹配
 **/
-obs_status encode_key(const char *params,  char *values)
+obs_status encode_key(const char *params, uint64_t paramsLen,  char *values)
 {
     char ingoreChar = '/';
-    if (NULL != params && NULL != values)
+    if (0 != paramsLen && NULL != params && NULL != values)
     {
 #ifdef WIN32
         char *pStrKeyUTF8 = string_To_UTF8(params);
+        if(NULL == pStrKeyUTF8){
+            COMMLOG(OBS_LOGWARN, "result of string_To_UTF8 is NULL in Function:%s, Line:%d.", __FUNCTION__, __LINE__);
+            return OBS_STATUS_OutOfMemory;
+        }
         if (NULL != strstr(pStrKeyUTF8, "./"))
         {
             ingoreChar = 0;
         }
-        int nRet = urlEncode(values, pStrKeyUTF8, OBS_MAX_KEY_SIZE, ingoreChar);
+        int nRet = urlEncode(values, pStrKeyUTF8, strlen(pStrKeyUTF8), OBS_MAX_KEY_SIZE, ingoreChar);
         CHECK_NULL_FREE(pStrKeyUTF8);
         return (nRet ? OBS_STATUS_OK : OBS_STATUS_UriTooLong);
 #else
@@ -453,13 +473,13 @@ obs_status encode_key(const char *params,  char *values)
         {
             ingoreChar = 0;
         }
-        return (urlEncode(values, params, OBS_MAX_KEY_SIZE, ingoreChar) ?
+        return (urlEncode(values, params, paramsLen, OBS_MAX_KEY_SIZE, ingoreChar) ?
             OBS_STATUS_OK : OBS_STATUS_UriTooLong);
 #endif
     }
     else
     {
-        int nRet = urlEncode(values, params, OBS_MAX_KEY_SIZE, ingoreChar);
+        int nRet = urlEncode(values, params, paramsLen, OBS_MAX_KEY_SIZE, ingoreChar);
         if (nRet == -1) {
             return OBS_STATUS_InvalidArgument;
         }
@@ -652,6 +672,9 @@ obs_status headers_append_storage_class(obs_storage_class input_storage_class,
             case OBS_STORAGE_CLASS_GLACIER:
                 storageClassString = "GLACIER";
                 break;
+            case OBS_STORAGE_CLASS_DEEP_ARCHIVE:
+                storageClassString = "DEEP_ARCHIVE";
+                break;
             default:
                 storageClassString = "STANDARD";
                 break;
@@ -663,6 +686,9 @@ obs_status headers_append_storage_class(obs_storage_class input_storage_class,
                 break;
             case OBS_STORAGE_CLASS_GLACIER:
                 storageClassString = "COLD";
+                break;
+            case OBS_STORAGE_CLASS_DEEP_ARCHIVE:
+                storageClassString = "DEEP_ARCHIVE";
                 break;
             default:
                 storageClassString = "STANDARD";
@@ -1870,10 +1896,12 @@ obs_status compose_temp_header(const request_params* params,
     HMAC_SHA1(hmac, (unsigned char*) params->bucketContext.secret_access_key,
               strlen(params->bucketContext.secret_access_key),
               (unsigned char*) signbuf, len);
-    char b64[((20 + 1) * 4) / 3] = {0};
+    const uint64_t b64Len = ((20 + 1) * 4) / 3;
+    char b64[b64Len];
+    memset_s(b64, b64Len, 0, b64Len);
     (void)base64Encode(hmac, 20, b64);
     char cUrlEncode[512] = {0};
-    (void)urlEncode(cUrlEncode, b64, 28, 0);
+    (void)urlEncode(cUrlEncode, b64, b64Len, 28, 0);
     int ret = snprintf_s(stTempAuthInfo->tempAuthParams,ARRAY_LENGTH_1024, _TRUNCATE,
                "AWSAccessKeyId=%s&Expires=%lld&Signature=%s", params->bucketContext.access_key,
                (long long int)local_expires, cUrlEncode);

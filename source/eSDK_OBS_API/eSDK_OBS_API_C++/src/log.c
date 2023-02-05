@@ -255,6 +255,12 @@ int GET_LOG_PATH(char *logPath, const char *tempLogPath) {
     errno_t err = EOK;
     if (0 != strlen(tempLogPath))
     {
+        if(tempLogPath[0] != '.'){
+            size_t logPathLen = strlen(logPath);
+            memset_s(logPath, logPathLen, 0, logPathLen);
+        }else{
+            
+        }
         err = strcat_s(logPath, sizeof(char)*MAX_MSG_SIZE, tempLogPath);
     }
     else
@@ -428,12 +434,19 @@ int SetConfPath(char* currentPath, char* buf, char* confPath, char* logPath, cha
 
 int LOG_INIT()
 {
-    unsigned int logLevel[LOG_CATEGORY] = {INVALID_LOG_LEVEL, 
-    INVALID_LOG_LEVEL,
-    INVALID_LOG_LEVEL };
+    unsigned int *logLevel = (unsigned int*)malloc(sizeof(unsigned int)*LOG_CATEGORY);
+    if (NULL == logLevel)
+    {
+        return -1;
+    }else {
+        for (size_t i = 0; i < LOG_CATEGORY; ++i) {
+            logLevel[i] = INVALID_LOG_LEVEL;
+        }
+    }
     char* buf = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
     if (NULL == buf)
     {
+        CHECK_NULL_FREE(logLevel);
         return -1;
     }
     memset_s(buf, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE*sizeof(char));
@@ -442,6 +455,7 @@ int LOG_INIT()
     if (NULL == confPath)
     {
         CHECK_NULL_FREE(buf);
+        CHECK_NULL_FREE(logLevel);
         return -1;
     }
     memset_s(confPath, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE*sizeof(char));
@@ -451,6 +465,7 @@ int LOG_INIT()
     {
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
+        CHECK_NULL_FREE(logLevel);
         return -1;
     }
     memset_s(logPath, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE*sizeof(char));
@@ -461,6 +476,7 @@ int LOG_INIT()
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
         CHECK_NULL_FREE(logPath);
+        CHECK_NULL_FREE(logLevel);
         return -1;
     }
     memset_s(tempLogPath, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE*sizeof(char));
@@ -482,6 +498,7 @@ int LOG_INIT()
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
         CHECK_NULL_FREE(logPath);
+        CHECK_NULL_FREE(logLevel);
         CHECK_NULL_FREE(tempLogPath);
         return -1;
     }
@@ -498,6 +515,7 @@ int LOG_INIT()
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
         CHECK_NULL_FREE(logPath);
+        CHECK_NULL_FREE(logLevel);
         CHECK_NULL_FREE(tempLogPath);
         return -1;
     }
@@ -509,6 +527,12 @@ int LOG_INIT()
 	int ret = SetConfPath(currentPath, buf, confPath, logPath, tempLogPath);
 	if (ret)
 	{
+        CHECK_NULL_FREE(buf);
+        CHECK_NULL_FREE(confPath);
+        CHECK_NULL_FREE(logPath);
+        CHECK_NULL_FREE(logLevel);
+        CHECK_NULL_FREE(tempLogPath);
+        CHECK_NULL_FREE(currentPath);
 		return ret;
 	}
     CHECK_NULL_FREE(currentPath);
@@ -521,6 +545,7 @@ int LOG_INIT()
     CHECK_NULL_FREE(buf);
     CHECK_NULL_FREE(confPath);
     CHECK_NULL_FREE(logPath);
+    CHECK_NULL_FREE(logLevel);
     CHECK_NULL_FREE(tempLogPath);
 	
     if(iRet)
@@ -554,19 +579,19 @@ void COMMLOG(OBS_LOGLEVEL level, const char *pszFormat, ...)
 
     if(level == OBS_LOGDEBUG)
     {
-        (void)Log_Run_Debug(PRODUCT,acMsg);
+        (void)Log_Run_Debug(PRODUCT,acMsg, sizeof(acMsg));
     }
     else if(level == OBS_LOGINFO)
     {
-        (void)Log_Run_Info(PRODUCT,acMsg);
+        (void)Log_Run_Info(PRODUCT,acMsg, sizeof(acMsg));
     }
     else if(level == OBS_LOGWARN)
     {
-        (void)Log_Run_Warn(PRODUCT,acMsg);
+        (void)Log_Run_Warn(PRODUCT,acMsg, sizeof(acMsg));
     }
     else if(level == OBS_LOGERROR)
     {
-        (void)Log_Run_Error(PRODUCT,acMsg);
+        (void)Log_Run_Error(PRODUCT,acMsg, sizeof(acMsg));
     }
 }
 

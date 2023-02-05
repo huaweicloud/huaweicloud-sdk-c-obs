@@ -65,7 +65,7 @@ void header_gnome_sort(const char **headers, int size);
 
 const char *http_request_type_to_verb(http_request_type requestType);
 
-obs_status encode_key(const char * pSrc, char *pValue);
+obs_status encode_key(const char * pSrc, uint64_t pSrcLen, char *pValue);
 
 obs_status request_curl_code_to_status(CURLcode code);
 

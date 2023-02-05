@@ -1,6 +1,6 @@
 @echo off
 
-rem 设置变量
+rem 璁剧疆鍙橀噺
 SET LIBXML_VERSION=libxml2-2.9.9
 SET LIBXML2_PATH=%cd%\..\..\..\third_party_groupware\eSDK_Storage_Plugins\%LIBXML_VERSION%
 SET SOLUTION="%LIBXML2_PATH%\win32\VC10\libxml2.sln"
@@ -22,7 +22,7 @@ SET ACTION=Rebuild
 
 echo -----------start to compile libxml2-----------
 
-rem 编译系统工程
+rem 缂栬瘧绯荤粺宸ョ▼
 "C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv" %SOLUTION% /%ACTION% %SOLUTION_CONFIG%
 
 

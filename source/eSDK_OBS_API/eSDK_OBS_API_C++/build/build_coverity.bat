@@ -2,12 +2,12 @@
 
 ::Usage: build.bat packageName release|debug
 ::
-::obsµÄÄ¿Â¼½á¹¹£º
+::obsçš„ç›®å½•ç»“æž„ï¼š
 :: obs
-:: ©À©¤bin
-:: ©À©¤demo
-:: ©À©¤include
-::°²×°°üÀïµÄ½á¹¹ºÍ²¿Êð½á¹¹Ò»ÖÂ¡£
+:: â”œâ”€bin
+:: â”œâ”€demo
+:: â”œâ”€include
+::å®‰è£…åŒ…é‡Œçš„ç»“æž„å’Œéƒ¨ç½²ç»“æž„ä¸€è‡´ã€‚
 
 SETLOCAL ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION
 
@@ -162,7 +162,7 @@ goto:EOF
    for /f %%i in ('dir /b %G_BUILD_OUTPUT_DIR%\*.lib') do (
       xcopy /c /Y %G_BUILD_OUTPUT_DIR%%%i %L_TMP_PACKAGE_DIR%bin
    )
-   :: ´ò°ü°²È«¿âÎÄ¼þ
+   :: æ‰“åŒ…å®‰å…¨åº“æ–‡ä»¶
    xcopy /c /Y %G_OBS_3rd_depend_DIR%platform\huaweisecurec\include\*.h   %L_TMP_PACKAGE_DIR%demo\huaweisecurec\include
    xcopy /c /Y %G_BUILD_OUTPUT_DIR%huaweisecurec.lib %L_TMP_PACKAGE_DIR%demo\huaweisecurec\lib
    

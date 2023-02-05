@@ -45,7 +45,7 @@ std::string eSDKTool::GetDllPath()
 	strPath = strPath.substr(0, strPath.rfind("\\")+1);
 	return strPath;
 #elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)
-    // »ñÈ¡³ÌĞòDocumentsÄ¿Â¼Â·¾¶
+    // è·å–ç¨‹åºDocumentsç›®å½•è·¯å¾„
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES);
     NSString *documentsDirectory = [paths objectAtIndex:0];
     return [documentsDirectory UTF8String];
@@ -88,7 +88,7 @@ std::string eSDKTool::GetAppPath()
 	strPath = strPath.substr(0, strPath.rfind("\\")+1);
 	return strPath;
 #elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)
-    // »ñÈ¡³ÌĞòDocumentsÄ¿Â¼Â·¾¶
+    // è·å–ç¨‹åºDocumentsç›®å½•è·¯å¾„
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES);
     NSString *documentsDirectory = [paths objectAtIndex:0];
     return [documentsDirectory UTF8String];
@@ -111,7 +111,7 @@ bool eSDKTool::IsPathFileExist(const std::string& path)
     BOOL isDir;
     if ([manager fileExistsAtPath:[NSString stringWithUTF8String:path.c_str()] isDirectory:&isDir])
     {
-        // ´æÔÚ
+        // å­˜åœ¨
         return true;
     }
 #else
@@ -145,12 +145,12 @@ bool eSDKTool::CreateMultipleDirectory(const std::string& path)
 #ifdef WIN32
 	std::string strPath(path);
 
-	// ¡Ö¨C???¡¯
+	// â‰ˆâ€“???â€™
 	if (strPath.empty())
 	{
 		return false;
 	}
-	// ?¨¢¦Ğ?¡°¡ª?¡Ù£¤¨º¡®?¡Æ¦Ìa?¡İ¡­¦Ğ?
+	// ?Ã¡Ï€?â€œâ€”?â‰ ï¿¥Ãªâ€˜?âˆ‘Î¼a?â‰¥â€¦Ï€?
 	if (IsPathFileExist(strPath.c_str()))
 	{
 		if (!IsDir(path))
@@ -161,16 +161,16 @@ bool eSDKTool::CreateMultipleDirectory(const std::string& path)
 	}
 	else
 	{
-		// ¡İ???¦¸¡¤?¡Ü¦Ì?"\\"
+		// â‰¥???Î©Â·?â‰¤Î¼?"\\"
 		while ('\\' == strPath.back())
 		{
 			strPath = strPath.substr(0, strPath.rfind("\\"));
 		}
 
-		// a¨°?¡ã¡­?o????o
+		// aÃ²?Â°â€¦?o????o
 		std::string prePath = strPath.substr(0, strPath.rfind("\\"));
 
-		// ¡Üa£¤¨º¡®?¦Ì????o
+		// â‰¤aï¿¥Ãªâ€˜?Î¼????o
 		if (prePath == strPath)
 		{
 			return false;
@@ -190,10 +190,10 @@ bool eSDKTool::CreateMultipleDirectory(const std::string& path)
 		}
 		else
 		{
-			// ?¨¢¦Ğ??¡Ş¡Ì¨º¦Ì????o¡Üa£¤¨º¡®?¡ê¡§¡®¨²??£¤£¤¦¸??¡Ş¡Ì¨º¦Ì????o
+			// ?Ã¡Ï€??âˆâˆšÃªÎ¼????oâ‰¤aï¿¥Ãªâ€˜?ï¿¡Â¨â€˜Ãº??ï¿¥ï¿¥Î©??âˆâˆšÃªÎ¼????o
 			if (CreateMultipleDirectory(prePath))
 			{
-				// ?¡Ş¡Ì¨º???o£¤£¤¦¸?¡Ò¡Ì?¨¤¡°¡®¡Ò?¡ê¡§¡®¨²¡®?£¤£¤¦¸?¡Ò?¡Ì¨º¦Ì????o
+				// ?âˆâˆšÃª???oï¿¥ï¿¥Î©?âˆ«âˆš?Ã â€œâ€˜âˆ«?ï¿¡Â¨â€˜Ãºâ€˜?ï¿¥ï¿¥Î©?âˆ«?âˆšÃªÎ¼????o
 				return CreateMultipleDirectory(strPath);
 			}
 			return false;
@@ -211,7 +211,7 @@ bool eSDKTool::CreateMultipleDirectory(const std::string& path)
     
     if (IsPathFileExist(strPath.c_str()))
     {
-        // ´æÔÚ
+        // å­˜åœ¨
         return true;
     }
     
@@ -219,28 +219,28 @@ bool eSDKTool::CreateMultipleDirectory(const std::string& path)
 #else
 	std::string strPath(path);
 
-	// ¡Ö¨C???¡¯
+	// â‰ˆâ€“???â€™
 	if (strPath.empty())
 	{
 		return false;
 	}
-	// ?¨¢¦Ğ?¡°¡ª?¡Ù£¤¨º¡®?¡Æ¦Ìa?¡İ¡­¦Ğ?
+	// ?Ã¡Ï€?â€œâ€”?â‰ ï¿¥Ãªâ€˜?âˆ‘Î¼a?â‰¥â€¦Ï€?
 	if (IsPathFileExist(strPath.c_str()))
 	{
 		return true;
 	}
 	else
 	{
-		// ¡İ???¦¸¡¤?¡Ü¦Ì?"\\"
+		// â‰¥???Î©Â·?â‰¤Î¼?"\\"
 		while ('/' == strPath[strPath.length()-1])
 		{
 			strPath = strPath.substr(0, strPath.rfind("/"));
 		}
 
-		// a¨°?¡ã¡­?o????o
+		// aÃ²?Â°â€¦?o????o
 		std::string prePath = strPath.substr(0, strPath.rfind("/"));
 
-		// ¡Üa£¤¨º¡®?¦Ì????o
+		// â‰¤aï¿¥Ãªâ€˜?Î¼????o
 		if (prePath == strPath)
 		{
 			return false;
@@ -260,10 +260,10 @@ bool eSDKTool::CreateMultipleDirectory(const std::string& path)
 		}
 		else
 		{
-			// ?¨¢¦Ğ??¡Ş¡Ì¨º¦Ì????o¡Üa£¤¨º¡®?¡ê¡§¡®¨²??£¤£¤¦¸??¡Ş¡Ì¨º¦Ì????o
+			// ?Ã¡Ï€??âˆâˆšÃªÎ¼????oâ‰¤aï¿¥Ãªâ€˜?ï¿¡Â¨â€˜Ãº??ï¿¥ï¿¥Î©??âˆâˆšÃªÎ¼????o
 			if (CreateMultipleDirectory(prePath))
 			{
-				// ?¡Ş¡Ì¨º???o£¤£¤¦¸?¡Ò¡Ì?¨¤¡°¡®¡Ò?¡ê¡§¡®¨²¡®?£¤£¤¦¸?¡Ò?¡Ì¨º¦Ì????o
+				// ?âˆâˆšÃª???oï¿¥ï¿¥Î©?âˆ«âˆš?Ã â€œâ€˜âˆ«?ï¿¡Â¨â€˜Ãºâ€˜?ï¿¥ï¿¥Î©?âˆ«?âˆšÃªÎ¼????o
 				return CreateMultipleDirectory(strPath);
 			}
 			return false;
@@ -332,7 +332,7 @@ void eSDKTool::GetIPPort(const std::string& server,std::string& ip,unsigned shor
 
 	return;
 }
-//o?¡Ü?IPV4??¨C?¦Ì?IP¦Ì?¡Â¡Æ??¡Æ¨°¡¯??¡Æ
+//o?â‰¤?IPV4??â€“?Î¼?IPÎ¼?Ã·âˆ‘??âˆ‘Ã²â€™??âˆ‘
 bool eSDKTool::CheckIP4Valid(const std::string &ip)
 {
 	if (ip.empty())
@@ -449,14 +449,14 @@ void eSDKTool::GetIniSectionItem(const char* Section, const char* Item, const ch
 						break;
 					}
 
-					// ;×÷Îª×¢ÊÍ£¬Ìø¹ı¸ÃĞĞ
+					// ;ä½œä¸ºæ³¨é‡Šï¼Œè·³è¿‡è¯¥è¡Œ
 					if (';' == posChar)
 					{
 						fileStream.unget();
 						fileStream.getline(linebuf, LENGTH);
 						continue;
 					}
-					// ;×÷Îª×¢ÊÍ£¬Ìø¹ı¸ÃĞĞ
+					// ;ä½œä¸ºæ³¨é‡Šï¼Œè·³è¿‡è¯¥è¡Œ
 					fileStream.unget();
 					fileStream.getline(linebuf, LENGTH);
 					if(strstr(linebuf, Item))
@@ -535,14 +535,14 @@ void eSDKTool::GetIniSectionItem(const char* Section, const char* Item, const ch
 			{
 				while((posChar = fgetc(inifp))!='[' && posChar != EOF)
 				{
-					// ;×÷Îª×¢ÊÍ£¬Ìø¹ı¸ÃĞĞ
+					// ;ä½œä¸ºæ³¨é‡Šï¼Œè·³è¿‡è¯¥è¡Œ
 					if (';' == posChar)
 					{
 						ungetc(posChar, inifp);
 						fgets(linebuf, LENGTH, inifp);
 						continue;
 					}
-					// ;×÷Îª×¢ÊÍ£¬Ìø¹ı¸ÃĞĞ
+					// ;ä½œä¸ºæ³¨é‡Šï¼Œè·³è¿‡è¯¥è¡Œ
 					ungetc(posChar, inifp);
 					fgets(linebuf, LENGTH, inifp);
 					if(strstr(linebuf, Item))
@@ -687,7 +687,7 @@ void eSDKTool::GetSrandNum(std::string& sRandNum)
 
 #if defined(ANDROID) || defined(TARGET_MAC_OS) || defined(TARGET_OS_IPHONE)
 /* Compress gzip data */
-/* data Ô­Êı¾İ ndata Ô­Êı¾İ³¤¶È zdata Ñ¹ËõºóÊı¾İ nzdata Ñ¹Ëõºó³¤¶È */
+/* data åŸæ•°æ® ndata åŸæ•°æ®é•¿åº¦ zdata å‹ç¼©åæ•°æ® nzdata å‹ç¼©åé•¿åº¦ */
 int eSDKTool::gzcompress(Bytef *data, uLong ndata, Bytef *zdata, uLong *nzdata)
 {
 	z_stream c_stream;
@@ -699,7 +699,7 @@ int eSDKTool::gzcompress(Bytef *data, uLong ndata, Bytef *zdata, uLong *nzdata)
 		c_stream.zfree = NULL;
 		c_stream.opaque = NULL;
 
-		//Ö»ÓĞÉèÖÃÎªMAX_WBITS + 16²ÅÄÜÔÚÔÚÑ¹ËõÎÄ±¾ÖĞ´øheaderºÍtrailer
+		//åªæœ‰è®¾ç½®ä¸ºMAX_WBITS + 16æ‰èƒ½åœ¨åœ¨å‹ç¼©æ–‡æœ¬ä¸­å¸¦headerå’Œtrailer
 		if(deflateInit2(&c_stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED,
 			MAX_WBITS + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK)
 		{
@@ -742,7 +742,7 @@ int eSDKTool::gzcompress(Bytef *data, uLong ndata, Bytef *zdata, uLong *nzdata)
 }
 #endif
 
-// ÅĞ¶ÏÊÇ·ñÎªÄ¿Â¼
+// åˆ¤æ–­æ˜¯å¦ä¸ºç›®å½•
 bool eSDKTool::IsDir(const std::string& path)
 {
 	bool bRet = false;

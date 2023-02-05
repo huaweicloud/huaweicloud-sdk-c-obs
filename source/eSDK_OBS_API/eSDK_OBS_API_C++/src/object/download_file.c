@@ -23,8 +23,6 @@
 #if defined __GNUC__ || defined LINUX
 #include <unistd.h>
 #include <pthread.h>
-pthread_mutex_t g_mutexThreadCheckpoint;
-pthread_mutex_t g_mutexThreadCheckpoint_download;
 #endif
 
 #if defined WIN32
@@ -340,7 +338,7 @@ int readCheckpointFile_Download_xmlCmp(xmlNodePtr curNode, download_file_summary
 {
     while (curNode != NULL)
     {
-        if (!xmlStrcmp(curNode->name, (xmlChar*)"obsjectinfo"))
+        if (!xmlStrcmp(curNode->name, (xmlChar*)"objectinfo"))
         {
             parse_download_xmlnode_objectinfo(curNode, pstDownLoadSummary);
         }
@@ -1642,7 +1640,7 @@ static int get_download_isfirst_time(obs_download_file_configuration * download_
     download_file_summary downLoadFileInfoOld;
 
     //2,set the file to store the object, and the checkpoint file
-    get_download_isfirst_time_setFile(download_file_config, storeFile, is_true,
+    isFirstTime = get_download_isfirst_time_setFile(download_file_config, storeFile, is_true,
         retVal, key, checkpointFile, isFirstTime);
 
     //3, read the content of the checkpoint file

@@ -25,8 +25,8 @@
 
 
 #ifdef WIN32
-#define LIBOBS_VER_MAJOR "3.22"
-#define LIBOBS_VER_MINOR "7"
+#define LIBOBS_VER_MAJOR "3.23"
+#define LIBOBS_VER_MINOR "1"
 #endif
 
 #if defined __GNUC__ || defined LINUX
@@ -39,8 +39,8 @@
 #define DOMAIN_LEN 254
 #define HEAD_CALLBACK_LEN 8192
 
-#define OBS_SDK_VERSION "3.22.7"
-#define USER_AGENT_VALUE  "obs-sdk-c-3.22.7" ;
+#define OBS_SDK_VERSION "3.23.1"
+#define USER_AGENT_VALUE  "obs-sdk-c-3.23.1" ;
 
 #define DEFAULT_LOW_SPEED_LIMIT    (1)
 #define DEFAULT_LOW_SPEED_TIME_S   (300)
@@ -79,8 +79,14 @@
                         request->headers = curl_slist_append(request->headers,          \
                                                              values-> fieldName);       \
                     }
-                    
-#define append_request(str) len += sprintf_s(&(buffer[len]), buffer_size-len, "%s", str)
+
+#define append_request(str, str_len)                                   \
+    if (buffer_size - len >= str_len + 1) {                             \
+        len += sprintf_s(&(buffer[len]), buffer_size - len, "%s", str); \
+    } else {                                                           \
+        COMMLOG(OBS_LOGERROR, "append_request str (%s) is too long in "\
+        "function: %s, line: %d", str, __FUNCTION__, __LINE__);\
+    }
 
 #define return_status(status)                                           \
     (*(params->complete_callback))(status, 0, params->callback_data);     \

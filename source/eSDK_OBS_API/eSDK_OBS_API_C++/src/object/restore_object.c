@@ -192,7 +192,7 @@ void restore_object(const obs_options *options, obs_object_info *object_info, co
         return;
     if (object_info->version_id)
     {
-        safe_append("versionId", object_info->version_id, handler->complete_callback);
+        safe_append("versionId", object_info->version_id, strlen(object_info->version_id), handler->complete_callback);
     }
     set_sal_data *data = (set_sal_data *)malloc(sizeof(set_sal_data));
     if (!data)

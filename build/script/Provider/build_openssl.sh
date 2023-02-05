@@ -25,6 +25,7 @@ if [ $# = 0 ]; then
         CFLAGS="-Wall -O3 -fstack-protector-all" ./config threads shared --prefix=/usr/local/openssl --openssldir=/usr/local/ssl/
     else
         CFLAGS="-Wall -O3 -fstack-protector-all -Wl,-z,relro,-z,now" ./Configure threads shared --prefix=/usr/local/openssl --openssldir=/usr/local/ssl/ linux-x86_64
+    fi
 elif [ $1 = "BUILD_FOR_ARM" ]; then
     CFLAGS="-Wall -O3 -fstack-protector-all -Wl,-z,relro,-z,now" ./Configure threads shared --prefix=/usr/local/openssl --openssldir=/usr/local/ssl/ linux-aarch64
 elif [ $1 = "BUILD_FOR_NDK_AARCH64" ]; then

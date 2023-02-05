@@ -49,11 +49,11 @@ void upload_part(const obs_options *options, char *key, obs_upload_part_info *up
         upload_part_info->part_number);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     safe_append_with_interface_log("partNumber", part_number_string,
-        handler->response_handler.complete_callback);
+        sizeof(part_number_string), handler->response_handler.complete_callback);
 
     if (upload_part_info->upload_id) {
         safe_append_with_interface_log("uploadId", upload_part_info->upload_id,
-            handler->response_handler.complete_callback);
+            strlen(upload_part_info->upload_id), handler->response_handler.complete_callback);
     }
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
     errno_t err = EOK;

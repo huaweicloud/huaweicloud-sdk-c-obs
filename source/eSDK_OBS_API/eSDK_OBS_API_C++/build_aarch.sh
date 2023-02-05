@@ -45,6 +45,7 @@ export curl_version=curl-7.78.0
 export pcre_version=pcre-8.45
 export iconv_version=iconv-1.15
 export libxml2_version=libxml2-2.9.9
+export cjson_version=cjson-1.7.15
 #fi
 #export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #
@@ -160,7 +161,8 @@ cp -af ./../../../build/script/Provider/build/arm/${libxml2_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/arm/${openssl_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/arm/${pcre_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/arm/${iconv_version}/lib/* lib 
-#cp -f ./../../../build/script/Provider/build/arm/${nghttp2_version}/lib/* lib 
+cp -af ./../../../build/script/Provider/build/arm/${cjson_version}/lib/* lib
+cp -f ./../../../build/script/Provider/build/arm/${cjson_version}/include/cJSON.h include
 echo "BUILD_FOR_ARM=true" >  demo/Makefile
 cat Makefile_obs >> demo/Makefile
 cp -f OBS.ini lib

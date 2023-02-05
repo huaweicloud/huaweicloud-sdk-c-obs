@@ -15,6 +15,7 @@
 #include "bucket.h"
 #include "request_util.h"
 #include <openssl/md5.h> 
+#define OBS_MAX_STR_TMP_SIZE 65536
 
 static void initialize_list_versions(list_bucket_versions *versions)
 {
@@ -155,14 +156,19 @@ obs_status parse_xml_list_versions(list_versions_data *version_data, const char 
         !strcmp(element_path, "ListVersionsResult/DeleteMarker/Key"))
     {
 #ifdef WIN32
-        char* strTmpSource = (char*)malloc(sizeof(char) * (data_len + 1));
+        int strTmpSourceLen = data_len + 1;
+        if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_STR_TMP_SIZE) {
+            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            return OBS_STATUS_OutOfMemory;
+        }
+        char* strTmpSource = (char*)malloc(sizeof(char) * strTmpSourceLen);
         if (NULL == strTmpSource)
         {
             COMMLOG(OBS_LOGERROR, "Malloc strTmpSource failed!");
             return OBS_STATUS_OutOfMemory;
         }
-        memset_s(strTmpSource, sizeof(char) * (data_len + 1), 0, data_len + 1);
-        if (ret = strncpy_s(strTmpSource, data_len + 1, data, data_len))
+        memset_s(strTmpSource, sizeof(char) * strTmpSourceLen, 0, strTmpSourceLen);
+        if (ret = strncpy_s(strTmpSource, strTmpSourceLen, data, data_len))
         {
             COMMLOG(OBS_LOGERROR, "in %s line %s strncpy_s error, code is %d.", __FUNCTION__, __LINE__, ret);
             return OBS_STATUS_InternalError;
@@ -334,12 +340,12 @@ static obs_status set_versions_query_params(const char *prefix, const char *key_
     int amp = 0;
     if (delimiter)
     {
-        safe_append_status("delimiter", delimiter);
+        safe_append_status("delimiter", delimiter, strlen(delimiter));
     }
 
     if (key_marker)
     {
-        safe_append_status("key-marker", key_marker);
+        safe_append_status("key-marker", key_marker, strlen(key_marker));
     }
 
     if (maxkeys)
@@ -348,17 +354,17 @@ static obs_status set_versions_query_params(const char *prefix, const char *key_
         char maxKeysString[64] = { 0 };
         int ret = snprintf_s(maxKeysString, sizeof(maxKeysString), _TRUNCATE, "%d", maxkeys);
         CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-        safe_append_status("max-keys", maxKeysString);
+        safe_append_status("max-keys", maxKeysString, sizeof(maxKeysString));
     }
 
     if (prefix)
     {
-        safe_append_status("prefix", prefix);
+        safe_append_status("prefix", prefix, strlen(prefix));
     }
 
     if (version_id_marker)
     {
-        safe_append_status("version-id-marker", version_id_marker);
+        safe_append_status("version-id-marker", version_id_marker, strlen(version_id_marker));
     }
 
     errno_t err = EOK;

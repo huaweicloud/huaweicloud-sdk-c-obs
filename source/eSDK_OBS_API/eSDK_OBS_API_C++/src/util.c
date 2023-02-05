@@ -33,6 +33,7 @@
 
 
 #define OVECCOUNT 100
+#define OBS_MAX_UTF8_STR_SIZE 65536
 
 static int checkString(const char *str, const char *format) 
 {
@@ -113,8 +114,13 @@ char* UTF8_To_String(const char* strSource)
     memset_s(wstr, sizeof(wchar_t) * (nLen + 1), 0, nLen * 2 + 2);
     MultiByteToWideChar(CP_UTF8, 0, strSource, -1, wstr, nLen);
     nLen = WideCharToMultiByte(CP_ACP, 0, wstr, -1, NULL, 0, NULL, NULL);
-
-    str = (char*)malloc(sizeof(char) * (nLen + 1));
+    
+    int strLen = nLen + 1;
+    if (strLen <= 0 || strLen > OBS_MAX_UTF8_STR_SIZE){
+        COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+        return NULL;
+    }
+    str = (char*)malloc(sizeof(char) * strLen);
     if (NULL == str)
     {
         COMMLOG(OBS_LOGERROR, "Malloc str failed!");
@@ -122,7 +128,21 @@ char* UTF8_To_String(const char* strSource)
         wstr=NULL;
         return NULL;
     }
-    memset_s(str, sizeof(char) * (nLen + 1), 0, nLen + 1);
+    int ret = memset_s(str, sizeof(char) * strLen, 0, nLen + 1);
+    if (ret != EOK) {
+        if (ret == ERANGE) {
+            COMMLOG(OBS_LOGWARN, "memset_s failed in function: %s, line:%d, return_value: ERANGE", __FUNCTION__, __LINE__);
+        } else if (ret == EINVAL) {
+            COMMLOG(OBS_LOGWARN, "memset_s failed in function: %s, line:%d, return_value: EINVAL", __FUNCTION__, __LINE__);
+        } else if (ret == ERANGE_AND_RESET) {
+            COMMLOG(OBS_LOGWARN, "memset_s failed in function: %s, line:%d, return_value: ERANGE_AND_RESET", __FUNCTION__, __LINE__);
+        } else {
+            COMMLOG(OBS_LOGWARN, "memset_s failed in function: %s, line:%d, return_value: %d", __FUNCTION__, __LINE__, ret);
+        }
+        CHECK_NULL_FREE(wstr);
+        CHECK_NULL_FREE(str);
+        return NULL;
+    }
     WideCharToMultiByte(CP_ACP, 0, wstr, -1, str, nLen, NULL, NULL);
 
     if(wstr) 
@@ -270,7 +290,7 @@ int getTimeZone()
     return time_zone;
 }
 
-int urlEncode(char *dest, const char *src, int maxSrcSize, char ignoreChar)
+int urlEncode(char *dest, const char *src, uint64_t srcLen, int maxSrcSize, char ignoreChar)
 {
     if (dest == NULL) {
         COMMLOG(OBS_LOGERROR, "dest for urlEncode is NULL.");
@@ -278,6 +298,10 @@ int urlEncode(char *dest, const char *src, int maxSrcSize, char ignoreChar)
     }
     if (src == NULL) {
         COMMLOG(OBS_LOGWARN, "src for urlEncode is NULL.");
+        *dest = 0;
+        return 1;
+    }else if(srcLen == 0){
+        COMMLOG(OBS_LOGWARN, "src for urlEncode is Empty.");
         *dest = 0;
         return 1;
     }

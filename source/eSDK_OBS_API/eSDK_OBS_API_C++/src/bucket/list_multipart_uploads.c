@@ -16,6 +16,8 @@
 #include "request_util.h"
 #include <openssl/md5.h> 
 
+#define OBS_MAX_STR_TMP_SIZE 65536
+
 static obs_status set_multipart_query_params(const char *prefix, const char *marker, const char *delimiter,
     const char* uploadid_marke, int max_uploads, char* query_params)
 {
@@ -25,12 +27,12 @@ static obs_status set_multipart_query_params(const char *prefix, const char *mar
     int amp = 0;
     if (delimiter)
     {
-        safe_append_status("delimiter", delimiter);
+        safe_append_status("delimiter", delimiter, strlen(delimiter));
     }
 
     if (marker)
     {
-        safe_append_status("key-marker", marker);
+        safe_append_status("key-marker", marker, strlen(marker));
     }
 
     if (max_uploads)
@@ -39,17 +41,17 @@ static obs_status set_multipart_query_params(const char *prefix, const char *mar
         char max_upload_string[64] = { 0 };
         int ret = snprintf_s(max_upload_string, sizeof(max_upload_string), _TRUNCATE, "%d", max_uploads);
         CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-        safe_append_status("max-uploads", max_upload_string);
+        safe_append_status("max-uploads", max_upload_string, sizeof(max_upload_string));
     }
 
     if (prefix)
     {
-        safe_append_status("prefix", prefix);
+        safe_append_status("prefix", prefix, strlen(prefix));
     }
 
     if (uploadid_marke)
     {
-        safe_append_status("upload-id-marke", uploadid_marke);
+        safe_append_status("upload-id-marke", uploadid_marke, strlen(uploadid_marke));
     }
 
     errno_t err = EOK;
@@ -169,14 +171,19 @@ obs_status parse_xml_list_multipart_uploads(list_multipart_uploads_data *lmu_dat
     }
     else if (!strcmp(element_path, "ListMultipartUploadsResult/Upload/Key")) {
 #ifdef WIN32
-        char* strTmpSource = (char*)malloc(sizeof(char) * (data_len + 1));
+        int strTmpSourceLen = data_len + 1;
+        if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_STR_TMP_SIZE) {
+            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            return OBS_STATUS_OutOfMemory;
+        }
+        char* strTmpSource = (char*)malloc(sizeof(char) * strTmpSourceLen);
         if (NULL == strTmpSource)
         {
             COMMLOG(OBS_LOGERROR, "Malloc strTmpSource failed!");
             return OBS_STATUS_InternalError;
         }
-        memset_s(strTmpSource, sizeof(char) * (data_len + 1), 0, data_len + 1);
-        if (ret = strncpy_s(strTmpSource, data_len + 1, data, data_len))
+        memset_s(strTmpSource, sizeof(char) * strTmpSourceLen, 0, strTmpSourceLen);
+        if (ret = strncpy_s(strTmpSource, strTmpSourceLen, data, data_len))
         {
             COMMLOG(OBS_LOGERROR, "in %s line %s strncpy_s error, code is %d.", __FUNCTION__, __LINE__, ret);
             return OBS_STATUS_InternalError;

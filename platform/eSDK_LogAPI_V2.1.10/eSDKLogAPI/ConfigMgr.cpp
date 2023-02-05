@@ -81,13 +81,13 @@ namespace eSDK {
 		m_uiLogFilePermission = 0640;
     }
 
-	// ³õÊ¼»¯
+	// åˆå§‹åŒ–
 #if defined ANDROID
 	bool ConfigMgr::Init(const std::string& iniInfo, const std::string& product)
 	{
-		// Ğ£ÑéÅäÖÃÎÄ¼şÄÚÈİÊÇ·ñÎª¿Õ
+		// æ ¡éªŒé…ç½®æ–‡ä»¶å†…å®¹æ˜¯å¦ä¸ºç©º
 		if (iniInfo.empty())
-		{//Ã»ÓĞÅäÖÃÎÄ¼şÊ±ÓÃÄ¬ÈÏµÄ
+		{//æ²¡æœ‰é…ç½®æ–‡ä»¶æ—¶ç”¨é»˜è®¤çš„
 			//return false;
 			InitWithDefaultVal();
 			m_strProductName = product;
@@ -97,7 +97,7 @@ namespace eSDK {
 		// out param
 		std::string tempValue("");
 
-		// »ñÈ¡LogSize
+		// è·å–LogSize
 		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG, "LogSize_Interface", iniInfo.c_str(), tempValue);
 		m_uiLogSize_Interface = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
@@ -108,7 +108,7 @@ namespace eSDK {
 		m_uiLogSize_Run = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
 
-		// »ñÈ¡LogNum
+		// è·å–LogNum
 		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG, "LogNum_Interface", iniInfo.c_str(), tempValue);
 		m_uiLogNum_Interface = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
@@ -119,7 +119,7 @@ namespace eSDK {
 		m_uiLogNum_Run = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
 
-		// »ñÈ¡LogLevel
+		// è·å–LogLevel
 		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG, "LogLevel_Interface", iniInfo.c_str(), tempValue);
 		m_uiLogLevel_Interface = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
@@ -130,12 +130,12 @@ namespace eSDK {
 		m_uiLogLevel_Run = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
 
-		// »ñÈ¡LogNum
+		// è·å–LogNum
 		eSDKTool::GetIniSectionItem(SECTION_NAME_PRODUCT, "sdkname", iniInfo.c_str(), tempValue);
 		m_strProductName = tempValue;
 		tempValue.clear();
 
-		// »ñÈ¡LogPath
+		// è·å–LogPath
 		eSDKTool::GetIniSectionItem(SECTION_NAME_LOGPATH, "LogPath", iniInfo.c_str(), tempValue);
 		m_strLogPath = tempValue;
 		tempValue.clear();
@@ -145,9 +145,9 @@ namespace eSDK {
 #else
 	bool ConfigMgr::Init(const std::string& iniFile, const std::string& product)
 	{
-		// Ğ£ÑéÅäÖÃÎÄ¼şÂ·¾¶
+		// æ ¡éªŒé…ç½®æ–‡ä»¶è·¯å¾„
 		if (!eSDKTool::IsPathFileExist(iniFile.c_str()))
-		{//Ã»ÓĞÅäÖÃÎÄ¼şÊ±ÓÃÄ¬ÈÏµÄ
+		{//æ²¡æœ‰é…ç½®æ–‡ä»¶æ—¶ç”¨é»˜è®¤çš„
 			//return false;
             InitWithDefaultVal();
             m_strProductName = product;
@@ -157,7 +157,7 @@ namespace eSDK {
 		// out param
 		std::string tempValue("");
 
-		// »ñÈ¡LogSize
+		// è·å–LogSize
 		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG, "LogSize_Interface", iniFile.c_str(), tempValue);
 		m_uiLogSize_Interface = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
@@ -168,7 +168,7 @@ namespace eSDK {
 		m_uiLogSize_Run = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
 
-		// »ñÈ¡LogNum
+		// è·å–LogNum
 		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG, "LogNum_Interface", iniFile.c_str(), tempValue);
 		m_uiLogNum_Interface = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
@@ -179,7 +179,7 @@ namespace eSDK {
 		m_uiLogNum_Run = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
 
-		// »ñÈ¡LogLevel
+		// è·å–LogLevel
 		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG, "LogLevel_Interface", iniFile.c_str(), tempValue);
 		m_uiLogLevel_Interface = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
@@ -190,17 +190,17 @@ namespace eSDK {
 		m_uiLogLevel_Run = (unsigned int)atoi(tempValue.c_str());
 		tempValue.clear();
 
-		// »ñÈ¡sdkname
+		// è·å–sdkname
 		eSDKTool::GetIniSectionItem(SECTION_NAME_PRODUCT, "sdkname", iniFile.c_str(), tempValue);
 		m_strProductName = tempValue;
 		tempValue.clear();
 
-		// »ñÈ¡LogPath
+		// è·å–LogPath
 		eSDKTool::GetIniSectionItem(SECTION_NAME_LOGPATH, "LogPath", iniFile.c_str(), tempValue);
 		m_strLogPath = tempValue;
 		tempValue.clear();
 
-		// »ñÈ¡FilePermission
+		// è·å–FilePermission
 		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG, "LogFilePermission", iniFile.c_str(), tempValue);
 		std::string strPermission = tempValue;
 		m_uiLogFilePermission = eSDKTool::StringToOCT(strPermission);
@@ -210,7 +210,7 @@ namespace eSDK {
 	}
 #endif
 
-	// È¥³õÊ¼»¯
+	// å»åˆå§‹åŒ–
 	bool ConfigMgr::Uninit(void)
 	{
 		m_uiLogSize_Interface = 0;
@@ -226,7 +226,7 @@ namespace eSDK {
 		return true;
 	}
 
-	// »ñÈ¡ÈÕÖ¾²ÎÊı
+	// è·å–æ—¥å¿—å‚æ•°
 	unsigned int ConfigMgr::GetLogSize_Interface(void) const
 	{
 		return m_uiLogSize_Interface;
@@ -271,7 +271,7 @@ namespace eSDK {
 	{
 		return m_strLogPath;
 	}
-	// ÈÕÖ¾ÎÄ¼ş¶ÁÈ¡È¨ÏŞ add by cwx298983 2016.06.29 Start
+	// æ—¥å¿—æ–‡ä»¶è¯»å–æƒé™ add by cwx298983 2016.06.29 Start
 	unsigned int ConfigMgr::GetFilePermission(void) const
 	{
 		if (0 != (m_uiLogFilePermission & 0xFE00) || 0 == m_uiLogFilePermission)
@@ -283,9 +283,9 @@ namespace eSDK {
 			return m_uiLogFilePermission;
 		}		
 	}
-	// ÈÕÖ¾ÎÄ¼ş¶ÁÈ¡È¨ÏŞ add by cwx298983 2016.06.29 End
+	// æ—¥å¿—æ–‡ä»¶è¯»å–æƒé™ add by cwx298983 2016.06.29 End
 
-	// ÉèÖÃÈÕÖ¾²ÎÊı
+	// è®¾ç½®æ—¥å¿—å‚æ•°
 	void ConfigMgr::SetLogSize_Interface(const unsigned int nSize)
 	{
 		m_uiLogSize_Interface = nSize;

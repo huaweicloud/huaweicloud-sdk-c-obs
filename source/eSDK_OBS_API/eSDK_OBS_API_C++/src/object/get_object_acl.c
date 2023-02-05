@@ -432,7 +432,7 @@ void get_object_acl(const obs_options *options, manager_acl_info *aclinfo, obs_r
     string_buffer_initialize(queryParams);
     int amp = 0;
     if (aclinfo->object_info.version_id) {
-        safe_append("versionId", aclinfo->object_info.version_id, handler->complete_callback);
+        safe_append("versionId", aclinfo->object_info.version_id, strlen(aclinfo->object_info.version_id), handler->complete_callback);
     }
     get_acl_data *gaData = (get_acl_data *)malloc(sizeof(get_acl_data));
     if (!gaData) {

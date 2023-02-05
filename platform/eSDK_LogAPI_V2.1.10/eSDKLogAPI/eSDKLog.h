@@ -38,27 +38,27 @@ using namespace VPP;
 #pragma warning(pop)
 #endif
 
-//ÈÕÖ¾ÎÄ¼ş
+//æ—¥å¿—æ–‡ä»¶
 #define LOG_INTERFACE_FILE			"interface.log"
 #define LOG_OPERATE_FILE			"operation.log"
 #define LOG_RUN_FILE				"run.log"
-//±¸·İ½Ó¿ÚÎÄ¼ş
+//å¤‡ä»½æ¥å£æ–‡ä»¶
 #define LOG_INTERFACE_BACKUP_FILE	"interface.backup.log"
-//Ä¬ÈÏÈÕÖ¾Ä¿Â¼
+//é»˜è®¤æ—¥å¿—ç›®å½•
 #define LOG_DIRECTORY				"log"
 
-// È¥³ı×îºóµÄ|·ûºÅ
-//interfaceÈÕÖ¾¸ñÊ½"%dÈÕÆÚ %tÏß³Ìid %pÓÅÏÈ¼¶ %mÏûÏ¢ %n»»ĞĞ·û"
+// å»é™¤æœ€åçš„|ç¬¦å·
+//interfaceæ—¥å¿—æ ¼å¼"%dæ—¥æœŸ %tçº¿ç¨‹id %pä¼˜å…ˆçº§ %mæ¶ˆæ¯ %næ¢è¡Œç¬¦"
 #define LOG_INTERFACE_PATTERN			"%d{%Y-%m-%d %H:%M:%S %l}|%5p|%m%n"
-//operationÈÕÖ¾¸ñÊ½"%dÈÕÆÚ %tÏß³Ìid %pÓÅÏÈ¼¶ %mÏûÏ¢ %n»»ĞĞ·û"
+//operationæ—¥å¿—æ ¼å¼"%dæ—¥æœŸ %tçº¿ç¨‹id %pä¼˜å…ˆçº§ %mæ¶ˆæ¯ %næ¢è¡Œç¬¦"
 #define LOG_OPERATION_PATTERN			"%d{%Y-%m-%d %H:%M:%S %l}|%5p|%m%n"
-//runÈÕÖ¾¸ñÊ½"%dÈÕÆÚ %tÏß³Ìid %pÓÅÏÈ¼¶ %mÏûÏ¢ %n»»ĞĞ·û"
+//runæ—¥å¿—æ ¼å¼"%dæ—¥æœŸ %tçº¿ç¨‹id %pä¼˜å…ˆçº§ %mæ¶ˆæ¯ %næ¢è¡Œç¬¦"
 #define LOG_RUN_PATTERN					"%d{%Y-%m-%d %H:%M:%S %l}|%5p|[%t]%m%n"
-//interface±¸·İÈÕÖ¾¸ñÊ½"%mĞÅÏ¢"
+//interfaceå¤‡ä»½æ—¥å¿—æ ¼å¼"%mä¿¡æ¯"
 #define LOG_INTERFACE_BACKUP_PATTERN	"%m"
-// È¥³ı×îºóµÄ|·ûºÅ
+// å»é™¤æœ€åçš„|ç¬¦å·
 
-//ÈÕÖ¾ÊµÀıÃû
+//æ—¥å¿—å®ä¾‹å
 #define LOG_INTERFACE_INSTANCE		"INTERFACE"
 #define LOG_OPERATE_INSTANCE		"OPERATE"
 #define LOG_RUN_INSTANCE			"RUN"
@@ -73,7 +73,7 @@ enum LOGTYPE
 
 
 
-//ÈÕÖ¾Àà
+//æ—¥å¿—ç±»
 class eSDKLog
 {
 public:
@@ -90,9 +90,9 @@ public:
     void ShutDownLog4cpp(void);
     // solve the problem that the process ended without call function LogFini.
 
-	void InvokeIntLogRolling(void);//´¥·¢interfaceÈÕÖ¾ÈÆ½Ó
-	void InvokeOptLogRolling(void);//´¥·¢operationÈÕÖ¾ÈÆ½Ó
-	void InvokeRunLogRolling(void);//´¥·¢runÈÕÖ¾ÈÆ½Ó	
+	void InvokeIntLogRolling(void);//è§¦å‘interfaceæ—¥å¿—ç»•æ¥
+	void InvokeOptLogRolling(void);//è§¦å‘operationæ—¥å¿—ç»•æ¥
+	void InvokeRunLogRolling(void);//è§¦å‘runæ—¥å¿—ç»•æ¥	
 	void printIntInfolog(const std::string& strcontent);
 	void printIntErrorlog(const std::string& strcontent);
 	void printOptDebuglog(const std::string& strcontent);
@@ -109,10 +109,10 @@ private:
 	log4cpp::Priority::PriorityLevel GetLog4cppLevel(unsigned int logLevel, const std::string& strLogType);
 
 private:
-	VPP::VOS_Mutex* m_IntMutex;//½Ó¿ÚÀàÈÕÖ¾Ëø
-	VPP::VOS_Mutex* m_OptMutex;//²Ù×÷ÀàÈÕÖ¾Ëø
-	VPP::VOS_Mutex* m_RunMutex;//ÔËĞĞÀàÈÕÖ¾Ëø
-	VPP::VOS_Mutex* m_IntBackupMutex;//½Ó¿ÚÀà±¸·İÈÕÖ¾Ëø
+	VPP::VOS_Mutex* m_IntMutex;//æ¥å£ç±»æ—¥å¿—é”
+	VPP::VOS_Mutex* m_OptMutex;//æ“ä½œç±»æ—¥å¿—é”
+	VPP::VOS_Mutex* m_RunMutex;//è¿è¡Œç±»æ—¥å¿—é”
+	VPP::VOS_Mutex* m_IntBackupMutex;//æ¥å£ç±»å¤‡ä»½æ—¥å¿—é”
 
 	std::string m_InstanceInterfaceName;
 	std::string m_InstanceOperationName;

@@ -126,14 +126,20 @@ void create_and_write_file(char *filename, unsigned int file_size)
 
 obs_status response_properties_callback(const obs_response_properties *properties, void *callback_data)
 {
-    (void) callback_data;
 
-    if (properties == NULL && callback_data != NULL)
+    if (properties == NULL)
     {
-        obs_sever_callback_data *data = (obs_sever_callback_data *)callback_data;
-        printf("server_callback buf is %s ,len is %d",
-            data->buffer, data->buffer_len);
-        return OBS_STATUS_OK;
+        printf("error! obs_response_properties is null!");
+        if(callback_data != NULL)
+        {
+            obs_sever_callback_data *data = (obs_sever_callback_data *)callback_data;
+            printf("server_callback buf is %s ,len is %d",
+                data->buffer, data->buffer_len);
+            return OBS_STATUS_OK;
+        }else {
+            printf("error! obs_sever_callback_data is null!");
+            return OBS_STATUS_OK;
+        }
     }
 
     if (!showResponsePropertiesG) {
@@ -151,6 +157,7 @@ obs_status response_properties_callback(const obs_response_properties *propertie
     print_nonnull("expiration", expiration);
     print_nonnull("website_redirect_location", website_redirect_location);
     print_nonnull("version_id", version_id);
+    print_nonnull("storage_class", storage_class);
     if (properties->last_modified > 0) {
         char timebuf[256] = {0};
         time_t t = (time_t) properties->last_modified;
@@ -1192,7 +1199,7 @@ obs_status listPartsCallbackEx(obs_uploaded_parts_total_info* uploadedParts,
     printf("ownerDisplayName: %s\n",uploadedParts->owner_display_name);
     printf("IsTruncated : %d\n", uploadedParts->is_truncated);
     printf("NextPartNumberMarker : %u\n", nextPartNumberMarker);
-    printf("Storage Class is : %s\n", uploadedParts->sorage_class);
+    printf("Storage Class is : %s\n", uploadedParts->storage_class);
 
     int i;
     for (i = 0; i < partsCount; i++) {
@@ -1416,9 +1423,13 @@ obs_status DeleteObjectsDataCallback(int contentsCount,
     return OBS_STATUS_OK;
 }
 
-
-void tempAuthCallBack_getResult(char * tempAuthUrl,char * tempAuthActualHeaders,void *callbackData)
+void tempAuthCallBack_getResult(char *tempAuthUrl, uint64_t tempAuthUrlLen, char *tempAuthActualHeaders,
+    uint64_t tempAuthActualHeadersLen, void *callbackData)
 {
+    if (tempAuthUrl == NULL || tempAuthUrlLen == 0 || tempAuthActualHeaders == NULL || tempAuthActualHeadersLen == 0) {
+        printf("null pointer or zero length detected in function: %s ,line: %d", __FUNCTION__, __LINE__);
+        return;
+    }
     int urlLen = 0;
     tempAuthResult * ptrResult = (tempAuthResult *)callbackData;
     urlLen = strlen(tempAuthUrl);

@@ -20,13 +20,13 @@
 #include "eSDKLogDataType.h"
 
 
-// ÈÕÖ¾ÊµÀı
+// æ—¥å¿—å®ä¾‹
 #define ConfigMgrInstance()		(eSDK::ConfigMgr::Instance())
 
-// ÈÕÖ¾ÅäÖÃÎÄ¼ş
+// æ—¥å¿—é…ç½®æ–‡ä»¶
 #define CLIENT_CONFIG_FILE		"eSDKClientLogCfg.ini"
 
-// ÅäÖÃÎÄ¼ş½Úµã
+// é…ç½®æ–‡ä»¶èŠ‚ç‚¹
 #define SECTION_NAME_LOG		"LogConfig"
 #define SECTION_NAME_UPLOAD		"UploadConfig"
 #define SECTION_NAME_PRODUCT	"ProductConfig"
@@ -45,18 +45,18 @@ namespace eSDK
 		static ConfigMgr& Instance(void);
 
 	public:
-        //Ã»ÓĞÎÄ¼şÒ²¿ÉÒÔ³õÊ¼»¯
+        //æ²¡æœ‰æ–‡ä»¶ä¹Ÿå¯ä»¥åˆå§‹åŒ–
         void InitWithDefaultVal();
-		// ³õÊ¼»¯
+		// åˆå§‹åŒ–
 #if defined ANDROID
 		bool Init(const std::string& iniInfo, const std::string& product);
 #else
 		bool Init(const std::string& iniFile, const std::string& product);
 #endif
-		// È¥³õÊ¼»¯
+		// å»åˆå§‹åŒ–
 		bool Uninit(void);
 
-		// »ñÈ¡ÈÕÖ¾²ÎÊı
+		// è·å–æ—¥å¿—å‚æ•°
 		unsigned int GetLogSize_Interface(void) const;
 		unsigned int GetLogSize_Operation(void) const;
 		unsigned int GetLogSize_Run(void) const;
@@ -68,9 +68,9 @@ namespace eSDK
 		unsigned int GetLogLevel_Run(void) const;
 		const std::string& GetLogProduct(void) const;
 		std::string GetLogPath(void);
-		// ÈÕÖ¾ÎÄ¼ş¶ÁÈ¡È¨ÏŞ add by cwx298983 2016.06.29 Start
+		// æ—¥å¿—æ–‡ä»¶è¯»å–æƒé™ add by cwx298983 2016.06.29 Start
 		unsigned int GetFilePermission(void) const;
-		// ÈÕÖ¾ÎÄ¼ş¶ÁÈ¡È¨ÏŞ add by cwx298983 2016.06.29 End
+		// æ—¥å¿—æ–‡ä»¶è¯»å–æƒé™ add by cwx298983 2016.06.29 End
 
 		void SetLogSize_Interface(const unsigned int nSize);
 		void SetLogSize_Operation(const unsigned int nSize);
@@ -84,20 +84,20 @@ namespace eSDK
 		void SetLogPath(const std::string& strLogPath);
 
 	private:
-		unsigned int m_uiLogSize_Interface;		// ÈÕÖ¾´óĞ¡
-		unsigned int m_uiLogSize_Operation;		// ÈÕÖ¾´óĞ¡
-		unsigned int m_uiLogSize_Run;			// ÈÕÖ¾´óĞ¡
-		unsigned int m_uiLogNum_Interface;		// ÈÕÖ¾ÊıÁ¿
-		unsigned int m_uiLogNum_Operation;		// ÈÕÖ¾ÊıÁ¿
-		unsigned int m_uiLogNum_Run;			// ÈÕÖ¾ÊıÁ¿
-		unsigned int m_uiLogLevel_Interface;	// ÈÕÖ¾¼¶±ğ
-		unsigned int m_uiLogLevel_Operation;	// ÈÕÖ¾¼¶±ğ
-		unsigned int m_uiLogLevel_Run;			// ÈÕÖ¾¼¶±ğ
-		std::string m_strProductName;			// ÈÕÖ¾ËùÊôÄ£¿é
-		std::string m_strLogPath;				// ÈÕÖ¾Éú³ÉÂ·¾¶
-		// ÈÕÖ¾ÎÄ¼ş¶ÁÈ¡È¨ÏŞ add by cwx298983 2016.06.29 Start
-		unsigned int m_uiLogFilePermission;		// ÈÕÖ¾ÎÄ¼ş¶ÁÈ¡È¨ÏŞ
-		// ÈÕÖ¾ÎÄ¼ş¶ÁÈ¡È¨ÏŞ add by cwx298983 2016.06.29 End
+		unsigned int m_uiLogSize_Interface;		// æ—¥å¿—å¤§å°
+		unsigned int m_uiLogSize_Operation;		// æ—¥å¿—å¤§å°
+		unsigned int m_uiLogSize_Run;			// æ—¥å¿—å¤§å°
+		unsigned int m_uiLogNum_Interface;		// æ—¥å¿—æ•°é‡
+		unsigned int m_uiLogNum_Operation;		// æ—¥å¿—æ•°é‡
+		unsigned int m_uiLogNum_Run;			// æ—¥å¿—æ•°é‡
+		unsigned int m_uiLogLevel_Interface;	// æ—¥å¿—çº§åˆ«
+		unsigned int m_uiLogLevel_Operation;	// æ—¥å¿—çº§åˆ«
+		unsigned int m_uiLogLevel_Run;			// æ—¥å¿—çº§åˆ«
+		std::string m_strProductName;			// æ—¥å¿—æ‰€å±æ¨¡å—
+		std::string m_strLogPath;				// æ—¥å¿—ç”Ÿæˆè·¯å¾„
+		// æ—¥å¿—æ–‡ä»¶è¯»å–æƒé™ add by cwx298983 2016.06.29 Start
+		unsigned int m_uiLogFilePermission;		// æ—¥å¿—æ–‡ä»¶è¯»å–æƒé™
+		// æ—¥å¿—æ–‡ä»¶è¯»å–æƒé™ add by cwx298983 2016.06.29 End
 	};
 }
 

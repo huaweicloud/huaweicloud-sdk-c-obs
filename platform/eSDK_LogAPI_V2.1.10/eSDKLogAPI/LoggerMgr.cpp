@@ -56,7 +56,7 @@ namespace eSDK
 			{
 				PRODUCT_MAP::iterator itor = m_ProductMap.begin();
 				PRODUCT_DATA& data = itor->second;
-				//¹Ø±ÕÈÕÖ¾´òÓ¡
+				//å…³é—­æ—¥å¿—æ‰“å°
 				if (NULL != data.peSDKLog)
 				{
 					delete data.peSDKLog;
@@ -82,15 +82,15 @@ namespace eSDK
 	{
 		(void)VOS_MutexLock(m_mutex);
 
-		//ÒÑ¾­Æô¶¯£¬ÍË³ö
+		//å·²ç»å¯åŠ¨ï¼Œé€€å‡º
 		if (m_ProductMap.end() != m_ProductMap.find(product))
 		{      
 			(void)VOS_MutexUnlock(m_mutex);
 			return RET_INVALID_PARA;
 		}
 
-		//¶ÁÈ¡ÅäÖÃÏî
-		if(!ConfigMgrInstance().Init(iniInfo, product)) //Èç¹û¶ÁÈ¡¼ÓÔØÅäÖÃÎÄ¼þ³ö´í£¬×Ô¶¯»ñÈ¡Â·¾¶
+		//è¯»å–é…ç½®é¡¹
+		if(!ConfigMgrInstance().Init(iniInfo, product)) //å¦‚æžœè¯»å–åŠ è½½é…ç½®æ–‡ä»¶å‡ºé”™ï¼Œè‡ªåŠ¨èŽ·å–è·¯å¾„
 		{
 			(void)VOS_MutexUnlock(m_mutex);
 			return RET_INVALID_PARA;
@@ -110,7 +110,7 @@ namespace eSDK
 				return RET_INVALID_PARA;
 			}
 
-			//Éú³ÉÈÕÖ¾ÎÄ¼þ
+			//ç”Ÿæˆæ—¥å¿—æ–‡ä»¶
 			if (!data.peSDKLog->InitLog4cpp(product, logLevel, data.logPath))
 			{
 				delete data.peSDKLog;
@@ -147,15 +147,15 @@ namespace eSDK
 	{
 		(void)VOS_MutexLock(m_mutex);
 
-		//ÒÑ¾­Æô¶¯£¬ÍË³ö
+		//å·²ç»å¯åŠ¨ï¼Œé€€å‡º
 		if (m_ProductMap.end() != m_ProductMap.find(product))
 		{
 			(void)VOS_MutexUnlock(m_mutex);
 			return RET_INVALID_PARA;
 		}
 
-		//¶ÁÈ¡ÅäÖÃÏî
-		if(!ConfigMgrInstance().Init(iniFile, product)) //Èç¹û¶ÁÈ¡¼ÓÔØÅäÖÃÎÄ¼þ³ö´í£¬×Ô¶¯»ñÈ¡Â·¾¶
+		//è¯»å–é…ç½®é¡¹
+		if(!ConfigMgrInstance().Init(iniFile, product)) //å¦‚æžœè¯»å–åŠ è½½é…ç½®æ–‡ä»¶å‡ºé”™ï¼Œè‡ªåŠ¨èŽ·å–è·¯å¾„
 		{
 			(void)VOS_MutexUnlock(m_mutex);
 			return RET_INVALID_PARA;
@@ -175,7 +175,7 @@ namespace eSDK
 				return RET_INVALID_PARA;
 			}
 
-			//Éú³ÉÈÕÖ¾ÎÄ¼þ
+			//ç”Ÿæˆæ—¥å¿—æ–‡ä»¶
 			if (!data.peSDKLog->InitLog4cpp(product, logLevel, data.logPath, data.filePermission))
 			{
 				delete data.peSDKLog;
@@ -211,7 +211,7 @@ namespace eSDK
 	{
 		(void)VOS_MutexLock(m_mutex);
 
-		//ÒÑ¾­ÍË³ö
+		//å·²ç»é€€å‡º
 		PRODUCT_MAP::iterator itor = m_ProductMap.find(product);
 		if (m_ProductMap.end() == itor)
 		{
@@ -220,31 +220,31 @@ namespace eSDK
 		}
 		PRODUCT_DATA& data = itor->second;
 
-		//×îºóÒ»¸ö²úÆ·
+		//æœ€åŽä¸€ä¸ªäº§å“
 		if (1 == m_ProductMap.size())
 		{
-			//¹Ø±ÕÈÕÖ¾´òÓ¡
+			//å…³é—­æ—¥å¿—æ‰“å°
 			if (NULL != data.peSDKLog)
 			{
 				data.peSDKLog->ShutDownLog4cpp();
-				//ÊÍ·Å¸Ã²úÆ·ÈÕÖ¾´òÓ¡
+				//é‡Šæ”¾è¯¥äº§å“æ—¥å¿—æ‰“å°
 #if !defined(ANDROID) && !defined(TARGET_MAC_OS) && !defined(TARGET_OS_IPHONE)
 				delete data.peSDKLog;
 				data.peSDKLog = NULL;
 #endif	
 			}
-			//ÅäÖÃÎÄ¼þ¹ÜÀíÍË³ö
+			//é…ç½®æ–‡ä»¶ç®¡ç†é€€å‡º
 			(void)ConfigMgrInstance().Uninit();
 		}
 		else
 		{
-			//ÊÍ·Å¸Ã²úÆ·ÈÕÖ¾´òÓ¡
+			//é‡Šæ”¾è¯¥äº§å“æ—¥å¿—æ‰“å°
             data.peSDKLog->UninitLog4cpp();
 			delete data.peSDKLog;
 			data.peSDKLog = NULL;
 		}
 		
-		//ÊÍ·Å²úÆ·Êý¾Ý
+		//é‡Šæ”¾äº§å“æ•°æ®
 		m_ProductMap.erase(itor);
 
 		(void)VOS_MutexUnlock(m_mutex);
@@ -259,7 +259,7 @@ namespace eSDK
 		{
 			return RET_NULL_POINTER;
 		}
-		// »ñÈ¡ÈÕÖ¾´òÓ¡ÊµÀý
+		// èŽ·å–æ—¥å¿—æ‰“å°å®žä¾‹
 		(void)VOS_MutexLock(m_mutex);
 		PRODUCT_MAP::iterator itor = m_ProductMap.find(product);
 		if (m_ProductMap.end() == itor)
@@ -305,7 +305,7 @@ namespace eSDK
 		{
 			return RET_NULL_POINTER;
 		}
-		// »ñÈ¡ÈÕÖ¾´òÓ¡ÊµÀý
+		// èŽ·å–æ—¥å¿—æ‰“å°å®žä¾‹
 		(void)VOS_MutexLock(m_mutex);
 		PRODUCT_MAP::iterator itor = m_ProductMap.find(product);
 		if (m_ProductMap.end() == itor)
@@ -355,7 +355,7 @@ namespace eSDK
 		{
 			return RET_NULL_POINTER;
 		}
-		// »ñÈ¡ÈÕÖ¾´òÓ¡ÊµÀý
+		// èŽ·å–æ—¥å¿—æ‰“å°å®žä¾‹
 		(void)VOS_MutexLock(m_mutex);
 		PRODUCT_MAP::iterator itor = m_ProductMap.find(product);
 		if (m_ProductMap.end() == itor)
@@ -403,7 +403,7 @@ namespace eSDK
 
 	void LoggerMgr::rollover(const std::string& product)
 	{
-		// »ñÈ¡ÈÕÖ¾´òÓ¡ÊµÀý
+		// èŽ·å–æ—¥å¿—æ‰“å°å®žä¾‹
 		(void)VOS_MutexLock(m_mutex);
 		PRODUCT_MAP::iterator itor = m_ProductMap.find(product);
 		if (m_ProductMap.end() == itor)
@@ -419,9 +419,9 @@ namespace eSDK
 		}
 		(void)VOS_MutexUnlock(m_mutex);
 
-		// Ö»Ðè´¥·¢InterfaceÈÕÖ¾µÄÈÆ½Ó modify by cwx298983 2015.12.08 Start
+		// åªéœ€è§¦å‘Interfaceæ—¥å¿—çš„ç»•æŽ¥ modify by cwx298983 2015.12.08 Start
 		data.peSDKLog->InvokeIntLogRolling();
-		// Ö»Ðè´¥·¢InterfaceÈÕÖ¾µÄÈÆ½Ó modify by cwx298983 2015.12.08 End
+		// åªéœ€è§¦å‘Interfaceæ—¥å¿—çš„ç»•æŽ¥ modify by cwx298983 2015.12.08 End
 	}
 
 	// Get the path of the logs Add by cwx298983 2016.04.19 Start 
@@ -429,9 +429,9 @@ namespace eSDK
 	{
 		std::string strRetLogPath("");
 
-		// ÅÐ¶ÏLogInitÖÐ´«ÈëµÄlogPath²ÎÊýÊÇ·ñÎª¿Õ£¬²»Îª¿Õ£¬ÔòÖ±½ÓÊ¹ÓÃlogPathÎªÈÕÖ¾Éú³ÉÂ·¾¶£»
-		// Îª¿ÕÔÙÅÐ¶ÏiniÎÄ¼þÖÐlogPathÊÇ·ñÎª¿Õ£¬Èç¹û¶¼Îª¿Õ£¬ÔòÊ¹ÓÃÄ¬ÈÏÂ·¾¶£¨¿âËùÔÚÂ·¾¶ÏÂµÄlogÎÄ¼þ£©£»
-		// ²»Îª¿ÕÔò¸ù¾ÝiniÖÐlogPath²ÎÊýÈ·¶¨ÈÕÖ¾Éú³ÉÂ·¾¶
+		// åˆ¤æ–­LogInitä¸­ä¼ å…¥çš„logPathå‚æ•°æ˜¯å¦ä¸ºç©ºï¼Œä¸ä¸ºç©ºï¼Œåˆ™ç›´æŽ¥ä½¿ç”¨logPathä¸ºæ—¥å¿—ç”Ÿæˆè·¯å¾„ï¼›
+		// ä¸ºç©ºå†åˆ¤æ–­iniæ–‡ä»¶ä¸­logPathæ˜¯å¦ä¸ºç©ºï¼Œå¦‚æžœéƒ½ä¸ºç©ºï¼Œåˆ™ä½¿ç”¨é»˜è®¤è·¯å¾„ï¼ˆåº“æ‰€åœ¨è·¯å¾„ä¸‹çš„logæ–‡ä»¶ï¼‰ï¼›
+		// ä¸ä¸ºç©ºåˆ™æ ¹æ®iniä¸­logPathå‚æ•°ç¡®å®šæ—¥å¿—ç”Ÿæˆè·¯å¾„
 		if (INVALID_LOG_PATH == strIniLogPath)
 		{
 			strRetLogPath = ConfigMgrInstance().GetLogPath();
@@ -445,10 +445,10 @@ namespace eSDK
 			}
 			else
 			{
-				// ÅÐ¶ÏÊÇ·ñÎªÏà¶ÔÂ·¾¶
+				// åˆ¤æ–­æ˜¯å¦ä¸ºç›¸å¯¹è·¯å¾„
 				if (eSDKTool::IsRelativePath(strRetLogPath))
 				{
-					// ·µ»ØµÄ±ØÐëÊÇ¾ø¶ÔÂ·¾¶
+					// è¿”å›žçš„å¿…é¡»æ˜¯ç»å¯¹è·¯å¾„
 					strRetLogPath = eSDKTool::GetDllPath() + strRetLogPath;
 				}
 			}
@@ -495,7 +495,7 @@ namespace eSDK
 		}
 
 		unsigned int logLevel[3] = {INVALID_LOG_LEVEL, INVALID_LOG_LEVEL, INVALID_LOG_LEVEL};
-		//Éú³ÉÈÕÖ¾ÎÄ¼þ
+		//ç”Ÿæˆæ—¥å¿—æ–‡ä»¶
 		if (!data.peSDKLog->InitLog4cpp(product, logLevel, data.logPath))
 		{
 			delete data.peSDKLog;

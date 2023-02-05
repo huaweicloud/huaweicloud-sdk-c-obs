@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#define OBS_MAX_STR_TMP_SIZE 65536
 
 static obs_status complete_multi_part_upload_xml_callback(const char *elementPath, const char *data,
     int dataLen, void *callback_data)
@@ -34,14 +35,19 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
 
     if (!strcmp(elementPath, "CompleteMultipartUploadResult/Location")) {
 #ifdef WIN32
-        char* strTmpSource = (char*)malloc(sizeof(char) * (dataLen + 1));
+        int strTmpSourceLen = dataLen + 1;
+        if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_STR_TMP_SIZE) {
+            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            return OBS_STATUS_OutOfMemory;
+        }
+        char *strTmpSource = (char *)malloc(sizeof(char) * strTmpSourceLen);
         if (NULL == strTmpSource)
         {
             COMMLOG(OBS_LOGERROR, "Malloc strTmpSource failed!");
             return OBS_STATUS_InternalError;
         }
-        memset_s(strTmpSource, sizeof(char) * (dataLen + 1), 0, dataLen + 1);
-        if (ret = strncpy_s(strTmpSource, dataLen + 1, data, dataLen)) 
+        memset_s(strTmpSource, sizeof(char) * strTmpSourceLen, 0, strTmpSourceLen);
+        if (ret = strncpy_s(strTmpSource, strTmpSourceLen, data, dataLen)) 
         {
             COMMLOG(OBS_LOGERROR, "in %s line %s strncpy_s error, code is %d.", __FUNCTION__, __LINE__, ret);
             return OBS_STATUS_InternalError;
@@ -59,14 +65,19 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
     }
     else if (!strcmp(elementPath, "CompleteMultipartUploadResult/Key")) {
 #ifdef WIN32
-        char* strTmpSource = (char*)malloc(sizeof(char) * (dataLen + 1));
+        int strTmpSourceLen = dataLen + 1;
+        if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_STR_TMP_SIZE) {
+            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            return OBS_STATUS_OutOfMemory;
+        }
+        char* strTmpSource = (char*)malloc(sizeof(char) * strTmpSourceLen);
         if (NULL == strTmpSource)
         {
             COMMLOG(OBS_LOGERROR, "Malloc strTmpSource failed!");
             return OBS_STATUS_InternalError;
         }
-        memset_s(strTmpSource, sizeof(char) * (dataLen + 1), 0, dataLen + 1);
-        if (ret = strncpy_s(strTmpSource, dataLen + 1, data, dataLen))
+        memset_s(strTmpSource, sizeof(char) * strTmpSourceLen, 0, strTmpSourceLen);
+        if (ret = strncpy_s(strTmpSource, strTmpSourceLen, data, dataLen))
         {
             COMMLOG(OBS_LOGERROR, "in %s line %s strncpy_s error,code is %d.", __FUNCTION__, __LINE__, ret);
             return OBS_STATUS_InternalError;
@@ -153,9 +164,44 @@ static obs_status complete_multi_part_upload_data_from_obs_callback(int buffer_s
     if (cmuData->server_callback)
     {
         obs_sever_callback_data server_callback_data;
-        char * server_callback_buf = (char *)malloc(sizeof(char) * buffer_size + 1);
-        memset_s(server_callback_buf,buffer_size + 1, 0, buffer_size);
-        strcpy_s(server_callback_buf,buffer_size + 1,buffer);
+        int server_callback_buf_size = buffer_size + 1;
+        if (server_callback_buf_size <= 0 || server_callback_buf_size > OBS_MAX_STR_TMP_SIZE) {
+            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            return OBS_STATUS_OutOfMemory;
+        }
+        char * server_callback_buf = (char *)malloc(sizeof(char) * server_callback_buf_size);
+        errno_t ret = memset_s(server_callback_buf, server_callback_buf_size, 0, buffer_size);
+        if(ret != EOK){
+            if(ret == ERANGE){
+                COMMLOG(OBS_LOGWARN, "memset_s failed in function: %s, return_value: ERANGE", __FUNCTION__);
+            }else if(ret == EINVAL){
+                COMMLOG(OBS_LOGWARN, "memset_s failed in function: %s, return_value: EINVAL", __FUNCTION__);
+            }else if(ret == ERANGE_AND_RESET){
+                COMMLOG(OBS_LOGWARN, "memset_s failed in function: %s, return_value: ERANGE_AND_RESET", __FUNCTION__);
+            }else {
+                COMMLOG(OBS_LOGWARN, "memset_s failed in function: %s, return_value: %d", __FUNCTION__, ret);
+            }
+            CHECK_NULL_FREE(server_callback_buf);
+            return OBS_STATUS_InternalError;
+        }
+        ret = strcpy_s(server_callback_buf, server_callback_buf_size, buffer);
+        if(ret != EOK){
+            if(ret == EOVERLAP_AND_RESET){
+                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: EOVERLAP_AND_RESET", __FUNCTION__);
+            }else if(ret == ERANGE){
+                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: ERANGE", __FUNCTION__);
+            }else if(ret == EINVAL){
+                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: EINVAL", __FUNCTION__);
+            }else if(ret == EINVAL_AND_RESET){
+                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: EINVAL_AND_RESET", __FUNCTION__);
+            }else if(ret == ERANGE_AND_RESET){
+                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: ERANGE_AND_RESET", __FUNCTION__);
+            }else {
+                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: %d", __FUNCTION__, ret);
+            }
+            CHECK_NULL_FREE(server_callback_buf);
+            return OBS_STATUS_InternalError;
+        }
         server_callback_data.buffer = server_callback_buf;
         server_callback_data.buffer_len = buffer_size;
         cmuData->callback_data = (void *)(&server_callback_data);
@@ -222,7 +268,7 @@ void complete_multi_part_upload(const obs_options *options, char *key, const cha
     int amp = 0;
     if (upload_id) {
         safe_append_with_interface_log("uploadId", upload_id,
-            handler->response_handler.complete_callback);
+            strlen(upload_id), handler->response_handler.complete_callback);
     }
     else
     {

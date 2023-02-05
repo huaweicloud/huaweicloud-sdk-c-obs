@@ -43,7 +43,7 @@ void set_object_acl_by_head(const obs_options *options, obs_object_info *object_
         return;
     }
     if (object_info && (object_info->version_id)) {
-        safe_append("versionId", object_info->version_id, handler->complete_callback);
+        safe_append("versionId", object_info->version_id, strlen(object_info->version_id), handler->complete_callback);
     }
 
     memset_s(&properties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));

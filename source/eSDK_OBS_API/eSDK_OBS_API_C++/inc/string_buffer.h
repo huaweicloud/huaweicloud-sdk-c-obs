@@ -105,7 +105,7 @@
 
 #endif /* STRING_BUFFER_H */
 
-#define safe_append_with_interface_log(name, value, complete_callback)\
+#define safe_append_with_interface_log(name, value, valueLen, complete_callback)\
     do {\
         int fit;\
         if (amp)\
@@ -125,7 +125,7 @@
         }\
         amp = 1;\
         char encoded[3 * 1024];\
-        if (OBS_STATUS_OK != encode_key(value, encoded))\
+        if (OBS_STATUS_OK != encode_key(value, valueLen, encoded))\
         {\
             (void)(*(complete_callback))(OBS_STATUS_QueryParamsTooLong, 0, callback_data);\
             return;\
@@ -138,10 +138,10 @@
         }\
     } while (0)
 
-#define safe_append(name, value, complete_callback)\
-    safe_append_with_interface_log(name, value, complete_callback);
+#define safe_append(name, value, valueLen, complete_callback)\
+    safe_append_with_interface_log(name, value, valueLen, complete_callback);
 
-#define safe_append_status(name, value)\
+#define safe_append_status(name, value, valueLen)\
     do {\
         int fit;\
         if (amp)\
@@ -159,7 +159,7 @@
         }\
         amp = 1;\
         char encoded[3 * 1024];\
-        if (OBS_STATUS_OK != encode_key(value, encoded))\
+        if (OBS_STATUS_OK != encode_key(value, valueLen, encoded))\
         {\
             return OBS_STATUS_QueryParamsTooLong;\
         }\

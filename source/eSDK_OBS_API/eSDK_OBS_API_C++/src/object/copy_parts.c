@@ -138,11 +138,11 @@ void copy_part(const obs_options *options, char *key, obs_copy_destination_objec
         int ret = snprintf_s(part_number_string, sizeof(part_number_string), _TRUNCATE, "%u", copypart->part_number);
         CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         safe_append_with_interface_log("partNumber",
-            part_number_string, handler->complete_callback);
+            part_number_string, sizeof(part_number_string), handler->complete_callback);
     }
     if (copypart->upload_id) {
         safe_append_with_interface_log("uploadId",
-            copypart->upload_id, handler->complete_callback);
+            copypart->upload_id, strlen(copypart->upload_id), handler->complete_callback);
     }
     if (copy_part_optionsSet(options, object_info, handler, callback_data))
     {

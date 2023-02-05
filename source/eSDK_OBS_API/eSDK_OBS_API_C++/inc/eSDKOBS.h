@@ -232,6 +232,7 @@ typedef enum
     OBS_STORAGE_CLASS_STANDARD              = 0, /* STANDARD */
     OBS_STORAGE_CLASS_STANDARD_IA           = 1, /* STANDARD_IA */
     OBS_STORAGE_CLASS_GLACIER               = 2, /* GLACIER */
+    OBS_STORAGE_CLASS_DEEP_ARCHIVE          = 3, /* DEEP_ARCHIVE*/
     OBS_STORAGE_CLASS_BUTT
 } obs_storage_class;
 
@@ -390,6 +391,12 @@ typedef enum
     OBS_BUCKET_LIST_PFS           = 2    //list pfs bucket
 }obs_bucket_list_type;
 
+
+typedef enum
+{
+    UPLOAD_FILENAME_ANSI            = 0,    //upload file name is ANSI
+    UPLOAD_FILENAME_UNICODE         = 1     //upload file name is unicode
+}upload_filename_code;
 #define OBS_COMMON_LEN_256 256
 
 #define OBS_MAX_ACL_GRANT_COUNT             100
@@ -689,7 +696,7 @@ typedef struct obs_uploaded_parts_total_info
     char *initiator_display_name;
     char *owner_id;
     char *owner_display_name;
-    char *sorage_class;
+    char *storage_class;
     int  parts_count; 
 }obs_uploaded_parts_total_info;
 
@@ -711,6 +718,7 @@ typedef struct _obs_upload_file_configuration
     int enable_check_point;
     int task_num;
     int *pause_upload_flag;
+    upload_filename_code filename_code;             //support for unicode filename on windows
 }obs_upload_file_configuration;
 
 typedef struct _obs_upload_file_server_callback
@@ -1082,7 +1090,8 @@ typedef struct obs_http_request_option
 typedef struct temp_auth_configure
 {
     long long int expires;
-    void (* temp_auth_callback)(char * temp_auth_url,char * temp_auth_headers,void *callback_data);
+    void (*temp_auth_callback)(char *temp_auth_url, uint64_t temp_auth_url_len, char *temp_auth_headers,
+        uint64_t temp_auth_headers_len, void *callback_data);
     void * callback_data;
 }temp_auth_configure;
 
@@ -1167,7 +1176,7 @@ typedef obs_status (obs_get_bucket_storage_policy_callback)(const char * storage
 typedef struct obs_get_bucket_storage_class_handler
 {
     obs_response_handler response_handler;
-    obs_get_bucket_storage_policy_callback *get_bucket_sorage_class_callback;
+    obs_get_bucket_storage_policy_callback *get_bucket_storage_class_callback;
 }obs_get_bucket_storage_class_handler;
  
 typedef obs_status (obs_get_bucket_tagging_callback)(int tagging_count, 

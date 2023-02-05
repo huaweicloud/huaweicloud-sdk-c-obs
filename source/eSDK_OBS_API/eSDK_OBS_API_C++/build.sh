@@ -45,6 +45,7 @@ export curl_version=curl-7.78.0
 export pcre_version=pcre-8.45
 export iconv_version=iconv-1.15
 export libxml2_version=libxml2-2.9.9
+export cjson_version=cjson-1.7.15
 #fi
 #export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #
@@ -163,6 +164,8 @@ cp -af ./../../../build/script/Provider/build/linux/${libxml2_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/linux/${openssl_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/linux/${pcre_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/linux/${iconv_version}/lib/* lib 
+cp -af ./../../../build/script/Provider/build/linux/${cjson_version}/lib/* lib
+cp -f ./../../../build/script/Provider/build/linux/${cjson_version}/include/cJSON.h include
 #cp -f ./../../../build/script/Provider/build/linux/${nghttp2_version}/lib/* lib 
 cp -f Makefile_obs demo/Makefile
 cp -f OBS.ini lib

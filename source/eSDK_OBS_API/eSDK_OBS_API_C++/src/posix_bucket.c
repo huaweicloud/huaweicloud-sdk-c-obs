@@ -37,7 +37,7 @@ void modify_object(const obs_options *options, char *key, uint64_t content_lengt
 	}
 	int ret = snprintf_s(strToAppend, sizeof(strToAppend), _TRUNCATE, "%lu", position);
 	CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-	safe_append("position", strToAppend, handler->response_handler.complete_callback);
+	safe_append("position", strToAppend, sizeof(strToAppend), handler->response_handler.complete_callback);
 	memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
 	errno_t err = EOK;
 	err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options,
@@ -87,7 +87,7 @@ void truncate_object(const obs_options *options, char *key, uint64_t object_leng
 
 	int ret = snprintf_s(strToAppend, sizeof(strToAppend), _TRUNCATE, "%lu", object_length);
 	CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-	safe_append("length", strToAppend, handler->complete_callback);
+	safe_append("length", strToAppend, sizeof(strToAppend), handler->complete_callback);
 
 	memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
 	errno_t err = EOK;
@@ -133,7 +133,7 @@ void rename_object(const obs_options *options, char *key, char *new_object_name,
 		return;
 	}
 
-	safe_append("name", new_object_name, handler->complete_callback);
+	safe_append("name", new_object_name, strlen(new_object_name), handler->complete_callback);
 
 	memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
 	errno_t err = EOK;

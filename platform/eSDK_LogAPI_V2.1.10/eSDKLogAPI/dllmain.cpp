@@ -12,7 +12,7 @@
 * specific language governing permissions and limitations under the License.
 **********************************************************************************
 */
-// dllmain.cpp : ¶¨Òå DLL Ó¦ÓÃ³ÌĞòµÄÈë¿Úµã¡£
+// dllmain.cpp : å®šä¹‰ DLL åº”ç”¨ç¨‹åºçš„å…¥å£ç‚¹ã€‚
 
 #ifdef WIN32
 #include <Windows.h>

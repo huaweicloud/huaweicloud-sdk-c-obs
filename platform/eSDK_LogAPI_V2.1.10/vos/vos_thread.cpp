@@ -102,7 +102,7 @@ ULONG  VOS_CreateThread( VOS_THREAD_FUNC pfnThread, VOID *args, VOS_Thread **pst
 LONG VOS_ThreadJoin(const VOS_Thread *pstVosThread )
 {   
 #if VOS_APP_OS == VOS_OS_WIN32
-    ULONG ulResult = WaitForSingleObject(pstVosThread->pthead,5*1000);//µÈ´ý5Ãë
+    ULONG ulResult = WaitForSingleObject(pstVosThread->pthead,5*1000);//ç­‰å¾…5ç§’
     if(WAIT_OBJECT_0 != ulResult)//lint !e835
     {
 		(void)TerminateThread(pstVosThread->pthead,0);

@@ -15,6 +15,7 @@
 #include "bucket.h"
 #include "request_util.h"
 #include <openssl/md5.h> 
+#define OBS_MAX_CORS_COUNT 65536
 
 static obs_status add_one_get_cors_data(const char *element_path,
     get_bucket_cors_data *gbccDataEx)
@@ -212,17 +213,25 @@ static void free_obs_bucket_cors_conf(obs_bucket_cors_conf* bucketCorsConf, int 
     free(bucketCorsConf);
     return;
 }
-
 static const char** set_return_cors_value(char in_char[][1024], int char_count)
 {
     const char **out_char = NULL;
     int i = 0;
+    if (char_count <= 0 || char_count > OBS_MAX_CORS_COUNT) {
+        COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+        return NULL;
+    }
     out_char = (const char**)malloc(sizeof(char *) * char_count);
     if (NULL == out_char)
     {
         return NULL;
     }
-    memset_s(out_char, sizeof(char *) * char_count, 0, sizeof(char *) * char_count);
+    int ret = memset_s(out_char, sizeof(char *) * char_count, 0, sizeof(char *) * char_count);
+    if(ret != 0){
+        COMMLOG(OBS_LOGERROR, "memset_s failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+        free(out_char);
+        return NULL;
+    }
     for (i = 0; i < char_count; i++)
     {
         out_char[i] = in_char[i];

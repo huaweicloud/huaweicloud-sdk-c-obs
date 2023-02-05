@@ -77,7 +77,7 @@ void get_bucket_storage_class_complete_callback(obs_status status,
     get_bucket_storage_class_policy_data *storage_class_data =
         (get_bucket_storage_class_policy_data *)callback_data;
 
-    obs_status callback_result = (*(storage_class_data->response_bucket_sorage_policy_callback))
+    obs_status callback_result = (*(storage_class_data->response_bucket_storage_policy_callback))
         (storage_class_data->storage_class_policy, storage_class_data->callback_data);
     if (callback_result != OBS_STATUS_OK)
     {
@@ -119,7 +119,7 @@ void get_bucket_storage_class_policy(const obs_options *options,
     simplexml_initialize(&(storage_class_data->simpleXml), &get_bucket_storage_policy_xml_callback, storage_class_data);
     storage_class_data->response_properties_callback = handler->response_handler.properties_callback;
     storage_class_data->response_complete_callback = handler->response_handler.complete_callback;
-    storage_class_data->response_bucket_sorage_policy_callback = handler->get_bucket_sorage_class_callback;
+    storage_class_data->response_bucket_storage_policy_callback = handler->get_bucket_storage_class_callback;
     storage_class_data->callback_data = callback_data;
     memset_s(storage_class_data->storage_class_policy, sizeof(storage_class_data->storage_class_policy), 0, sizeof(storage_class_data->storage_class_policy));
 

@@ -15,7 +15,7 @@
 #ifndef DATA_TYPE_H_
 #define DATA_TYPE_H_
 
-//½Ó¿Ú·µ»Ø´íÎóÂë
+//æ¥å£è¿”å›é”™è¯¯ç 
 enum RetCode
 {
 	RET_SUCCESS				=	0,
@@ -25,7 +25,7 @@ enum RetCode
 	RET_NULL_POINTER		=	4,
 }; 
 
-// ÈÕÖ¾¼¶±ğ
+// æ—¥å¿—çº§åˆ«
 enum LogLevel
 {
 	DEBUG_LEVEL				=	0,
@@ -34,7 +34,7 @@ enum LogLevel
 	ERROR_LEVEL				=	3
 };
 
-// ÈÕÖ¾ÖÖÀà
+// æ—¥å¿—ç§ç±»
 enum LogCategory
 {
 	LOG_CATEGORY_INTERFACE	= 0,
@@ -45,18 +45,18 @@ enum LogCategory
 #define LOG_CATEGORY		3
 #define LOG_LEVELS          4
 
-// ·Ç·¨ÈÕÖ¾¼¶±ğ
+// éæ³•æ—¥å¿—çº§åˆ«
 #define INVALID_LOG_LEVEL	((unsigned int)(-1))
 #define INVALID_LOG_PATH	("")
 
 /**
-	*wifiÁ¬½Ó×´Ì¬
+	*wifiè¿æ¥çŠ¶æ€
 	* 
-	*¸ù¾İ¸Ã»Øµ÷º¯Êı£¬»ñµÃwifiÁ¬½Ó×´Ì¬
-	*@return		0	Î´Á¬½Ó
-	*@return		·Ç0	Á¬½Ó
-	*@attention	ÔÚwifi×´Ì¬ÏÂÉÏ´«ÈÕÖ¾£¬ÔòĞèÒªÊµÏÖ¸Ã½Ó¿Ú
-	*@par			ÎŞ
+	*æ ¹æ®è¯¥å›è°ƒå‡½æ•°ï¼Œè·å¾—wifiè¿æ¥çŠ¶æ€
+	*@return		0	æœªè¿æ¥
+	*@return		é0	è¿æ¥
+	*@attention	åœ¨wifiçŠ¶æ€ä¸‹ä¸Šä¼ æ—¥å¿—ï¼Œåˆ™éœ€è¦å®ç°è¯¥æ¥å£
+	*@par			æ— 
 **/
 typedef int (*WifiInfoCallBack)();
 

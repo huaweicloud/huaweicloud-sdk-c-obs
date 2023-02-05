@@ -16,6 +16,8 @@
 #define ESDKOBS_H
 
 #include <stdint.h>
+#include <stdbool.h>
+#include <math.h>
 #if defined __GNUC__ || defined LINUX
 #include <sys/select.h>
 #else 
@@ -41,6 +43,17 @@ extern "C" {
 #define OBS_MAX_DELETE_OBJECT_NUMBER  1000
 #define OBS_MAX_DELETE_OBJECT_DOC 1024000
 
+#define ARRAY_LENGTH_4 4
+#define ARRAY_LENGTH_16 16
+#define ARRAY_LENGTH_32 32
+#define ARRAY_LENGTH_50 50
+#define ARRAY_LENGTH_64 64
+#define ARRAY_LENGTH_512 512
+#define ARRAY_LENGTH_1024 1024
+#define ARRAY_LENGTH_2014 2014
+#define SLEEP_TIMES_FOR_LINUX 1
+#define SLEEP_TIMES_FOR_WIN32 0.05
+#define SLEEP_TIMES_FOR_WAIT 0
 
 typedef enum
 {
@@ -219,6 +232,7 @@ typedef enum
     OBS_STORAGE_CLASS_STANDARD              = 0, /* STANDARD */
     OBS_STORAGE_CLASS_STANDARD_IA           = 1, /* STANDARD_IA */
     OBS_STORAGE_CLASS_GLACIER               = 2, /* GLACIER */
+    OBS_STORAGE_CLASS_DEEP_ARCHIVE          = 3, /* DEEP_ARCHIVE*/
     OBS_STORAGE_CLASS_BUTT
 } obs_storage_class;
 
@@ -377,6 +391,12 @@ typedef enum
     OBS_BUCKET_LIST_PFS           = 2    //list pfs bucket
 }obs_bucket_list_type;
 
+
+typedef enum
+{
+    UPLOAD_FILENAME_ANSI            = 0,    //upload file name is ANSI
+    UPLOAD_FILENAME_UNICODE         = 1     //upload file name is unicode
+}upload_filename_code;
 #define OBS_COMMON_LEN_256 256
 
 #define OBS_MAX_ACL_GRANT_COUNT             100
@@ -465,6 +485,7 @@ typedef struct obs_upload_part_info
 {
     unsigned int part_number; 
     char *upload_id;
+    void *arrEvent;
 }obs_upload_part_info;
 
 typedef struct obs_complete_upload_Info
@@ -675,7 +696,7 @@ typedef struct obs_uploaded_parts_total_info
     char *initiator_display_name;
     char *owner_id;
     char *owner_display_name;
-    char *sorage_class;
+    char *storage_class;
     int  parts_count; 
 }obs_uploaded_parts_total_info;
 
@@ -696,7 +717,23 @@ typedef struct _obs_upload_file_configuration
     char * check_point_file;
     int enable_check_point;
     int task_num;
+    int *pause_upload_flag;
+    upload_filename_code filename_code;             //support for unicode filename on windows
 }obs_upload_file_configuration;
+
+typedef struct _obs_upload_file_server_callback
+{
+    char * callback_url;
+    char * callback_host;
+    char * callback_body;
+    char * callback_body_type;
+}obs_upload_file_server_callback;
+
+typedef struct _obs_sever_callback_data
+{
+    char * buffer;
+    uint64_t  buffer_len;
+}obs_sever_callback_data;
 
 typedef struct _obs_download_file_configuration
 {
@@ -832,6 +869,9 @@ typedef obs_status (obs_list_parts_callback_ex)(obs_uploaded_parts_total_info* u
 typedef void (obs_upload_file_callback)(obs_status status, char *result_message, int part_count_return,
             obs_upload_file_part_info * upload_info_list, void *callback_data);
 
+typedef void (obs_progress_callback)(double progress, uint64_t uploadedSize, uint64_t fileTotalSize, void *callback_data);
+typedef void (obs_progress_callback_internal)(uint64_t now, uint64_t total, void *callback_data);
+
 typedef obs_status (obs_list_objects_callback)(int is_truncated, const char *next_marker,
             int contents_count,  const obs_list_objects_content *contents,
             int common_prefixes_count, const char **common_prefixes,
@@ -894,6 +934,7 @@ typedef struct obs_put_object_handler
 {
     obs_response_handler response_handler;
     obs_put_object_data_callback *put_object_data_callback;
+    obs_progress_callback_internal *progress_callback;
 } obs_put_object_handler;
 typedef struct obs_append_object_handler
 {
@@ -931,6 +972,7 @@ typedef struct obs_upload_handler
 {
     obs_response_handler response_handler;
     obs_upload_data_callback *upload_data_callback;
+    obs_progress_callback_internal  *progress_callback;
 } obs_upload_handler;
 
 typedef struct obs_complete_multi_part_upload_handler
@@ -949,7 +991,9 @@ typedef struct obs_upload_file_response_handler
 {
     obs_response_handler response_handler;
     obs_upload_file_callback *upload_file_callback;
+    obs_progress_callback  *progress_callback;
 } obs_upload_file_response_handler;
+
 typedef struct __obs_download_file_response_handler
 {
     obs_response_handler response_handler;
@@ -1030,6 +1074,9 @@ typedef struct obs_http_request_option
     int speed_time;
     int connect_time;
     int max_connected_time;
+    bool keep_alive;
+    int keep_idle;
+    int keep_intvl;
     char *proxy_host;
     char *proxy_auth;
     char *ssl_cipher_list;
@@ -1037,12 +1084,14 @@ typedef struct obs_http_request_option
     obs_bbr_switch   bbr_switch;
 	obs_auth_switch  auth_switch;
     long buffer_size;
+    char* server_cert_path;
 } obs_http_request_option;
 
 typedef struct temp_auth_configure
 {
     long long int expires;
-    void (* temp_auth_callback)(char * temp_auth_url,char * temp_auth_headers,void *callback_data);
+    void (*temp_auth_callback)(char *temp_auth_url, uint64_t temp_auth_url_len, char *temp_auth_headers,
+        uint64_t temp_auth_headers_len, void *callback_data);
     void * callback_data;
 }temp_auth_configure;
 
@@ -1063,6 +1112,7 @@ typedef struct obs_get_conditions
 {
     uint64_t start_byte;
     uint64_t byte_count;
+    uint64_t download_limit;
     int64_t if_modified_since;
     int64_t if_not_modified_since;
     char *if_match_etag;
@@ -1096,7 +1146,9 @@ typedef struct obs_put_properties
     obs_get_conditions *get_conditions;
     uint64_t start_byte;
     uint64_t byte_count;
+    uint64_t upload_limit;
     int64_t expires;
+    int64_t obs_expires;
     obs_canned_acl canned_acl;
     obs_az_redundancy az_redundancy;
     grant_domain_config *domain_config;
@@ -1104,6 +1156,7 @@ typedef struct obs_put_properties
     obs_name_value *meta_data;
     file_object_config * file_object_config;
 	metadata_action_indicator metadata_action;
+    obs_upload_file_server_callback server_callback;
 } obs_put_properties;
 
 typedef struct server_side_encryption_params
@@ -1123,7 +1176,7 @@ typedef obs_status (obs_get_bucket_storage_policy_callback)(const char * storage
 typedef struct obs_get_bucket_storage_class_handler
 {
     obs_response_handler response_handler;
-    obs_get_bucket_storage_policy_callback *get_bucket_sorage_class_callback;
+    obs_get_bucket_storage_policy_callback *get_bucket_storage_class_callback;
 }obs_get_bucket_storage_class_handler;
  
 typedef obs_status (obs_get_bucket_tagging_callback)(int tagging_count, 
@@ -1362,6 +1415,8 @@ eSDK_OBS_API void obs_head_object(const obs_options *options, char *key,
 
 eSDK_OBS_API void init_put_properties(obs_put_properties *put_properties);
 
+eSDK_OBS_API void init_server_callback(obs_upload_file_server_callback * server_callback);
+
 eSDK_OBS_API void upload_part(const obs_options *options, char *key, obs_upload_part_info *upload_part_info, 
                               uint64_t content_length, obs_put_properties *put_properties,
                               server_side_encryption_params *encryption_params,
@@ -1402,8 +1457,11 @@ eSDK_OBS_API void initialize_break_point_lock();
 
 eSDK_OBS_API void deinitialize_break_point_lock();
 
+eSDK_OBS_API void pause_upload_file(int *pause_flag);
+
 eSDK_OBS_API void upload_file(const obs_options *options, char *key, server_side_encryption_params *encryption_params, 
-                          obs_upload_file_configuration *upload_file_config, obs_upload_file_response_handler *handler,
+                          obs_upload_file_configuration *upload_file_config, obs_upload_file_server_callback server_callback,
+                          obs_upload_file_response_handler *handler,
                           void *callback_data);
 
 eSDK_OBS_API void download_file(const obs_options *options, char *key, char* version_id, obs_get_conditions *get_conditions,
@@ -1437,9 +1495,9 @@ eSDK_OBS_API void truncate_object(const obs_options *options, char *key, uint64_
 eSDK_OBS_API void rename_object(const obs_options *options, char *key, char *new_object_name,
                    obs_response_handler *handler, void *callback_data);
 
-eSDK_OBS_API void compute_md5(const char *buffer, int64_t buffer_size, char *outbuffer);
+eSDK_OBS_API void compute_md5(const char *buffer, int64_t buffer_size, char *outbuffer, int64_t max_out_put_buffer_size);
 
-eSDK_OBS_API int set_obs_log_path(const char *log_path);
+eSDK_OBS_API int set_obs_log_path(const char *log_path, bool only_set_log_conf);
 
 eSDK_OBS_API void set_openssl_callback(obs_openssl_switch switch_flag);
 
