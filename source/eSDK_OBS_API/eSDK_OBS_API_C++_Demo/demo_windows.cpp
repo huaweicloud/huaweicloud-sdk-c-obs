@@ -4613,7 +4613,7 @@ static void test_upload_file(int argc, char **argv, int optindex)
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     
-    option.request_options.server_cert_path = NULL;    //set server cert , example: /etc/certs/cabundle.pem
+    option->request_options.server_cert_path = NULL;    //set server cert , example: /etc/certs/cabundle.pem
 
 
     obs_upload_file_configuration uploadFileInfo;
@@ -5309,13 +5309,6 @@ static void test_gen_signed_url_get_object(char *key, char *versionid)
 
 }
 
-static double g_progress = 0;
-void test_progress_callback(double progress, uint64_t uploadedSize, uint64_t fileTotalSize, void *callback_data) {
-	if (progress == 100 || (g_progress < progress && progress - g_progress > 2)) {
-		printf("test_progress_callback progress=%f  uploadedSize=%u fileTotalSize=%lu  callback_data=%p\n", progress, uploadedSize, fileTotalSize, callback_data);
-		g_progress = progress;
-	}
-}
 typedef struct pause_concurrent_upload_file
 {
     char *bucket;

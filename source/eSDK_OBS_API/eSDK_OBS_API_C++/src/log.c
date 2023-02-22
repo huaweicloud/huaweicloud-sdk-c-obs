@@ -541,7 +541,11 @@ int LOG_INIT()
 
   //  tempLogPath[0] = '\0';
   //  GetIniSectionItem("ProductConfig", "support_API", confPath, tempLogPath);
+#if defined ANDROID
+    int iRet = LogInitForAndroid(PRODUCT, confPath, logLevel, logPath);
+#else
     int iRet = LogInit(PRODUCT, confPath, logLevel, logPath);
+#endif
     CHECK_NULL_FREE(buf);
     CHECK_NULL_FREE(confPath);
     CHECK_NULL_FREE(logPath);

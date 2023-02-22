@@ -2947,7 +2947,6 @@ static void test_upload_file(char *bucket_name, char *filename, char *key)
     uploadFileInfo.part_size = uploadSliceSize;
     uploadFileInfo.task_num = 10;
     uploadFileInfo.upload_file = filename;
-    uploadFileInfo.pause_upload_flag = &pause_upload_flag;
 
     obs_upload_file_server_callback server_callback;
     init_server_callback(&server_callback);

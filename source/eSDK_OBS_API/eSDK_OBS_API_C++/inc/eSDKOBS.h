@@ -717,7 +717,6 @@ typedef struct _obs_upload_file_configuration
     char * check_point_file;
     int enable_check_point;
     int task_num;
-    int *pause_upload_flag;
     upload_filename_code filename_code;             //support for unicode filename on windows
 }obs_upload_file_configuration;
 
@@ -1456,8 +1455,6 @@ eSDK_OBS_API void obs_options_object(const obs_options *options, char* key, char
 eSDK_OBS_API void initialize_break_point_lock();
 
 eSDK_OBS_API void deinitialize_break_point_lock();
-
-eSDK_OBS_API void pause_upload_file(int *pause_flag);
 
 eSDK_OBS_API void upload_file(const obs_options *options, char *key, server_side_encryption_params *encryption_params, 
                           obs_upload_file_configuration *upload_file_config, obs_upload_file_server_callback server_callback,

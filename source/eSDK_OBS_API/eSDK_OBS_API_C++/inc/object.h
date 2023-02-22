@@ -273,7 +273,6 @@ typedef struct _upload_params
     obs_progress_callback *progress_callback;
     uint64_t totalFileSize;
     uint64_t uploadedSize;
-    int *pause_upload_flag;
     upload_filename_code fileNameUploadCode;
 }upload_params;
 
