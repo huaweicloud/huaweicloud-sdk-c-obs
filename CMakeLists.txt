@@ -18,7 +18,7 @@ add_definitions(-D__DPAX_LINUX_USR__)
 add_definitions(-D__DPAX_THREAD_NOPREEMPT__)
 
 set(LIBOBS_VER_MAJOR "3.23")
-set(LIBOBS_VER_MINOR "1")
+set(LIBOBS_VER_MINOR "3")
 if(NOT CMAKE_HOST_WIN32)
     add_definitions(-DLIBOBS_VER_MAJOR="${LIBOBS_VER_MAJOR}")
     add_definitions(-DLIBOBS_VER_MINOR="${LIBOBS_VER_MINOR}")

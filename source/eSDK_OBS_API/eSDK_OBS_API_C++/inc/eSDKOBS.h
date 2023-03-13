@@ -25,11 +25,15 @@
 #endif 
 
 #ifdef WIN32
+#ifndef USE_OBS_STATIC_LIB
 #ifdef OBS_EXPORTS
 #define eSDK_OBS_API __declspec(dllexport)
 #else
 #define eSDK_OBS_API __declspec(dllimport)
 #endif
+#else
+#define eSDK_OBS_API
+#endif // !USE_OBS_STATIC_LIB
 #else
 #define eSDK_OBS_API __attribute__((__visibility__("default")))
 #endif
@@ -394,9 +398,9 @@ typedef enum
 
 typedef enum
 {
-    UPLOAD_FILENAME_ANSI            = 0,    //upload file name is ANSI
-    UPLOAD_FILENAME_UNICODE         = 1     //upload file name is unicode
-}upload_filename_code;
+    ANSI_CODE                       = 0,    //upload file name is ANSI
+    UNICODE_CODE                    = 1     //upload file name is unicode
+}file_path_code; //support for unicode filename on windows
 #define OBS_COMMON_LEN_256 256
 
 #define OBS_MAX_ACL_GRANT_COUNT             100
@@ -718,7 +722,6 @@ typedef struct _obs_upload_file_configuration
     int enable_check_point;
     int task_num;
     int *pause_upload_flag;
-    upload_filename_code filename_code;             //support for unicode filename on windows
 }obs_upload_file_configuration;
 
 typedef struct _obs_upload_file_server_callback
@@ -1501,7 +1504,11 @@ eSDK_OBS_API int set_obs_log_path(const char *log_path, bool only_set_log_conf);
 
 eSDK_OBS_API void set_openssl_callback(obs_openssl_switch switch_flag);
 
-
+#if defined (WIN32)
+eSDK_OBS_API void set_file_path_code(file_path_code code);
+ 
+eSDK_OBS_API file_path_code get_file_path_code();
+#endif
 #ifdef __cplusplus
 }
 #endif

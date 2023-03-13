@@ -1,0 +1,36 @@
+CXX=arm-linux-androideabi-gcc
+EXTRA_LIB_DIR=-L../lib
+EXTRA_INCLUDE_DIR=-I../include
+CFLAGS=-g -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64  -D NDEBUG -O0  -I../include_static -fno-stack-protector -Wl,--no-as-needed -ldl -fprofile-arcs -pie -fPIE -DANDROID -D_ANDROID_AOI_=17 -D__ANDROID_API__=17
+LDFLAGS += -lpthread -lm -lc #-lssl -lcurl
+#-lrt -llzma
+LINKOPT= -ldl  -lm -lz -fno-stack-protector \
+        ../lib/libeSDKOBS.a \
+        ../lib/libeSDKLogAPI.a \
+        ../lib/liblog4cpp.a \
+        ../lib/libxml2.a \
+        ../lib/libcurl.a \
+        ../lib/libpcre.a  \
+        ../lib/libpcrecpp.a  \
+        ../lib/libpcreposix.a \
+        ../lib/libiconv.a  \
+        ../lib/libssl.a  \
+        ../lib/libcrypto.a \
+        ../lib/libcharset.a \
+        ../lib/libsecurec.a \
+        ../lib/libcjson.a
+
+TARGET_DEMO=demo
+TARGET_TEST=object_test
+
+SRC_DEMO=demo_common.c demo.c
+SRC_TEST=demo_common.c object_test.c
+
+all: demo object_test
+$(TARGET_DEMO):
+	$(CXX) $(CFLAGS) $(SRC_DEMO) $(EXTRA_INCLUDE_DIR) -L$(LINKOPT) -fPIC -o $(TARGET_DEMO) -Wl,--no-as-needed -ldl -lstdc++
+
+$(TARGET_TEST):
+	$(CXX) $(CFLAGS) $(SRC_TEST) $(EXTRA_INCLUDE_DIR) $(LINKOPT) -fPIC -o $(TARGET_TEST) -Wl,--no-as-needed -ldl -lstdc++
+clean:
+	rm -f object_test demo;rm -f *.o

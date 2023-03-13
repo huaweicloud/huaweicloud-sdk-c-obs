@@ -308,6 +308,8 @@ int MoveConf(const char * buf)
     char* target_conf = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
     if ((source_conf == NULL) || (target_conf == NULL))
     {
+        CHECK_NULL_FREE(source_conf);
+		CHECK_NULL_FREE(target_conf);
         return -1;
     }
     err = memset_s(source_conf, MAX_MSG_SIZE, 0, MAX_MSG_SIZE);
@@ -357,6 +359,7 @@ int GetConfPath(char *buf)
     {
         MoveConf(buf);
     }
+    return EOK;
 }
 
 int SetConfPath(char* currentPath, char* buf, char* confPath, char* logPath, char* tempLogPath) 
@@ -541,7 +544,11 @@ int LOG_INIT()
 
   //  tempLogPath[0] = '\0';
   //  GetIniSectionItem("ProductConfig", "support_API", confPath, tempLogPath);
+#if defined ANDROID
+    int iRet = LogInitForAndroid(PRODUCT, confPath, logLevel, logPath);
+#else
     int iRet = LogInit(PRODUCT, confPath, logLevel, logPath);
+#endif
     CHECK_NULL_FREE(buf);
     CHECK_NULL_FREE(confPath);
     CHECK_NULL_FREE(logPath);

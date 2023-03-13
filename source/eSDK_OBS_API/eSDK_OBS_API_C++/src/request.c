@@ -474,6 +474,7 @@ obs_status setup_CheckCA(http_request *request,
         curl_easy_setopt_safe(CURLOPT_SSL_VERIFYPEER, 0);
         curl_easy_setopt_safe(CURLOPT_SSL_VERIFYHOST, 0);
     }
+    return OBS_STATUS_OK;
 }
 
 static obs_status setup_curl(http_request *request,
@@ -1203,8 +1204,9 @@ void request_perform(const request_params *params)
     {
         accessmode = "Path";
     }
-    COMMLOG(OBS_LOGINFO, "%s OBS SDK Version= %s; Endpoint = http://%s; Access Mode = %s", __FUNCTION__, OBS_SDK_VERSION,
-        params->bucketContext.host_name, accessmode);
+    char* urlPrefix = params->bucketContext.protocol == OBS_PROTOCOL_HTTPS ? "https" : "http";
+    COMMLOG(OBS_LOGINFO, "%s OBS SDK Version= %s; Endpoint = %s://%s; Access Mode = %s", __FUNCTION__, OBS_SDK_VERSION,
+		urlPrefix, params->bucketContext.host_name, accessmode);
     COMMLOG(OBS_LOGINFO, "%s start curl_easy_perform now", __FUNCTION__);
     while (retry > 0)
     {
@@ -1217,8 +1219,10 @@ void request_perform(const request_params *params)
                 errno_t err = strcpy_s(proxyBuf, CURL_ERROR_SIZE - (proxyBuf - errorBuffer), "proxy: *****");
                 CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
             }
-            COMMLOG(OBS_LOGWARN, "%s curl_easy_perform code = %d,status = %d,errorBuffer = %s", __FUNCTION__, code,
-                request->status, errorBuffer);
+            COMMLOG(OBS_LOGERROR, "In function :(%s) curl_easy_perform failed, CURLcode = %d"
+				", curl_error_message is '%s', obs_status = %s(%d), curlErrorBuffer = %s"
+				, __FUNCTION__, code, curl_easy_strerror(code)
+				, obs_get_status_name(request->status), request->status, errorBuffer);
         }
         request_finish(&request);
         retry = is_retry(request, retry);
@@ -1344,13 +1348,15 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
     }
     CURLcode code = curl_easy_perform(curl);
     if (code != CURLE_OK) {
-        obs_status sta = request_curl_code_to_status(code);
-        COMMLOG(OBS_LOGWARN, "%s curl_easy_perform code = %d,status = %d,errorBuffer = %s", __FUNCTION__,code,
-        sta,errorBuffer);
+        obs_status status = request_curl_code_to_status(code);
+		COMMLOG(OBS_LOGERROR, "In function :(%s) curl_easy_perform failed, CURLcode = %d"
+			", curl_error_message is '%s', obs_status = %s(%d), curlErrorBuffer = %s"
+			, __FUNCTION__, code, curl_easy_strerror(code)
+			, obs_get_status_name(status), status, errorBuffer);
         curl_easy_cleanup(curl); 
         CHECK_NULL_FREE(uri);                                                          
         CHECK_NULL_FREE(errorBuffer);       
-        return sta;
+        return status;
     }
        
     if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE,

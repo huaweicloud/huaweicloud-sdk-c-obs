@@ -70,6 +70,7 @@
     <ClCompile Include="..\..\src\bucket\set_bucket_version_configuration.c" />
     <ClCompile Include="..\..\src\bucket\set_bucket_website_configuration.c" />
     <ClCompile Include="..\..\src\bucket\set_notification_configuration.c" />
+    <ClCompile Include="..\..\src\file_utils.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\inc\error_parser.h" />
@@ -84,5 +85,6 @@
     <ClInclude Include="..\..\inc\request_util.h" />
     <ClInclude Include="..\..\inc\bucket.h" />
     <ClInclude Include="..\..\inc\object.h" />
+    <ClInclude Include="..\..\inc\file_utils.h" />
   </ItemGroup>
 </Project>

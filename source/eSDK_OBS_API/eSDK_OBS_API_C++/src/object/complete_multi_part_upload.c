@@ -37,7 +37,7 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
 #ifdef WIN32
         int strTmpSourceLen = dataLen + 1;
         if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_STR_TMP_SIZE) {
-            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
             return OBS_STATUS_OutOfMemory;
         }
         char *strTmpSource = (char *)malloc(sizeof(char) * strTmpSourceLen);
@@ -67,7 +67,7 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
 #ifdef WIN32
         int strTmpSourceLen = dataLen + 1;
         if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_STR_TMP_SIZE) {
-            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
             return OBS_STATUS_OutOfMemory;
         }
         char* strTmpSource = (char*)malloc(sizeof(char) * strTmpSourceLen);
@@ -166,10 +166,14 @@ static obs_status complete_multi_part_upload_data_from_obs_callback(int buffer_s
         obs_sever_callback_data server_callback_data;
         int server_callback_buf_size = buffer_size + 1;
         if (server_callback_buf_size <= 0 || server_callback_buf_size > OBS_MAX_STR_TMP_SIZE) {
-            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
             return OBS_STATUS_OutOfMemory;
         }
         char * server_callback_buf = (char *)malloc(sizeof(char) * server_callback_buf_size);
+        if(server_callback_buf == NULL){
+            COMMLOG(OBS_LOGERROR, "malloc failed in function: %s,line %d", __FUNCTION__, __LINE__);
+            return OBS_STATUS_OutOfMemory;
+        }
         errno_t ret = memset_s(server_callback_buf, server_callback_buf_size, 0, buffer_size);
         if(ret != EOK){
             if(ret == ERANGE){

@@ -18,6 +18,7 @@
 #include "request.h"
 #include "securec.h"
 #include "object.h"
+#include "file_utils.h"
 #include "request_util.h"
 #include <openssl/md5.h> 
 
@@ -48,7 +49,7 @@ int check_file_is_valid(char *file_name)
     ret_stat = stat(file_name, &statbuf);
 #else
     struct _stati64 statbuf;
-    ret_stat = _stati64(file_name, &statbuf);
+    ret_stat = file_stati64(file_name, &statbuf);
 #endif
     if (ret_stat == -1)
     {
@@ -68,7 +69,7 @@ int check_file_is_valid(char *file_name)
 xmlNodePtr get_xmlnode_from_file(const char * file_name, xmlDocPtr *doc)
 {
     xmlNodePtr curNode;
-    *doc = xmlReadFile(file_name, "utf-8", XML_PARSE_RECOVER);
+    *doc = checkPointFileRead(file_name, "utf-8", XML_PARSE_RECOVER);
     if (NULL == *doc)
     {
         COMMLOG(OBS_LOGERROR, "Document not parsed successfully.");
@@ -149,7 +150,7 @@ int updateCheckPoint(char * elementPath, const char * content, const char * file
     if ((i == strNum) && (curNode != NULL))
     {
         xmlNodeSetContent(curNode, (const xmlChar *)content);
-        xmlSaveFile(file_name, doc);
+        checkPointFileSave(file_name, doc);
     }
     else
     {
@@ -166,7 +167,7 @@ int isXmlFileValid(const char * file_name, exml_root xmlRootIn)
     xmlNodePtr curNode;
     int retVal = 0;
     xmlDocPtr doc;           //the doc pointer to parse the file
-    doc = xmlReadFile(file_name, "utf-8", XML_PARSE_RECOVER); //parse the xml file
+    doc = checkPointFileRead(file_name, "utf-8", XML_PARSE_RECOVER); //parse the xml file
 
     if (NULL == doc)
     {
@@ -197,7 +198,6 @@ int isXmlFileValid(const char * file_name, exml_root xmlRootIn)
 
 }
 
-
 int open_file(const char * file_name, int *ret_stat, int *file_size)
 {
     int fd = 0;
@@ -207,14 +207,14 @@ int open_file(const char * file_name, int *ret_stat, int *file_size)
     *ret_stat = stat(file_name, &statbuf);
 #else
     struct _stati64 statbuf;
-    *ret_stat = _stati64(file_name, &statbuf);
+    *ret_stat = file_stati64(file_name, &statbuf);
 #endif
     if (*ret_stat == -1)
     {
 #if defined __GNUC__ || defined LINUX
         fd = open(file_name, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 #else
-        (void)_sopen_s(&fd, file_name, _O_RDWR | _O_CREAT | _O_BINARY, _SH_DENYNO,
+        (void)file_sopen_s(&fd, file_name, _O_RDWR | _O_CREAT | _O_BINARY, _SH_DENYNO,
             _S_IREAD | _S_IWRITE);
 #endif
         if (fd != -1)
@@ -282,8 +282,8 @@ int set_check_pointFile_with_null(const char * uploadFileName, char * checkPoint
     int isxmlValid = -1;
     int file_size = 0;
 
-    int ret = sprintf_s(checkPointFileName, ARRAY_LENGTH_1024, "%s%s", uploadFileName, ".xmltmp");
-    CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
+    int ret = checkpoint_file_path_printf(checkPointFileName, ARRAY_LENGTH_1024, uploadFileName);
+    CheckAndLogNeg(ret, "checkpoint_file_path_printf", __FUNCTION__, __LINE__);
     while (ret_stat == 0)
     {
         fd = open_file(checkPointFileName, &ret_stat, &file_size);
@@ -312,7 +312,7 @@ int set_check_pointFile_with_null(const char * uploadFileName, char * checkPoint
             break;
         }
 
-        retVal = strcat_s(checkPointFileName, ARRAY_LENGTH_1024, ".xmltmp");
+        retVal = file_path_append(checkPointFileName, ARRAY_LENGTH_1024);
         if (retVal != 0)
         {
             retVal = -1;

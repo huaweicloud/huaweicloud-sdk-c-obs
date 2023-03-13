@@ -36,7 +36,7 @@ obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element
 #ifdef WIN32
         int strTmpSourceLen = data_len + 1;
         if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_PREFIX_SIZE){
-            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
             return OBS_STATUS_OutOfMemory;
         }
         char* strTmpSource = (char*)malloc(sizeof(char) * strTmpSourceLen);
@@ -99,7 +99,7 @@ obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element
         }
         int prefix_size = data_len + 1;
         if (prefix_size <= 0 || prefix_size > OBS_MAX_PREFIX_SIZE){
-            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
             return OBS_STATUS_OutOfMemory;
         }
         char* common_Prefix = (char*)malloc(sizeof(char) * prefix_size);

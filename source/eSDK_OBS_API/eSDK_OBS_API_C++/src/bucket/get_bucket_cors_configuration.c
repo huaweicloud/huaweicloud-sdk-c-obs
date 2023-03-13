@@ -218,7 +218,7 @@ static const char** set_return_cors_value(char in_char[][1024], int char_count)
     const char **out_char = NULL;
     int i = 0;
     if (char_count <= 0 || char_count > OBS_MAX_CORS_COUNT) {
-        COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+        COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
         return NULL;
     }
     out_char = (const char**)malloc(sizeof(char *) * char_count);

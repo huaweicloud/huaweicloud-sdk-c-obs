@@ -158,7 +158,7 @@ obs_status parse_xml_list_versions(list_versions_data *version_data, const char 
 #ifdef WIN32
         int strTmpSourceLen = data_len + 1;
         if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_STR_TMP_SIZE) {
-            COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+            COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
             return OBS_STATUS_OutOfMemory;
         }
         char* strTmpSource = (char*)malloc(sizeof(char) * strTmpSourceLen);

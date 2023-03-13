@@ -117,7 +117,8 @@ char* UTF8_To_String(const char* strSource)
     
     int strLen = nLen + 1;
     if (strLen <= 0 || strLen > OBS_MAX_UTF8_STR_SIZE){
-        COMMLOG(OBS_LOGERROR, "require too much memory in function: %s,line %d", __FUNCTION__, __LINE__);
+        CHECK_NULL_FREE(wstr);
+        COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
         return NULL;
     }
     str = (char*)malloc(sizeof(char) * strLen);
