@@ -22,11 +22,16 @@
 // 符号视为是被导出的。
 
 #ifdef WIN32
+#ifndef USE_OBS_STATIC_LIB
 	#ifdef eSDK_LOGAPI_EXPORTS
 		#define eSDK_LOG_API __declspec(dllexport)
 	#else
 		#define eSDK_LOG_API __declspec(dllimport)
 	#endif
+#else
+	#define eSDK_LOG_API
+#endif // !USE_OBS_STATIC_LIB
+ 
 #else
 	#define eSDK_LOG_API __attribute__((visibility("default")))
 #endif

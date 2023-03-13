@@ -1,0 +1,32 @@
+PROJECT=libsecurec.a
+CFLAG= -DANDROID -D_ANDROID_AOI_=17 -D__ANDROID_API__=17 -I ../include -Wall -DNDEBUG -O2 -fstack-protector-all
+LDFLAGS=-Wl,-z,relro,-z,now
+CXXFLAG= $(CFLAG)
+CC=arm-linux-androideabi-gcc
+GCC=arm-linux-androideabi-gcc
+RANDLIB=arm-linux-androideabi-ranlib
+AR=arm-linux-androideabi-gcc-ar
+ARCH:=$(shell getconf LONG_BIT)
+
+ifeq ($(ARCH), 64)
+    CFLAG += -fPIC
+    CXXFLAG += -fPIC
+endif
+
+SOURCES=$(wildcard *.c)
+OBJECTS=$(patsubst %.c,%.o,$(SOURCES))
+   
+
+$(PROJECT):$(OBJECTS)
+	@mkdir -p ../obj
+	mkdir -p ../lib/ndk
+	${AR} crv libsecurec.a $(patsubst %.o,../obj/%.o,$^)
+	${RANDLIB} libsecurec.a 
+	cp libsecurec.a ../lib/ndk/libsecurec.a -af
+	@echo "finish $(PROJECT)"
+.c.o:
+	@mkdir -p ../obj
+	$(GCC) -c $< $(CFLAG) -o ../obj/$(patsubst %.c,%.o,$<)
+
+clean:
+	rm -rf *.o ../obj ../lib $(PROJECT)

@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\inc\error_parser.h" />
     <ClInclude Include="..\..\inc\eSDKOBS.h" />
+    <ClInclude Include="..\..\inc\file_utils.h" />
     <ClInclude Include="..\..\inc\log.h" />
     <ClInclude Include="..\..\inc\request.h" />
     <ClInclude Include="..\..\inc\request_context.h" />
@@ -71,6 +72,7 @@
     <ClCompile Include="..\..\src\bucket\set_bucket_website_configuration.c" />
     <ClCompile Include="..\..\src\bucket\set_notification_configuration.c" />
     <ClCompile Include="..\..\src\error_parser.c" />
+    <ClCompile Include="..\..\src\file_utils.c" />
     <ClCompile Include="..\..\src\general.c" />
     <ClCompile Include="..\..\src\log.c" />
     <ClCompile Include="..\..\src\object\abort_multi_part_upload.c" />
@@ -107,7 +109,7 @@
     <ProjectGuid>{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>obs</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -219,7 +221,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;OBS_EXPORTS;_CRT_SECURE_NO_WARNINGS;HUAWEISECUREC_WXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\..\..\..\open_src\openssl-1.0.2k\include;..\..\..\..\..\open_src\curl-7.52.1\include;..\..\inc;..\..\inc\mingw;..\..\..\..\..\open_src\libxml2-2.9.4\include;..\..\..\..\..\open_src\pcre-8.39\include;..\..\..\..\..\open_src\libxml2-2.9.4\source\os400\iconv;..\..\..\..\..\platform\huaweisecurec\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include;..\..\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\inc;..\..\inc\mingw;..\..\..\..\..\platform\huaweisecurec\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include;..\..\include</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <CallingConvention>Cdecl</CallingConvention>
       <AdditionalOptions>/wd4430 %(AdditionalOptions)</AdditionalOptions>
@@ -239,7 +241,7 @@
       <AdditionalLibraryDirectories>..\..\..\..\..\open_src\curl-7.52.1\lib\windows\x86;..\..\..\..\..\open_src\openssl-1.0.2k\lib\windows\x86;..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug_x64;..\..\..\..\..\open_src\pcre-8.39\lib\windows\x86;$(WindowsSdkDir)\Lib;..\..\..\..\..\open_src\libxml2-2.9.4\lib\windows\x86;..\..\build\vc100\Debug;..\..\lib\win64_x64_msvc\release;..\..\build\vc100\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>
       </IgnoreAllDefaultLibraries>
-      <AdditionalDependencies>cjson.lib;libcurl.lib;libeay32.lib;ssleay32.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libcurl.lib;libcrypto.lib;libssl.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <IgnoreSpecificDefaultLibraries>MSVCRT.lib</IgnoreSpecificDefaultLibraries>
     </Link>

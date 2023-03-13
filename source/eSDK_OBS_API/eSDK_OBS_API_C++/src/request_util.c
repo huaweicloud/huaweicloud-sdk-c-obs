@@ -15,13 +15,13 @@
 
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
+#include <openssl/ssl.h>
 #include <ctype.h>
 #include <string.h>
 #include "util.h"
 #include "securec.h"
 #include "log.h"
 #include "request.h"
-#include <openssl/ssl.h>
 #include "pcre.h"
 #include "request_util.h"
 #include "object.h"
@@ -32,6 +32,7 @@
 #endif
 
 #define SSEC_KEY_MD5_LENGTH 64
+#define B64_LEN_FOR_HMAC (((20 + 1) * 4) / 3)
 #ifdef WIN32
 #include <windows.h>
 #else
@@ -811,6 +812,7 @@ obs_status request_compose_limit_s3_header(request_computed_values *values, uint
         limit_tmp, NULL)) != OBS_STATUS_OK) {
         return status;
     }
+    return OBS_STATUS_OK;
 }
 
 obs_status request_compose_limit_obs_header(request_computed_values *values, uint64_t limit, int *len)
@@ -824,6 +826,7 @@ obs_status request_compose_limit_obs_header(request_computed_values *values, uin
         limit_tmp, NULL)) != OBS_STATUS_OK) {
         return status;
     }
+	return OBS_STATUS_OK;
 }
 
 obs_status request_compose_limit_s3(request_computed_values *values, const request_params *params, int *len)
@@ -989,8 +992,8 @@ obs_status request_compose_encrypt_params_s3(request_computed_values *values, co
             }
             char buffer[SSEC_KEY_MD5_LENGTH] = {0};
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
-            sign_len = base64Decode(params->encryption_params->ssec_customer_key,
-                strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
+            sign_len = base64Decode(params->encryption_params->des_ssec_customer_key,
+                strlen(params->encryption_params->des_ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
             compute_md5(buffer, sign_len,ssec_key_md5, SSEC_KEY_MD5_LENGTH);
             status = headers_append(len, values,1, 
                              "x-amz-copy-source-server-side-encryption-customer-key-md5: %s", 
@@ -1060,8 +1063,8 @@ obs_status request_compose_encrypt_params_obs(request_computed_values *values, c
             }
             char buffer[SSEC_KEY_MD5_LENGTH] = {0};
             char ssec_key_md5[SSEC_KEY_MD5_LENGTH]={0};
-            sign_len = base64Decode(params->encryption_params->ssec_customer_key,
-                strlen(params->encryption_params->ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
+            sign_len = base64Decode(params->encryption_params->des_ssec_customer_key,
+                strlen(params->encryption_params->des_ssec_customer_key),buffer, SSEC_KEY_MD5_LENGTH);
             compute_md5(buffer, sign_len,ssec_key_md5, SSEC_KEY_MD5_LENGTH);
             status = headers_append(len, values,1, 
                              "x-obs-copy-source-server-side-encryption-customer-key-md5: %s", 
@@ -1896,12 +1899,11 @@ obs_status compose_temp_header(const request_params* params,
     HMAC_SHA1(hmac, (unsigned char*) params->bucketContext.secret_access_key,
               strlen(params->bucketContext.secret_access_key),
               (unsigned char*) signbuf, len);
-    const uint64_t b64Len = ((20 + 1) * 4) / 3;
-    char b64[b64Len];
-    memset_s(b64, b64Len, 0, b64Len);
+    char b64[B64_LEN_FOR_HMAC];
+    memset_s(b64, B64_LEN_FOR_HMAC, 0, B64_LEN_FOR_HMAC);
     (void)base64Encode(hmac, 20, b64);
     char cUrlEncode[512] = {0};
-    (void)urlEncode(cUrlEncode, b64, b64Len, 28, 0);
+    (void)urlEncode(cUrlEncode, b64, B64_LEN_FOR_HMAC, 28, 0);
     int ret = snprintf_s(stTempAuthInfo->tempAuthParams,ARRAY_LENGTH_1024, _TRUNCATE,
                "AWSAccessKeyId=%s&Expires=%lld&Signature=%s", params->bucketContext.access_key,
                (long long int)local_expires, cUrlEncode);

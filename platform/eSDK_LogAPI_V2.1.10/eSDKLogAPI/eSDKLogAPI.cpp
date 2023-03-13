@@ -36,6 +36,7 @@ using namespace eSDK;
 # define SNPRINTF  vsnprintf_s
 #endif
 
+#ifndef USE_OBS_STATIC_LIB
 #ifndef WIN64
 // 导出接口预处理
 #pragma comment(linker, "/EXPORT:LogFini=_LogFini@4")
@@ -46,7 +47,8 @@ using namespace eSDK;
 #pragma comment(linker, "/EXPORT:Log_Run_Warn=_Log_Run_Warn@8")
 // 导出接口预处理
 #endif
-
+#endif // !USE_OBS_STATIC_LIB
+ 
 // 安卓读取无法读取ini文件，故直接传送ini文件内容
 #if defined ANDROID
 int _STD_CALL_ LogInitForAndroid(const char* product, const char* iniInfo, unsigned int logLevel[LOG_CATEGORY], const char* logPath)

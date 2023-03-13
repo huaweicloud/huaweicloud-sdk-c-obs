@@ -77,11 +77,16 @@ typedef int errno_t;
 
 /*if you need export the function of this library in Win32 dll, use __declspec(dllexport) */
 #ifdef WIN32
+#ifndef USE_STATIC_HUAWEI_SECURE_C
 #ifdef HUAWEISECUREC_WXPORTS
 #define HUAWEISECUREC_API __declspec(dllexport)
 #else
 #define HUAWEISECUREC_API __declspec(dllimport)
 #endif
+#else
+#define HUAWEISECUREC_API
+#endif // !USE_STATIC_HUAWEI_SECURE_C
+
 #else
 #define HUAWEISECUREC_API 
 #endif//WIN32

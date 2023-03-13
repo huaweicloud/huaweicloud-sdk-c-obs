@@ -25,6 +25,7 @@
 
 #if defined __GNUC__ || defined LINUX
 #include <pthread.h>
+#include "signal_handle.h"
 #endif
 
 #define CERTIFICATE_SIZE 2048
@@ -194,6 +195,9 @@ obs_status obs_initialize(int win32_flags)
     LOG_INIT();
     xmlInitParser();
     COMMLOG(OBS_LOGWARN, "%s OBS SDK Version= %s", __FUNCTION__, OBS_SDK_VERSION);
+#if defined __GNUC__ || defined LINUX
+    set_sigaction_for_sigpipe();
+#endif
     retCode = curl_global_init(CURL_GLOBAL_ALL);
     if (retCode != CURLE_OK)
     {
@@ -404,6 +408,9 @@ void obs_deinitialize()
     request_api_deinitialize();
     xmlCleanupParser();
     curl_global_cleanup();
+#if defined __GNUC__ || defined LINUX
+    unset_sigaction_for_sigpipe();
+#endif
 }
 
 int obs_status_is_retryable(obs_status status) //lint !e578

@@ -461,6 +461,10 @@ static void get_notification_complete_callback(obs_status request_status,
         CHECK_NULL_FREE(smn_data->notification_conf.topic_conf[topic_loop].topic);
         for (filter_loop = 0; filter_loop < smn_data->notification_conf.topic_conf[topic_loop].filter_rule_num; filter_loop++)
         {
+            if(smn_data->notification_conf.topic_conf[topic_loop].filter_rule == NULL){
+                COMMLOG(OBS_LOGWARN,"filter_rule is NULL in function:%s, line%d", __FUNCTION__, __LINE__);
+                break;
+            }
             CHECK_NULL_FREE(smn_data->notification_conf.topic_conf[topic_loop].filter_rule[filter_loop].value);
         }
         CHECK_NULL_FREE(smn_data->notification_conf.topic_conf[topic_loop].filter_rule);

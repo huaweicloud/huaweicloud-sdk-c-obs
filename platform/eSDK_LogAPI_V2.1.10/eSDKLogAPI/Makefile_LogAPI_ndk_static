@@ -1,0 +1,29 @@
+CXX = arm-linux-androideabi-g++
+AR = arm-linux-androideabi-ar
+RANDLIB=arm-linux-androideabi-ranlib
+CXXFLAGS = -g -fPIC -Wl,-z,relro,-z,now -lrt -lm -Wl,--no-as-needed -ldl
+#SHARED = -shared
+TARGET = libeSDKLogAPI.a
+LIBS = ../C/ndk/liblog4cpp.a ../../huaweisecurec/lib/ndk/libsecurec.a
+INCLUDEDIR = -I ../../../platform/huaweisecurec/include -I ../output/include -I ../ -I ../vos -I../log4cpp
+
+#../../../platform/huaweisecurec/src/%.o : ../../../platform/huaweisecurec/src/%.c
+#	$(CXX) $(CXXFLAGS) $(INCLUDEDIR) $(LIBS) -c -DENV_LINUX -DLOG4CPP_HAVE_SSTREAM -fno-stack-protector -D_ANDROID_AOI_=17 -D__ANDROID_API__=17 $< -o $@ $(CXXFLAGS)
+
+.cpp.o:
+	$(CXX) $(CXXFLAGS) $(INCLUDEDIR) $(LIBS) -c -DENV_LINUX -DLOG4CPP_HAVE_SSTREAM -DANDROID -D_ANDROID_AOI_=17 -D__ANDROID_API__=17 -fstack-protector-all $< -o $@  $(CXXFLAGS)
+
+SOURCES = $(wildcard *.cpp) $(wildcard ./../vos/*.cpp) 
+OBJS = $(patsubst %.cpp,%.o,$(SOURCES))
+#SECUREC_SOURCES = $(wildcard ../../../platform/huaweisecurec/src/*.c)
+#SECUREC_OBJS = $(patsubst %.c,%.o,$(SECUREC_SOURCES))
+#OBJS += $(SECUREC_OBJS)
+
+$(TARGET): $(OBJS)
+	${AR} rc libeSDKLogAPI.a $^ 
+	${RANDLIB} libeSDKLogAPI.a
+
+.PHONY: clean
+clean:
+	-rm -f $(TARGET) $(OBJS)
+

@@ -30,6 +30,7 @@
 
 #include "eSDKOBS.h"
 #include "cJSON.h"
+#include <windows.h>
 
 #ifndef SLEEP_UNITS_PER_SECOND
 #define SLEEP_UNITS_PER_SECOND 1

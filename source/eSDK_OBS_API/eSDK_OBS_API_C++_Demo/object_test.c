@@ -4906,7 +4906,7 @@ void *test_multi_thread_upload_file(void *pause_file)
 {
     obs_pause_upload_file *pause_upload_flag = (obs_pause_upload_file*)pause_file;
     printf("pause_flag = %d, filename=%s\n", *(pause_upload_flag->pause_flag), pause_upload_flag->filename);
-
+ 
     obs_status ret_status = OBS_STATUS_BUTT;
     uint64_t uploadSliceSize =40L * 1024 * 1024;                   // upload part slice size
     int thread_num = 10;
@@ -4914,19 +4914,19 @@ void *test_multi_thread_upload_file(void *pause_file)
     char *filename = pause_upload_flag->filename;    // the upload file name 
     char *bucket_name = "yan-test-411522";
     char *key = "pause_test";
-
+ 
     obs_options option;
     init_obs_options(&option);
-
+ 
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
-
+ 
     obs_put_properties putProperties={0};
     init_put_properties(&putProperties);
-
+ 
     obs_upload_file_configuration uploadFileInfo;
     memset_s(&uploadFileInfo,sizeof(obs_upload_file_configuration),0,sizeof(obs_upload_file_configuration));
     uploadFileInfo.check_point_file = NULL;
@@ -4935,30 +4935,30 @@ void *test_multi_thread_upload_file(void *pause_file)
     uploadFileInfo.task_num = thread_num;
     uploadFileInfo.upload_file = filename;
     uploadFileInfo.pause_upload_flag = pause_upload_flag->pause_flag;
-
+ 
     obs_upload_file_server_callback server_callback;
     init_server_callback(&server_callback);
-
+ 
     cJSON *body = NULL;
     char *out = NULL;
     body = cJSON_CreateObject();
-
+ 
     cJSON_AddStringToObject(body, "bucket", "test_json");
     cJSON_AddStringToObject(body, "etag", "test_etag");
     out = cJSON_PrintUnformatted(body);
-
+ 
     server_callback.callback_url = "http://xxxxxx";
     server_callback.callback_host = NULL;
     server_callback.callback_body = out;
     server_callback.callback_body_type = "application/json";
-
+ 
     obs_upload_file_response_handler Handler =
     {
         {&response_properties_callback, &response_complete_callback},
         &uploadFileResultCallback,
         &test_progress_callback
     };
-
+ 
     upload_file(&option, key, 0, &uploadFileInfo, server_callback,&Handler, &ret_status);
     if (OBS_STATUS_OK == ret_status) {
         printf("test upload file successfully. \n");
@@ -4970,7 +4970,7 @@ void *test_multi_thread_upload_file(void *pause_file)
     printf("pause_flag = %d, filename=%s\n", *(pause_upload_flag->pause_flag), pause_upload_flag->filename);
     return ((void*)0);
 }
-
+ 
 void test_pause_upload_file()
 {
     int err = 0;
@@ -4979,21 +4979,21 @@ void test_pause_upload_file()
     int pause_flag0 = 0;
     int pause_flag1 = 0;
     int pause_flag2 = 0;
-
+ 
     for (i = 0; i < PAUSE_THREAD_NUM; i++) {
         pause_file[i] = (obs_pause_upload_file*)malloc(sizeof(obs_pause_upload_file));
         pause_file[i]->filename = (char*)malloc(sizeof(char));
         pause_file[i]->pause_flag = (int*)malloc(sizeof(int));
         memset_s(pause_file[i], sizeof(obs_pause_upload_file), 0, sizeof(obs_pause_upload_file));
     }
-
+ 
     pause_file[0]->pause_flag = &pause_flag0;
     pause_file[0]->filename = "huaweicloud-obs-sdk-c-linux_L3-20220326152318.tar.gz";
     pause_file[1]->pause_flag = &pause_flag1;
     pause_file[1]->filename = "esdk_obs_c.tar.gz";
     pause_file[2]->pause_flag = &pause_flag2;
     pause_file[2]->filename = "huaweicloud-obs-sdk-c-linux.tgz";
-
+ 
     pthread_t *arrThread = (pthread_t*)malloc(sizeof(pthread_t) * PAUSE_THREAD_NUM);
     for (i = 0; i < PAUSE_THREAD_NUM; i++) {
         err = pthread_create(&arrThread[i], NULL, test_multi_thread_upload_file, (void *)pause_file[i]);
@@ -5001,16 +5001,16 @@ void test_pause_upload_file()
             printf("create thread for test_pause_upload_file failed. i:%d, err:%d\n", i, err);
         }
     }
-
+ 
     sleep(2);
     pause_upload_file(pause_file[0]->pause_flag);
-
+ 
     for (i = 0; i < PAUSE_THREAD_NUM; i++) {
         pthread_join(arrThread[i], NULL);
     }
-
+ 
 }
-
+ 
 static void test_upload_file(int argc, char **argv, int optindex)
 {
     obs_status ret_status = OBS_STATUS_BUTT;

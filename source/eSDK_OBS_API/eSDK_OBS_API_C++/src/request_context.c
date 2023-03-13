@@ -76,7 +76,11 @@ obs_status obs_runonce_request_context(obs_request_context *request_context,
             {
                 return OBS_STATUS_InternalError;
             }
-            
+            if(request == NULL){
+                COMMLOG(OBS_LOGERROR,"ptr request is NULL in function:%s, line%d", __FUNCTION__, __LINE__);
+                return OBS_STATUS_InternalError;
+            }
+ 
             if (request->prev == request->next) {
                 request_context->requests = 0;
             }

@@ -14,6 +14,7 @@
 */
 #include "object.h"
 #include "request_util.h"
+#include "file_utils.h"
 #include <openssl/md5.h> 
 
 #include <fcntl.h>
@@ -595,9 +596,9 @@ int writeCheckpointFile_Download(download_file_summary * pstDownloadFileSummary,
 
 
     //store the xml file    
-    nRel = xmlSaveFile(file_name, doc);
+    nRel = checkPointFileSave(file_name, doc);
     if (nRel != -1) {
-        COMMLOG(OBS_LOGINFO, "%s file[%s] is not exist", "readCheckpointFile", file_name);
+        COMMLOG(OBS_LOGINFO, "%s file[%s] is not exist", __FUNCTION__, file_name);
     }
     //free all the node int the doc    
     xmlFreeDoc(doc);
@@ -628,10 +629,18 @@ void DividDownloadPartListSetNode(download_file_part_info *pstSrcListNode, downl
         {
             pstTmpNode = pstSrcListNode;
             pstTmpList = pstSrcListNode;
+            if(pstTmpNode == NULL){
+                COMMLOG(OBS_LOGERROR,"pstTmpNode is NULL in function:%s, line%d", __FUNCTION__, __LINE__);
+                break;
+            }
             pstTmpNode->prev = NULL;
         }
         else
         {
+            if(pstTmpNode == NULL){
+                COMMLOG(OBS_LOGERROR,"pstTmpNode is NULL in function:%s, line%d", __FUNCTION__, __LINE__);
+                break;
+            }
             pstTmpNode->next = pstSrcListNode;
             pstSrcListNode->prev = pstTmpNode;
             pstTmpNode = pstTmpNode->next;
@@ -650,6 +659,10 @@ void DividDownloadPartListSetNode(download_file_part_info *pstSrcListNode, downl
             pstTmpNotDoneNode = pstTmpNode;
         }
         pstSrcListNode = pstSrcListNode->next;
+        if(pstTmpNode == NULL){
+            COMMLOG(OBS_LOGERROR,"pstTmpNode is NULL in function:%s, line%d", __FUNCTION__, __LINE__);
+            break;
+        }
         pstTmpNode->next = NULL;
 
     }
@@ -931,15 +944,15 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
     int fd = -1;
     char * fileNameTemp = (char*)malloc(1024);
 
-    if (fileNameTemp == NULL)
-    {
-        COMMLOG(OBS_LOGWARN, "DownloadThreadProc_win32: malloc failed!\n");
+    if(fileNameTemp == NULL){
+        COMMLOG(OBS_LOGERROR, "malloc failed in function: %s,line %d", __FUNCTION__, __LINE__);
+        return 1;
     }
 
     int ret = sprintf_s(fileNameTemp, 1024, "%s.%d", storeFileName, part_num);
     CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
 
-    (void)_sopen_s(&fd, fileNameTemp, _O_BINARY | _O_RDWR | _O_CREAT,
+    (void)file_sopen_s(&fd, fileNameTemp, _O_BINARY | _O_RDWR | _O_CREAT,
         _SH_DENYNO, _S_IREAD | _S_IWRITE);
 
     free(fileNameTemp);
@@ -1028,7 +1041,8 @@ void * DownloadThreadProc_linux(void* param)
 
     if (fileNameTemp == NULL)
     {
-        COMMLOG(OBS_LOGWARN, "DownloadThreadProc_linux: malloc failed!\n");
+        COMMLOG(OBS_LOGERROR, "malloc failed in function: %s,line %d", __FUNCTION__, __LINE__);
+        return NULL;
     }
 
     int ret = sprintf_s(fileNameTemp, 1024, "%s.%d", storeFileName, part_num);
@@ -1210,6 +1224,7 @@ void startDownloadThreads(download_params * pstDownloadParams,
         if (pstDownloadParams->response_handler->complete_callback) {
             (pstDownloadParams->response_handler->complete_callback)(OBS_STATUS_InternalError, 0, callback_data);
         }
+        CHECK_NULL_FREE(downloadFileProcDataList);
         return;
     }
 
@@ -1368,7 +1383,7 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
         return -1;
     }
 #if defined WIN32
-    _sopen_s(&fdDest, fileName, _O_BINARY | _O_WRONLY | _O_CREAT,
+    file_sopen_s(&fdDest, fileName, _O_BINARY | _O_WRONLY | _O_CREAT,
         _SH_DENYNO, _S_IREAD | _S_IWRITE);
 #endif
 
@@ -1422,7 +1437,7 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
 
 #if defined WIN32
         Sleep(0);
-        _sopen_s(&fdSrc, fileNameTemp, _O_BINARY | _O_RDONLY,
+        file_sopen_s(&fdSrc, fileNameTemp, _O_BINARY | _O_RDONLY,
             _SH_DENYWR, _S_IREAD);
 #endif
 

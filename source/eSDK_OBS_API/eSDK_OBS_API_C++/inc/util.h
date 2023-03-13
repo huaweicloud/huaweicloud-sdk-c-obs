@@ -33,7 +33,9 @@
 #define ACS_GROUP_LOG_DELIVERY  ACS_URL "s3/LogDelivery"
 #define MAX_XML_LEN (1024*100)
 /* _TRUNCATE */
+#ifndef _MSC_VER
 #define _TRUNCATE (SECUREC_STRING_MAX_LEN - 1)
+#endif
 
 #ifdef _MSC_VER
 #define snprintf_s _snprintf_s

@@ -323,8 +323,8 @@ obs_status DeleteObjectsDataCallback(int contentsCount,
                                             void *callbackData);
 
 int get_certificate_info(char *buffer, int buffer_length);
-void tempAuthCallBack_getResult(char *tempAuthUrl, size_t tempAuthUrlLen, char *tempAuthActualHeaders,
-    size_t tempAuthActualHeadersLen, void *callbackData);
+void tempAuthCallBack_getResult(char *tempAuthUrl, uint64_t tempAuthUrlLen, char *tempAuthActualHeaders,
+    uint64_t tempAuthActualHeadersLen, void *callbackData);
 
 void init_bucket_get_logging_message(bucket_logging_message *logging_message);
 void destroy_logging_message(bucket_logging_message *logging_message);
