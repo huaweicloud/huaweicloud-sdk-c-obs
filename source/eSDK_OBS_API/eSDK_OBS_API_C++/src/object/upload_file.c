@@ -1499,6 +1499,7 @@ void startUploadThreads(upload_params * pstUploadParams,
     }
     if (partCount <= 0 || partCount > OBS_MAX_PARTCOUNT_SIZE){
         COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
+	CHECK_NULL_FREE(uploadFileProcDataList);
         return;
     }
     uint64_t *uploadFileProgress = (uint64_t *)malloc(sizeof(uint64_t)*partCount);
