@@ -65,5 +65,19 @@
 #  endif // LOG4CPP_HAVE_SSTREAM
 #endif // _APPLE_
 
+// Support both modern and deprecated compilers, supplying different c++language constructs via macros
+#if defined(__cplusplus) && (__cplusplus >= 201103L)
+#define LOG4CPP_UNIQUE_PTR unique_ptr
+#define LOG4CPP_UNIQUE_PTR_MOVE(ptr) std::move(ptr)
+#else
+#define LOG4CPP_UNIQUE_PTR auto_ptr
+#define LOG4CPP_UNIQUE_PTR_MOVE(ptr) ptr
+#endif //__cplusplus
 
-#endif
+#if defined(__cplusplus) && (__cplusplus >= 201703L)
+#define LOG4CPP_NOTHROW noexcept
+#else
+#define LOG4CPP_NOTHROW throw()
+#endif //__cplusplus
+
+#endif //_LOG4CPP_PORTABILITY_HH

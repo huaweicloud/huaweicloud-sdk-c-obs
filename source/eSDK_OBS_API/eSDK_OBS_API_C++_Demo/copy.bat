@@ -1,6 +1,6 @@
 @echo off
 
-REM ����obs��windows�汾������.lib��.h .c��������ǰĿ¼�£����д�demoǰ��ִ�иýű����Ա�֤demoΪ���°汾��
+REM 编译obs的windows版本，并将.lib与.h .c拷贝到当前目录下，运行此demo前请执行该脚本，以保证demo为最新版本。
 
 
 SETLOCAL ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION

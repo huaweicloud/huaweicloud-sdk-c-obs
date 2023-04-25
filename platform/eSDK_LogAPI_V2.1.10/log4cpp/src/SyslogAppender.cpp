@@ -75,13 +75,13 @@ namespace log4cpp {
         return true;
     }
     
-    std::auto_ptr<Appender> create_syslog_appender(const FactoryParams& params)
+    std::LOG4CPP_UNIQUE_PTR<Appender> create_syslog_appender(const FactoryParams& params)
     {
        std::string name, syslog_name;
        int facility = 0;
        params.get_for("syslog appender").required("name", name)("syslog_name", syslog_name)
                                         .optional("facility", facility);
-       return std::auto_ptr<Appender>(new SyslogAppender(name, syslog_name, facility));
+       return std::LOG4CPP_UNIQUE_PTR<Appender>(new SyslogAppender(name, syslog_name, facility));
     }
 }
 

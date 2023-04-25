@@ -1480,7 +1480,7 @@ static void test_put_object_new(int argc, char **argv, int optindex)
 // get object ---------------------------------------------------------------
 void set_image_proc(char *strImageProcConfig, obs_get_conditions *get_conditions)
 {
-    image_process_mode imageProcMode = 0;
+    image_process_mode_type imageProcMode = 0;
     char *strCmds_StyleName = strchr(strImageProcConfig, '/');
     int stringLen = 0;
     if ( (strCmds_StyleName != NULL) && (strlen(strImageProcConfig) >= strlen("style"))

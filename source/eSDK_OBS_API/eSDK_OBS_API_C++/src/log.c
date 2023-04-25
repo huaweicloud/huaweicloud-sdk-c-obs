@@ -289,7 +289,7 @@ int copy_file(char *source, char *target)
     {
         if(strstr(temp_arr, "LogPath=") != NULL)
         {
-            ret = snprintf_s(temp_arr, LOG_CONF_MESSAGELEN, LOG_CONF_MESSAGELEN - 1, "LogPath=\.\/");
+            ret = snprintf_s(temp_arr, LOG_CONF_MESSAGELEN, LOG_CONF_MESSAGELEN - 1, "LogPath=./");
             CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
         }
             fputs(temp_arr, fp_tar);
@@ -328,9 +328,9 @@ int MoveConf(const char * buf)
     CHECK_ERR_RETURN(err);
 #else
     getCurrentPath(source_conf);
-    ret = snprintf_s(target_conf, MAX_MSG_SIZE, MAX_MSG_SIZE - 1, "%s\/OBS.ini", buf);
+    ret = snprintf_s(target_conf, MAX_MSG_SIZE, MAX_MSG_SIZE - 1, "%s/OBS.ini", buf);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-    err = strcat_s(source_conf, MAX_MSG_SIZE, "\/OBS.ini");
+    err = strcat_s(source_conf, MAX_MSG_SIZE, "/OBS.ini");
     CHECK_ERR_RETURN(err);
 #endif
     copy_file(source_conf, target_conf);

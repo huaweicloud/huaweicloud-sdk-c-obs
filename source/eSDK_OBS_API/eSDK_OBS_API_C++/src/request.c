@@ -1141,15 +1141,15 @@ void request_perform(const request_params *params)
     }
     char authTmpParams[1024] = { 0 };
     char authTmpActualHeaders[1024] = { 0 };
-    temp_auth_info stTempAuthInfo;
-    ret = memset_s(&stTempAuthInfo, sizeof(temp_auth_info), 0, sizeof(temp_auth_info));
+    temp_auth_info stTempInfo;
+    ret = memset_s(&stTempInfo, sizeof(temp_auth_info), 0, sizeof(temp_auth_info));
     if(ret != 0){
         COMMLOG(OBS_LOGERROR, "memset_s failed in function: %s, line: %d", __FUNCTION__, __LINE__);
         CHECK_NULL_FREE(errorBuffer);
         return;
     }
-    stTempAuthInfo.temp_auth_headers = authTmpActualHeaders;
-    stTempAuthInfo.tempAuthParams = authTmpParams;
+    stTempInfo.temp_auth_headers = authTmpActualHeaders;
+    stTempInfo.tempAuthParams = authTmpParams;
 
 
     if ((status = compose_headers(params, &computed)) != OBS_STATUS_OK){
@@ -1165,7 +1165,7 @@ void request_perform(const request_params *params)
         sizeof(computed.canonicalizedResource));
     if (params->temp_auth)
     {
-        if ((status = compose_temp_header(params, &computed, &stTempAuthInfo)) != OBS_STATUS_OK) {
+        if ((status = compose_temp_header(params, &computed, &stTempInfo)) != OBS_STATUS_OK) {
             CHECK_NULL_FREE(errorBuffer);
             return_status(status);
         }
@@ -1176,11 +1176,10 @@ void request_perform(const request_params *params)
         return_status(status);
     }
 
-    if ((status = request_get(params, &computed, &request, &stTempAuthInfo)) != OBS_STATUS_OK) {
+    if ((status = request_get(params, &computed, &request, &stTempInfo)) != OBS_STATUS_OK) {
         CHECK_NULL_FREE(errorBuffer);
         return_status(status);
     }
-
     is_true = ((params->temp_auth) && (params->temp_auth->temp_auth_callback != NULL));
     if (is_true) {
         (params->temp_auth->temp_auth_callback)(request->uri,
@@ -1348,7 +1347,7 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
     }
     CURLcode code = curl_easy_perform(curl);
     if (code != CURLE_OK) {
-        obs_status status = request_curl_code_to_status(code);
+        status = request_curl_code_to_status(code);
 		COMMLOG(OBS_LOGERROR, "In function :(%s) curl_easy_perform failed, CURLcode = %d"
 			", curl_error_message is '%s', obs_status = %s(%d), curlErrorBuffer = %s"
 			, __FUNCTION__, code, curl_easy_strerror(code)

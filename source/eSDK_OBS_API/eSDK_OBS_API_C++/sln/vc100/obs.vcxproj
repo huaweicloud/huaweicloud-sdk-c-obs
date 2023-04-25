@@ -210,7 +210,7 @@
       <AdditionalLibraryDirectories>..\..\..\..\..\open_src\curl-7.52.1\lib\windows\x86;..\..\..\..\..\open_src\openssl-1.0.2k\lib\windows\x86;..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug;..\..\..\..\..\open_src\pcre-8.39\lib\windows\x86;$(WindowsSdkDir)\Lib;..\..\..\..\..\open_src\libxml2-2.9.4\lib\windows\x86;..\..\build\vc100\Debug;..\..\lib\win32_x86_msvc\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>
       </IgnoreAllDefaultLibraries>
-      <AdditionalDependencies>cjson.lib;libcurl.lib;libeay32.lib;ssleay32.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libcurl_imp.lib;libcrypto.lib;libssl.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
       <IgnoreSpecificDefaultLibraries>MSVCRT.lib</IgnoreSpecificDefaultLibraries>
     </Link>

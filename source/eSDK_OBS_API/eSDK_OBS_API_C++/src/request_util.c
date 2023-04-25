@@ -632,7 +632,7 @@ obs_status headers_append_expires_s3(const obs_put_properties *properties,
 {
     obs_status status = OBS_STATUS_OK;
     char expires[20];
-    snprintf_s(expires, sizeof(expires), _TRUNCATE, "%d", properties->obs_expires);
+    snprintf_s(expires, sizeof(expires), _TRUNCATE, "%ld", properties->obs_expires);
     status = headers_append(len, values, 1, "x-amz-expires: %s",expires, NULL);
     return status;
 }
@@ -642,7 +642,7 @@ obs_status headers_append_expires_obs(const obs_put_properties *properties,
 {
     obs_status status = OBS_STATUS_OK;
     char expires[20];
-    snprintf_s(expires, sizeof(expires), _TRUNCATE, "%d", properties->obs_expires);
+    snprintf_s(expires, sizeof(expires), _TRUNCATE, "%ld", properties->obs_expires);
     status = headers_append(len, values, 1, "x-obs-expires: %s", expires, NULL);
     return status;
 }
@@ -806,7 +806,7 @@ obs_status request_compose_limit_s3_header(request_computed_values *values, uint
     obs_status status;
     char limit_tmp[10] = { 0 };
     snprintf_s(limit_tmp, sizeof(limit_tmp), _TRUNCATE, \
-        "%d", limit);
+        "%ld", limit);
     if ((status = headers_append(len, values, 1,
         "x-amz-traffic-limit: %s",
         limit_tmp, NULL)) != OBS_STATUS_OK) {
@@ -820,7 +820,7 @@ obs_status request_compose_limit_obs_header(request_computed_values *values, uin
     obs_status status;
     char limit_tmp[10] = { 0 };
     snprintf_s(limit_tmp, sizeof(limit_tmp), _TRUNCATE, \
-        "%d", limit);
+        "%ld", limit);
     if ((status = headers_append(len, values, 1,
         "x-obs-traffic-limit: %s",
         limit_tmp, NULL)) != OBS_STATUS_OK) {
@@ -849,7 +849,6 @@ obs_status request_compose_limit_s3(request_computed_values *values, const reque
 obs_status request_compose_limit_obs(request_computed_values *values, const request_params *params, int *len)
 {
     obs_status status = OBS_STATUS_OK;
-    char limit_tmp[10] = { 0 };
     //get_conditions is get_object, put_properties is put_object
     if (params->put_properties && params->put_properties->upload_limit != 0)
     {

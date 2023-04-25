@@ -10,12 +10,12 @@
 
 namespace log4cpp
 {
-   std::auto_ptr<TriggeringEventEvaluator> create_level_evaluator(const FactoryParams& params)
+   std::LOG4CPP_UNIQUE_PTR<TriggeringEventEvaluator> create_level_evaluator(const FactoryParams& params)
    {
       std::string level;
       params.get_for("level evaluator").required("level", level);
 
-      return std::auto_ptr<TriggeringEventEvaluator>(new LevelEvaluator(Priority::getPriorityValue(level)));
+      return std::LOG4CPP_UNIQUE_PTR<TriggeringEventEvaluator>(new LevelEvaluator(Priority::getPriorityValue(level)));
    }
 }
 

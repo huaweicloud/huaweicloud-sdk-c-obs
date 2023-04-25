@@ -143,12 +143,12 @@ namespace log4cpp {
         return;
     }
 
-    std::auto_ptr<Appender> create_nt_event_log_appender(const FactoryParams& params)
+    std::LOG4CPP_UNIQUE_PTR<Appender> create_nt_event_log_appender(const FactoryParams& params)
     {
        std::string name, source_name;
        params.get_for("nt event log appender").required("name", name)("source_name", source_name);
 
-       return std::auto_ptr<Appender>(new NTEventLogAppender(name, source_name));
+       return std::LOG4CPP_UNIQUE_PTR<Appender>(new NTEventLogAppender(name, source_name));
     }
 }
 

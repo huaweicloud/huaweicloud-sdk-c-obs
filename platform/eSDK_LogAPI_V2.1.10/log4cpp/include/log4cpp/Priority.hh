@@ -92,7 +92,7 @@ namespace log4cpp {
          * @param priority the numeric value of the priority.
          * @returns a string representing the name of the priority.
          **/
-        static const std::string& getPriorityName(int priority) throw();
+        static const std::string& getPriorityName(int priority) LOG4CPP_NOTHROW;
 	
 	/**
 	 * Returns the value of the given priority name. 

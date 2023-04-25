@@ -129,7 +129,7 @@ VOID  VOS_pthread_exit(void *retval)
     pthread_exit(retval);
 #endif
     //PUMW_LOG(VPP::PUMW_LOG_WARNING, "VOS_pthread_exit.\n");
-};//lint !e818
+}//lint !e818
 
 #if VOS_APP_OS == VOS_OS_WIN32
 HANDLE  VOS_pthread_self()
@@ -142,7 +142,7 @@ HANDLE  VOS_pthread_self()
 pthread_t  VOS_pthread_self()
 {
     return pthread_self();
-};
+}
 #endif
 
 }//end namespace

@@ -12,22 +12,22 @@ namespace log4cpp
 {
    static AppendersFactory* appenders_factory_ = 0;
 
-   std::auto_ptr<Appender> create_file_appender(const FactoryParams&);
-   std::auto_ptr<Appender> create_roll_file_appender(const FactoryParams&);
-   std::auto_ptr<Appender> create_daily_roll_file_appender(const FactoryParams&);
-   std::auto_ptr<Appender> create_idsa_appender(const FactoryParams&);
-   std::auto_ptr<Appender> create_nt_event_log_appender(const FactoryParams&);
-   std::auto_ptr<Appender> create_remote_syslog_appender(const FactoryParams&);
-   std::auto_ptr<Appender> create_syslog_appender(const FactoryParams&);
-   std::auto_ptr<Appender> create_win32_debug_appender(const FactoryParams&);
-   std::auto_ptr<Appender> create_abort_appender(const FactoryParams&);
-   std::auto_ptr<Appender> create_smtp_appender(const FactoryParams&);
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_file_appender(const FactoryParams&);
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_roll_file_appender(const FactoryParams&);
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_daily_roll_file_appender(const FactoryParams&);
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_idsa_appender(const FactoryParams&);
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_nt_event_log_appender(const FactoryParams&);
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_remote_syslog_appender(const FactoryParams&);
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_syslog_appender(const FactoryParams&);
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_win32_debug_appender(const FactoryParams&);
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_abort_appender(const FactoryParams&);
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_smtp_appender(const FactoryParams&);
 
    AppendersFactory& AppendersFactory::getInstance()
    {
       if (!appenders_factory_)
       {
-         std::auto_ptr<AppendersFactory> af(new AppendersFactory);
+         std::LOG4CPP_UNIQUE_PTR<AppendersFactory> af(new AppendersFactory);
          
          af->registerCreator("file", &create_file_appender);
          af->registerCreator("roll file", &create_roll_file_appender);
@@ -74,7 +74,7 @@ namespace log4cpp
       creators_[class_name] = create_function;
    }
 
-   std::auto_ptr<Appender> AppendersFactory::create(const std::string& class_name, const params_t& params)
+   std::LOG4CPP_UNIQUE_PTR<Appender> AppendersFactory::create(const std::string& class_name, const params_t& params)
    {
       const_iterator i = creators_.find(class_name);
       if (i == creators_.end())
