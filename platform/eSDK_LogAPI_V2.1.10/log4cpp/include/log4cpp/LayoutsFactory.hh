@@ -21,11 +21,11 @@ namespace log4cpp
    {
       public:
          typedef FactoryParams params_t;
-         typedef std::auto_ptr<Layout> (*create_function_t)(const params_t& params);
+         typedef std::LOG4CPP_UNIQUE_PTR<Layout> (*create_function_t)(const params_t& params);
 
          static LayoutsFactory& getInstance();
          void registerCreator(const std::string& class_name, create_function_t create_function);
-         std::auto_ptr<Layout> create(const std::string& class_name, const params_t& params);
+         std::LOG4CPP_UNIQUE_PTR<Layout> create(const std::string& class_name, const params_t& params);
          bool registed(const std::string& class_name) const;
 
       private:

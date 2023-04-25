@@ -13,7 +13,7 @@ dnl
 AC_DEFUN([AC_FUNC_SNPRINTF],
 [AC_CACHE_CHECK(for working snprintf, ac_cv_func_snprintf,
 [AC_TRY_RUN([#include <stdio.h>
-int main () { int l = snprintf(NULL,0,"%d",100); exit (!((3 <= l) || (-1 == l))); }
+int main () { int l = snprintf(NULL,0,"%d",100); return !((3 <= l) || (-1 == l)); }
 ], ac_cv_func_snprintf=yes, ac_cv_func_snprintf=no,
 ac_cv_func_snprintf=no)])
 if test $ac_cv_func_snprintf = yes; then

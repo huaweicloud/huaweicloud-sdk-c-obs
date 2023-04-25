@@ -57,7 +57,7 @@ namespace log4cpp {
          * Get the priority of the <code>root</code> Category.
          * @returns the priority of the root category
          **/
-        static Priority::Value getRootPriority() throw();
+        static Priority::Value getRootPriority() LOG4CPP_NOTHROW;
 
         /**
          * Instantiate a Category with name <code>name</code>. This
@@ -109,7 +109,7 @@ namespace log4cpp {
          * Return the category name.
          * @returns The category name.
         */       
-        virtual const std::string& getName() const throw(); 
+        virtual const std::string& getName() const LOG4CPP_NOTHROW;
         
         /**
          * Set the priority of this Category.
@@ -124,7 +124,7 @@ namespace log4cpp {
          * Returns the assigned Priority, if any, for this Category.
          * @return Priority - the assigned Priority, can be Priority::NOTSET
          **/
-        virtual Priority::Value getPriority() const throw();
+        virtual Priority::Value getPriority() const LOG4CPP_NOTHROW;
 
         /**
          * Starting from this Category, search the category hierarchy for a
@@ -134,7 +134,7 @@ namespace log4cpp {
          * <p>The Category class is designed so that this method executes as
          * quickly as possible.
          **/
-        virtual Priority::Value getChainedPriority() const throw();
+        virtual Priority::Value getChainedPriority() const LOG4CPP_NOTHROW;
 
         /** 
          * Returns true if the chained priority of the Category is equal to
@@ -142,7 +142,7 @@ namespace log4cpp {
          * @param priority The priority to compare with.
          * @returns whether logging is enable for this priority.
          **/
-        virtual bool isPriorityEnabled(Priority::Value priority) const throw();
+        virtual bool isPriorityEnabled(Priority::Value priority) const LOG4CPP_NOTHROW;
         
         /**
          * Adds an Appender to this Category.
@@ -227,7 +227,7 @@ namespace log4cpp {
          * the Appender.
          * @deprecated use ownsAppender(Appender*)
          **/
-        virtual bool ownsAppender() const throw() {
+        virtual bool ownsAppender() const LOG4CPP_NOTHROW {
             return ownsAppender(getAppender());
         };
 
@@ -236,7 +236,7 @@ namespace log4cpp {
          * Category destructor will delete the Appender.
          * @since 0.2.7
          **/
-        virtual bool ownsAppender(Appender* appender) const throw();
+        virtual bool ownsAppender(Appender* appender) const LOG4CPP_NOTHROW;
 
         /**
          * Call the appenders in the hierarchy starting at
@@ -249,7 +249,7 @@ namespace log4cpp {
          * 
          * @param event the LogginEvent to log.
          **/
-        virtual void callAppenders(const LoggingEvent& event) throw();
+        virtual void callAppenders(const LoggingEvent& event) LOG4CPP_NOTHROW;
         
         /**
          * Set the additivity flag for this Category instance.
@@ -259,21 +259,21 @@ namespace log4cpp {
         /**
          * Returns the additivity flag for this Category instance.
          **/        
-        virtual bool getAdditivity() const throw();
+        virtual bool getAdditivity() const LOG4CPP_NOTHROW;
 
         /**
          * Returns the parent category of this category, or NULL
          * if the category is the root category.
          * @return the parent category.
          **/
-        virtual Category* getParent() throw();
+        virtual Category* getParent() LOG4CPP_NOTHROW;
 
         /**
          * Returns the parent category of this category, or NULL
          * if the category is the root category.
          * @return the parent category.
          **/
-        virtual const Category* getParent() const throw();
+        virtual const Category* getParent() const LOG4CPP_NOTHROW;
 
         /** 
          * Log a message with the specified priority.
@@ -283,7 +283,7 @@ namespace log4cpp {
          * @param ... The arguments for stringFormat 
          **/  
         virtual void log(Priority::Value priority, const char* stringFormat,
-                         ...) throw();
+                         ...) LOG4CPP_NOTHROW;
 
         /** 
          * Log a message with the specified priority.
@@ -291,7 +291,7 @@ namespace log4cpp {
          * @param message string to write in the log file
          **/  
         virtual void log(Priority::Value priority, 
-                         const std::string& message) throw();
+                         const std::string& message) LOG4CPP_NOTHROW;
         
         /** 
          * Log a message with the specified priority.
@@ -303,7 +303,7 @@ namespace log4cpp {
          **/  
         virtual void logva(Priority::Value priority, 
                            const char* stringFormat,
-                           va_list va) throw();
+                           va_list va) LOG4CPP_NOTHROW;
         
         /** 
          * Log a message with debug priority.
@@ -311,19 +311,19 @@ namespace log4cpp {
          * in the log file.
          * @param ... The arguments for stringFormat 
          **/  
-        void debug(const char* stringFormat, ...) throw();
+        void debug(const char* stringFormat, ...) LOG4CPP_NOTHROW;
 
         /** 
          * Log a message with debug priority.
          * @param message string to write in the log file
          **/  
-        void debug(const std::string& message) throw();
+        void debug(const std::string& message) LOG4CPP_NOTHROW;
 
         /**
          * Return true if the Category will log messages with priority DEBUG.
          * @returns Whether the Category will log.
          **/ 
-        inline bool isDebugEnabled() const throw() { 
+        inline bool isDebugEnabled() const LOG4CPP_NOTHROW {
             return isPriorityEnabled(Priority::DEBUG);
         };
         
@@ -341,19 +341,19 @@ namespace log4cpp {
          * in the log file.
          * @param ... The arguments for stringFormat 
          **/  
-        void info(const char* stringFormat, ...) throw();
+        void info(const char* stringFormat, ...) LOG4CPP_NOTHROW;
 
         /** 
          * Log a message with info priority.
          * @param message string to write in the log file
          **/  
-        void info(const std::string& message) throw();
+        void info(const std::string& message) LOG4CPP_NOTHROW;
 
         /**
          * Return true if the Category will log messages with priority INFO.
          * @returns Whether the Category will log.
          **/ 
-        inline bool isInfoEnabled() const throw() { 
+        inline bool isInfoEnabled() const LOG4CPP_NOTHROW {
             return isPriorityEnabled(Priority::INFO);
         };
 
@@ -371,19 +371,19 @@ namespace log4cpp {
          * in the log file.
          * @param ... The arguments for stringFormat 
          **/  
-        void notice(const char* stringFormat, ...) throw();
+        void notice(const char* stringFormat, ...) LOG4CPP_NOTHROW;
 
         /** 
          * Log a message with notice priority.
          * @param message string to write in the log file
          **/  
-        void notice(const std::string& message) throw();
+        void notice(const std::string& message) LOG4CPP_NOTHROW;
 
         /**
          * Return true if the Category will log messages with priority NOTICE.
          * @returns Whether the Category will log.
          **/ 
-        inline bool isNoticeEnabled() const throw() { 
+        inline bool isNoticeEnabled() const LOG4CPP_NOTHROW {
             return isPriorityEnabled(Priority::NOTICE);
         };
 
@@ -401,19 +401,19 @@ namespace log4cpp {
          * in the log file.
          * @param ... The arguments for stringFormat 
          **/  
-        void warn(const char* stringFormat, ...) throw();
+        void warn(const char* stringFormat, ...) LOG4CPP_NOTHROW;
 
         /** 
          * Log a message with warn priority.
          * @param message string to write in the log file
          **/  
-        void warn(const std::string& message) throw();
+        void warn(const std::string& message) LOG4CPP_NOTHROW;
 
         /**
          * Return true if the Category will log messages with priority WARN.
          * @returns Whether the Category will log.
          **/ 
-        inline bool isWarnEnabled() const throw() { 
+        inline bool isWarnEnabled() const LOG4CPP_NOTHROW {
             return isPriorityEnabled(Priority::WARN);
         };
 
@@ -431,19 +431,19 @@ namespace log4cpp {
          * in the log file.
          * @param ... The arguments for stringFormat 
          **/  
-        void error(const char* stringFormat, ...) throw();
+        void error(const char* stringFormat, ...) LOG4CPP_NOTHROW;
 
         /** 
          * Log a message with error priority.
          * @param message string to write in the log file
          **/  
-        void error(const std::string& message) throw();
+        void error(const std::string& message) LOG4CPP_NOTHROW;
 
         /**
          * Return true if the Category will log messages with priority ERROR.
          * @returns Whether the Category will log.
          **/ 
-        inline bool isErrorEnabled() const throw() { 
+        inline bool isErrorEnabled() const LOG4CPP_NOTHROW {
             return isPriorityEnabled(Priority::ERROR);
         };
         
@@ -461,19 +461,19 @@ namespace log4cpp {
          * in the log file.
          * @param ... The arguments for stringFormat 
          **/  
-        void crit(const char* stringFormat, ...) throw();
+        void crit(const char* stringFormat, ...) LOG4CPP_NOTHROW;
 
         /** 
          * Log a message with crit priority.
          * @param message string to write in the log file
          **/  
-        void crit(const std::string& message) throw();
+        void crit(const std::string& message) LOG4CPP_NOTHROW;
 
         /**
          * Return true if the Category will log messages with priority CRIT.
          * @returns Whether the Category will log.
          **/ 
-        inline bool isCritEnabled() const throw() { 
+        inline bool isCritEnabled() const LOG4CPP_NOTHROW {
             return isPriorityEnabled(Priority::CRIT);
         };
         
@@ -491,19 +491,19 @@ namespace log4cpp {
          * in the log file.
          * @param ... The arguments for stringFormat 
          **/  
-        void alert(const char* stringFormat, ...) throw();
+        void alert(const char* stringFormat, ...) LOG4CPP_NOTHROW;
 
         /** 
          * Log a message with alert priority.
          * @param message string to write in the log file
          **/  
-        void alert(const std::string& message) throw();
+        void alert(const std::string& message) LOG4CPP_NOTHROW;
 
         /**
          * Return true if the Category will log messages with priority ALERT.
          * @returns Whether the Category will log.
          **/ 
-        inline bool isAlertEnabled() const throw() { 
+        inline bool isAlertEnabled() const LOG4CPP_NOTHROW {
             return isPriorityEnabled(Priority::ALERT);
         };
         
@@ -511,7 +511,7 @@ namespace log4cpp {
          * Return a CategoryStream with priority ALERT.
          * @returns The CategoryStream.
          **/
-        inline CategoryStream alertStream() throw() {
+        inline CategoryStream alertStream() LOG4CPP_NOTHROW {
             return getStream(Priority::ALERT);
         };
 
@@ -521,19 +521,19 @@ namespace log4cpp {
          * in the log file.
          * @param ... The arguments for stringFormat 
          **/  
-        void emerg(const char* stringFormat, ...) throw();
+        void emerg(const char* stringFormat, ...) LOG4CPP_NOTHROW;
 
         /** 
          * Log a message with emerg priority.
          * @param message string to write in the log file
          **/  
-        void emerg(const std::string& message) throw();
+        void emerg(const std::string& message) LOG4CPP_NOTHROW;
 
         /**
          * Return true if the Category will log messages with priority EMERG.
          * @returns Whether the Category will log.
          **/ 
-        inline bool isEmergEnabled() const throw() { 
+        inline bool isEmergEnabled() const LOG4CPP_NOTHROW {
             return isPriorityEnabled(Priority::EMERG);
         };
         
@@ -553,7 +553,7 @@ namespace log4cpp {
          * in the log file.
          * @param ... The arguments for stringFormat 
          **/  
-        void fatal(const char* stringFormat, ...) throw();
+        void fatal(const char* stringFormat, ...) LOG4CPP_NOTHROW;
 
         /** 
          * Log a message with fatal priority.
@@ -561,7 +561,7 @@ namespace log4cpp {
          * @since 0.2.7
          * @param message string to write in the log file
          **/  
-        void fatal(const std::string& message) throw();
+        void fatal(const std::string& message) LOG4CPP_NOTHROW;
 
         /**
          * Return true if the Category will log messages with priority FATAL.
@@ -569,7 +569,7 @@ namespace log4cpp {
          * @since 0.2.7
          * @returns Whether the Category will log.
          **/ 
-        inline bool isFatalEnabled() const throw() { 
+        inline bool isFatalEnabled() const LOG4CPP_NOTHROW {
             return isPriorityEnabled(Priority::FATAL);
         };
         
@@ -612,7 +612,7 @@ namespace log4cpp {
         
         virtual void _logUnconditionally(Priority::Value priority, 
                                          const char* format, 
-                                         va_list arguments) throw();
+                                         va_list arguments) LOG4CPP_NOTHROW;
         
         /** 
          * Unconditionally log a message with the specified priority.
@@ -620,7 +620,7 @@ namespace log4cpp {
          * @param message string to write in the log file
          **/  
         virtual void _logUnconditionally2(Priority::Value priority, 
-                                          const std::string& message) throw();
+                                          const std::string& message) LOG4CPP_NOTHROW;
 
         private:
 
@@ -651,7 +651,7 @@ namespace log4cpp {
          **/
 
         virtual bool ownsAppender(Appender* appender, 
-                                  OwnsAppenderMap::iterator& i2) throw();
+                                  OwnsAppenderMap::iterator& i2) LOG4CPP_NOTHROW;
 
         AppenderSet _appender;
         mutable threading::Mutex _appenderSetMutex;

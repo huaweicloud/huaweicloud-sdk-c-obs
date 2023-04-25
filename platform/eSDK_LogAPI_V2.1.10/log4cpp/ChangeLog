@@ -1,6 +1,16 @@
+2023-03-11 17:30  sanchouss_
+	* fix for bug 152: use timespec and clock_settime for c++11 and higher; use stime for glibc version lower than 2.31; none for other cases
+
+2023-02-10 13:22  sanchouss_
+	* Replace obsolete auto_ptr removed in C++17 with newer unique_ptr since C++11
+	* Replace older Non-throwing dynamic exception specification throw() removed in C++20 with newer noexcept since C++11
+	* Patch #49 C99 compatibility fix for snprintf configure check
+	* va_copy is here since c++11; fallback to simple copy if standard is not specified or less than c++11
+
 2017-07-13 08:48  sanchouss_
-	* bug 146; 
+	* bug 146;
 	* bug 147 - Being prepared for Removing Deprecated Exception Specifications from C++17
+
 2016-11-11 18:48  sanchouss_
 
 	* Numerous fixes;

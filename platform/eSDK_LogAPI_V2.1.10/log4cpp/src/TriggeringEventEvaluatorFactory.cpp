@@ -10,13 +10,13 @@
 namespace log4cpp
 {
    static TriggeringEventEvaluatorFactory* evaluators_factory_ = 0;
-   std::auto_ptr<TriggeringEventEvaluator> create_level_evaluator(const FactoryParams& params);
+   std::LOG4CPP_UNIQUE_PTR<TriggeringEventEvaluator> create_level_evaluator(const FactoryParams& params);
 
    TriggeringEventEvaluatorFactory& TriggeringEventEvaluatorFactory::getInstance()
    {
       if (!evaluators_factory_)
       {
-         std::auto_ptr<TriggeringEventEvaluatorFactory> af(new TriggeringEventEvaluatorFactory);
+         std::LOG4CPP_UNIQUE_PTR<TriggeringEventEvaluatorFactory> af(new TriggeringEventEvaluatorFactory);
          af->registerCreator("level", &create_level_evaluator);
          evaluators_factory_ = af.release();
       }
@@ -33,7 +33,7 @@ namespace log4cpp
       creators_[class_name] = create_function;
    }
 
-   std::auto_ptr<TriggeringEventEvaluator> TriggeringEventEvaluatorFactory::create(const std::string& class_name, const params_t& params)
+   std::LOG4CPP_UNIQUE_PTR<TriggeringEventEvaluator> TriggeringEventEvaluatorFactory::create(const std::string& class_name, const params_t& params)
    {
       const_iterator i = creators_.find(class_name);
       if (i == creators_.end())

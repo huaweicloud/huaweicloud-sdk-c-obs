@@ -93,7 +93,7 @@ namespace log4cpp {
         }
     }
     
-   std::auto_ptr<Appender> create_roll_file_appender(const FactoryParams& params)
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_roll_file_appender(const FactoryParams& params)
    {
       std::string name, filename;
       bool append = true;
@@ -103,6 +103,6 @@ namespace log4cpp {
                                                      ("max_backup_index", max_backup_index)
                                           .optional("append", append)("mode", mode);
 
-      return std::auto_ptr<Appender>(new RollingFileAppender(name, filename, max_file_size, max_backup_index, append, mode));
+      return std::LOG4CPP_UNIQUE_PTR<Appender>(new RollingFileAppender(name, filename, max_file_size, max_backup_index, append, mode));
    }
 }

@@ -46,7 +46,9 @@ typedef int errno_t;
 #endif
 
 /* success */
+#ifndef EOK
 #define EOK (0)
+#endif
 
 /* invalid parameter */
 #ifdef EINVAL

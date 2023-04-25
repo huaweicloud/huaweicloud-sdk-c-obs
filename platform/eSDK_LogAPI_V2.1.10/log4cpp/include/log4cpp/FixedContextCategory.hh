@@ -62,7 +62,7 @@ namespace log4cpp {
          * Returns the assigned Priority, if any, for this Category.
          * @return Priority - the assigned Priority, can be Priority::NOTSET
          **/
-        virtual Priority::Value getPriority() const throw();
+        virtual Priority::Value getPriority() const LOG4CPP_NOTHROW;
 
         /**
          * Starting from this Category, search the category hierarchy for a
@@ -72,12 +72,12 @@ namespace log4cpp {
          * <p>The Category class is designed so that this method executes as
          * quickly as possible.
          **/
-        virtual Priority::Value getChainedPriority() const throw();
+        virtual Priority::Value getChainedPriority() const LOG4CPP_NOTHROW;
         
         /**
          * For the moment this method does nothing.
          **/
-        virtual void addAppender(Appender* appender) throw();
+        virtual void addAppender(Appender* appender) LOG4CPP_NOTHROW;
 
         /**
          * For the moment this method does nothing.
@@ -116,14 +116,14 @@ namespace log4cpp {
          * FixedContextAppenders cannot own Appenders.
          * @returns false
          **/
-        virtual bool ownsAppender() const throw();
+        virtual bool ownsAppender() const LOG4CPP_NOTHROW;
 
         /**
          * FixedContextAppenders cannot own Appenders.
          * @returns false
          **/
         virtual bool ownsAppender(Appender* appender)
-            const throw();
+            const LOG4CPP_NOTHROW;
 
         /**
          * Call the appenders in the hierarchy starting at
@@ -136,7 +136,7 @@ namespace log4cpp {
          * 
          * @param event The LoggingEvent to log.
          **/
-        virtual void callAppenders(const LoggingEvent& event) throw();
+        virtual void callAppenders(const LoggingEvent& event) LOG4CPP_NOTHROW;
         
         /**
          * Set the additivity flag for this Category instance.
@@ -146,7 +146,7 @@ namespace log4cpp {
         /**
          * Returns the additivity flag for this Category instance.
          **/        
-        virtual bool getAdditivity() const throw();
+        virtual bool getAdditivity() const LOG4CPP_NOTHROW;
 
        protected:
 
@@ -156,7 +156,7 @@ namespace log4cpp {
          * @param message string to write in the log file
          **/  
         virtual void _logUnconditionally2(Priority::Value priority, 
-                                          const std::string& message) throw();
+                                          const std::string& message) LOG4CPP_NOTHROW;
 
         private:
 

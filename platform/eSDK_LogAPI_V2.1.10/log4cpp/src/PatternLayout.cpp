@@ -405,11 +405,11 @@ namespace log4cpp {
         return message.str();
     }
 
-    std::auto_ptr<Layout> create_pattern_layout(const FactoryParams& params)
+    std::LOG4CPP_UNIQUE_PTR<Layout> create_pattern_layout(const FactoryParams& params)
     {
        std::string pattern;
        params.get_for("pattern layout").optional("pattern", pattern);
-       std::auto_ptr<Layout> result(new PatternLayout);
+       std::LOG4CPP_UNIQUE_PTR<Layout> result(new PatternLayout);
        PatternLayout* l = static_cast<PatternLayout*>(result.get());
        if (pattern.empty() || pattern == "default")
           return result;

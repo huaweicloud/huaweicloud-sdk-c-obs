@@ -99,7 +99,7 @@ namespace log4cpp {
         }      
     }
 
-   std::auto_ptr<Appender> create_file_appender(const FactoryParams& params)
+   std::LOG4CPP_UNIQUE_PTR<Appender> create_file_appender(const FactoryParams& params)
    {
       std::string name, filename;
       bool append = true;
@@ -108,6 +108,6 @@ namespace log4cpp {
       params.get_for("file appender").required("name", name)("filename", filename)
                                      .optional("append", append)("mode", mode);
 
-      return std::auto_ptr<Appender>(new FileAppender(name, filename, append, mode));
+      return std::LOG4CPP_UNIQUE_PTR<Appender>(new FileAppender(name, filename, append, mode));
    }
 }

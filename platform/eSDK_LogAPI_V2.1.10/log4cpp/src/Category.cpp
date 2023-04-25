@@ -28,7 +28,7 @@ namespace log4cpp {
         getRoot().setPriority(priority);
     }
 
-    Priority::Value Category::getRootPriority() throw() {
+    Priority::Value Category::getRootPriority() LOG4CPP_NOTHROW {
         return getRoot().getPriority();
     }
 
@@ -66,11 +66,11 @@ namespace log4cpp {
         removeAllAppenders();
     }
 
-    const std::string& Category::getName() const throw() {
+    const std::string& Category::getName() const LOG4CPP_NOTHROW {
         return _name; 
     }
     
-    Priority::Value Category::getPriority() const throw() { 
+    Priority::Value Category::getPriority() const LOG4CPP_NOTHROW {
         return _priority; 
     }
 
@@ -85,7 +85,7 @@ namespace log4cpp {
         }
     }
     
-    Priority::Value Category::getChainedPriority() const throw() {
+    Priority::Value Category::getChainedPriority() const LOG4CPP_NOTHROW {
         // REQUIRE(rootCategory->getPriority() != Priority::NOTSET)
         
         const Category* c = this;
@@ -186,7 +186,7 @@ namespace log4cpp {
         }
     }
 
-    bool Category::ownsAppender(Appender* appender) const throw() {
+    bool Category::ownsAppender(Appender* appender) const LOG4CPP_NOTHROW {
         bool owned = false;
 
         threading::ScopedLock lock(_appenderSetMutex);
@@ -205,7 +205,7 @@ namespace log4cpp {
 
     /* assume lock is held */
     bool Category::ownsAppender(Appender* appender, 
-                                Category::OwnsAppenderMap::iterator& i2) throw() {
+                                Category::OwnsAppenderMap::iterator& i2) LOG4CPP_NOTHROW {
         bool owned = false;
 
         if (NULL != appender) {
@@ -221,7 +221,7 @@ namespace log4cpp {
         return owned;
     }
 
-    void Category::callAppenders(const LoggingEvent& event) throw() {
+    void Category::callAppenders(const LoggingEvent& event) LOG4CPP_NOTHROW {
         threading::ScopedLock lock(_appenderSetMutex);
         {
             if (!_appender.empty()) {
@@ -240,36 +240,36 @@ namespace log4cpp {
         _isAdditive = additivity;
     }
 
-    bool Category::getAdditivity() const throw() {
+    bool Category::getAdditivity() const LOG4CPP_NOTHROW {
         return _isAdditive; 
     }
 
-    Category* Category::getParent() throw() {
+    Category* Category::getParent() LOG4CPP_NOTHROW {
         return _parent; 
     }
 
-    const Category* Category::getParent() const throw() {
+    const Category* Category::getParent() const LOG4CPP_NOTHROW {
         return _parent; 
     }
 
     void Category::_logUnconditionally(Priority::Value priority, 
                                        const char* format, 
-                                       va_list arguments) throw() {
+                                       va_list arguments) LOG4CPP_NOTHROW {
         _logUnconditionally2(priority, StringUtil::vform(format, arguments));
     }
     
     void Category::_logUnconditionally2(Priority::Value priority, 
-                                        const std::string& message) throw() {
+                                        const std::string& message) LOG4CPP_NOTHROW {
         LoggingEvent event(getName(), message, NDC::get(), priority);
         callAppenders(event);
     }
     
-    bool Category::isPriorityEnabled(Priority::Value priority) const throw() {
+    bool Category::isPriorityEnabled(Priority::Value priority) const LOG4CPP_NOTHROW {
         return(getChainedPriority() >= priority);
     }
 
     void Category::log(Priority::Value priority, 
-                       const char* stringFormat, ...) throw() { 
+                       const char* stringFormat, ...) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(priority)) {
             va_list va;
             va_start(va, stringFormat);
@@ -279,20 +279,20 @@ namespace log4cpp {
     }
 
     void Category::log(Priority::Value priority, 
-                       const std::string& message) throw() { 
+                       const std::string& message) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(priority))
             _logUnconditionally2(priority, message);
     }
     
     void Category::logva(Priority::Value priority, 
                          const char* stringFormat,
-                         va_list va) throw() { 
+                         va_list va) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(priority)) {
             _logUnconditionally(priority, stringFormat, va);
         }
     }
 
-    void Category::debug(const char* stringFormat, ...) throw() { 
+    void Category::debug(const char* stringFormat, ...) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::DEBUG)) {
             va_list va;
             va_start(va,stringFormat);
@@ -301,12 +301,12 @@ namespace log4cpp {
         }
     }
     
-    void Category::debug(const std::string& message) throw() { 
+    void Category::debug(const std::string& message) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::DEBUG))
             _logUnconditionally2(Priority::DEBUG, message);
     }
     
-    void Category::info(const char* stringFormat, ...) throw() { 
+    void Category::info(const char* stringFormat, ...) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::INFO)) {
             va_list va;
             va_start(va,stringFormat);
@@ -315,12 +315,12 @@ namespace log4cpp {
         }
     }
     
-    void Category::info(const std::string& message) throw() { 
+    void Category::info(const std::string& message) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::INFO))
             _logUnconditionally2(Priority::INFO, message);
     }
     
-    void Category::notice(const char* stringFormat, ...) throw() { 
+    void Category::notice(const char* stringFormat, ...) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::NOTICE)) {
             va_list va;
             va_start(va,stringFormat);
@@ -329,12 +329,12 @@ namespace log4cpp {
         }
     }
     
-    void Category::notice(const std::string& message) throw() { 
+    void Category::notice(const std::string& message) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::NOTICE))
             _logUnconditionally2(Priority::NOTICE, message);
     }
     
-    void Category::warn(const char* stringFormat, ...) throw() { 
+    void Category::warn(const char* stringFormat, ...) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::WARN)) {
             va_list va;
             va_start(va,stringFormat);
@@ -343,12 +343,12 @@ namespace log4cpp {
         }
     }
     
-    void Category::warn(const std::string& message) throw() { 
+    void Category::warn(const std::string& message) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::WARN))
             _logUnconditionally2(Priority::WARN, message);
     }
     
-    void Category::error(const char* stringFormat, ...) throw() { 
+    void Category::error(const char* stringFormat, ...) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::ERROR)) {
             va_list va;
             va_start(va,stringFormat);
@@ -357,12 +357,12 @@ namespace log4cpp {
         }
     }
     
-    void Category::error(const std::string& message) throw() { 
+    void Category::error(const std::string& message) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::ERROR))
             _logUnconditionally2(Priority::ERROR, message);
     }
 
-    void Category::crit(const char* stringFormat, ...) throw() { 
+    void Category::crit(const char* stringFormat, ...) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::CRIT)) {
             va_list va;
             va_start(va,stringFormat);
@@ -371,12 +371,12 @@ namespace log4cpp {
         }
     }
     
-    void Category::crit(const std::string& message) throw() { 
+    void Category::crit(const std::string& message) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::CRIT))
             _logUnconditionally2(Priority::CRIT, message);
     }
 
-    void Category::alert(const char* stringFormat, ...) throw() { 
+    void Category::alert(const char* stringFormat, ...) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::ALERT)) {
             va_list va;
             va_start(va,stringFormat);
@@ -385,12 +385,12 @@ namespace log4cpp {
         }
     }
     
-    void Category::alert(const std::string& message) throw() { 
+    void Category::alert(const std::string& message) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::ALERT))
             _logUnconditionally2(Priority::ALERT, message);
     }
 
-    void Category::emerg(const char* stringFormat, ...) throw() { 
+    void Category::emerg(const char* stringFormat, ...) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::EMERG)) {
             va_list va;
             va_start(va,stringFormat);
@@ -399,12 +399,12 @@ namespace log4cpp {
         }
     }
     
-    void Category::emerg(const std::string& message) throw() { 
+    void Category::emerg(const std::string& message) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::EMERG))
             _logUnconditionally2(Priority::EMERG, message);
     }
 
-    void Category::fatal(const char* stringFormat, ...) throw() { 
+    void Category::fatal(const char* stringFormat, ...) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::FATAL)) {
             va_list va;
             va_start(va,stringFormat);
@@ -413,7 +413,7 @@ namespace log4cpp {
         }
     }
     
-    void Category::fatal(const std::string& message) throw() { 
+    void Category::fatal(const std::string& message) LOG4CPP_NOTHROW {
         if (isPriorityEnabled(Priority::FATAL))
             _logUnconditionally2(Priority::FATAL, message);
     }

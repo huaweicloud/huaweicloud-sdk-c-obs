@@ -1,4 +1,3 @@
-ACLOCAL_AMFLAGS = -I m4
 if DOC
 SUBDIRS = msvc6 bcb5 config src include tests doc 
 else

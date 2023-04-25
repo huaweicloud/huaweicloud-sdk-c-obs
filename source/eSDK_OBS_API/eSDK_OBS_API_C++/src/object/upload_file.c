@@ -1182,7 +1182,7 @@ void *UploadThreadProc_linux(void* param)
     pstPara->thread_start = 1;
 
     int fd = -1;
-    pthread_cleanup_push(pthread_mutex_unlock, (void*)&g_mutexThreadCheckpoint);
+    pthread_cleanup_push((void (*)(void*))pthread_mutex_unlock, (void*)&g_mutexThreadCheckpoint);
     pthread_cleanup_push(cleanup_fd, (void*)&fd);
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);

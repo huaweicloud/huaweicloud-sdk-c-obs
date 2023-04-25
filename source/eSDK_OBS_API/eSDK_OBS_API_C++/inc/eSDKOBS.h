@@ -240,12 +240,12 @@ typedef enum
     OBS_STORAGE_CLASS_BUTT
 } obs_storage_class;
 
-typedef enum image_process_mode
+typedef enum 
 {
     obs_image_process_invalid_mode,
     obs_image_process_cmd,
     obs_image_process_style
-}image_process_mode;
+}image_process_mode_type;
 
 typedef enum
 {
@@ -1107,7 +1107,7 @@ typedef struct obs_options
 
 typedef struct image_process_configure
 {
-    image_process_mode image_process_mode;
+    image_process_mode_type image_process_mode;
     char * cmds_stylename;
 }image_process_configure;
 
@@ -1123,12 +1123,12 @@ typedef struct obs_get_conditions
     image_process_configure * image_process_config;    
 } obs_get_conditions;
 
-typedef struct file_object_config
+typedef struct file_object_config_type
 {
     int auto_split;
     char * file_name;
     void (*print_process_callback)(uint64_t remain_bytes, int progress_rate);
-}file_object_config;
+}file_object_config_type;
 
 typedef struct grant_domain_config
 {
@@ -1157,7 +1157,7 @@ typedef struct obs_put_properties
     grant_domain_config *domain_config;
     int meta_data_count;
     obs_name_value *meta_data;
-    file_object_config * file_object_config;
+    file_object_config_type * file_object_config;
 	metadata_action_indicator metadata_action;
     obs_upload_file_server_callback server_callback;
 } obs_put_properties;

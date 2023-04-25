@@ -40,12 +40,12 @@ namespace log4cpp {
                 ::OutputDebugString(message.c_str());
     }
 
-    std::auto_ptr<Appender> create_win32_debug_appender(const FactoryParams& params)
+    std::LOG4CPP_UNIQUE_PTR<Appender> create_win32_debug_appender(const FactoryParams& params)
     {
        std::string name;
        params.get_for("win32 debug appender").required("name", name);
        
-       return std::auto_ptr<Appender>(new Win32DebugAppender(name));
+       return std::LOG4CPP_UNIQUE_PTR<Appender>(new Win32DebugAppender(name));
     }
 }
 

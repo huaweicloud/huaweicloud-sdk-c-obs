@@ -1,5 +1,5 @@
 AC_INIT(log4cpp, 1.1)
-AC_CONFIG_MACRO_DIR([m4])
+
 # autoconf 2.50 or higher to rebuild aclocal.m4, because the
 # AC_CREATE_PREFIX_CONFIG_H macro needs the AS_DIRNAME macro.
 AC_PREREQ(2.50)
