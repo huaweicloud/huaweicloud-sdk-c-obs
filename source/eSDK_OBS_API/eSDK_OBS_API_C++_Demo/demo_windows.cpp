@@ -1,4 +1,4 @@
-/*********************************************************************************
+﻿/*********************************************************************************
 * Copyright 2019 Huawei Technologies Co.,Ltd.
 * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 * this file except in compliance with the License.  You may obtain a copy of the
@@ -501,7 +501,50 @@ static obs_status response_properties_callback(const obs_response_properties *pr
     }
     return OBS_STATUS_OK;
 }
-
+static void response_complete_callback_for_multi_task(obs_status status,
+	const obs_error_details *error,
+	void *callback_data)
+{
+	if (callback_data)
+	{
+		obs_status *ret_status = (obs_status *)callback_data;
+                //断点续传上传内部可能有多个线程异步调用回调，此处防止异常状态被正常线程的状态覆盖，建议用户结合实际业务实现回调
+		if (*ret_status == OBS_STATUS_OK || *ret_status == OBS_STATUS_BUTT) {
+			*ret_status = status;
+		}
+	}
+	else
+	{
+		if (statusG == OBS_STATUS_OK || statusG == OBS_STATUS_BUTT) {
+			statusG = status;
+		}
+	}
+	int len = 0;
+        //强烈建议用户在此处捕获异常信息，便于定位问题!!!
+	if (error && error->message) {
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"  Message: %s\n", error->message);
+	}
+	if (error && error->resource) {
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"  Resource: %s\n", error->resource);
+	}
+	if (error && error->further_details) {
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"  Further Details: %s\n", error->further_details);
+	}
+	if (error && error->extra_details_count) {
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"%s", "  Extra Details:\n");
+		int i;
+		for (i = 0; i < error->extra_details_count; i++) {
+			len += snprintf_s(&(errorDetailsG[len]),
+				sizeof(errorDetailsG) - len, _TRUNCATE, "    %s: %s\n",
+				error->extra_details[i].name,
+				error->extra_details[i].value);
+		}
+	}
+}
 static uint64_t convertInt(const char *str, const char *paramName)
 {
     uint64_t ret = 0;
@@ -3209,7 +3252,7 @@ static int put_buffer_data_callback(int buffer_size, char *buffer,
     if (data->buffer_size) {
         toRead = ((data->buffer_size > (unsigned) buffer_size) ?
                     (unsigned) buffer_size : data->buffer_size);
-        memcpy_s(buffer, sizeof(buffer),data->put_buffer + data->cur_offset, toRead);
+        memcpy_s(buffer, buffer_size, data->put_buffer + data->cur_offset, toRead);
     }
     
     uint64_t originalContentLength = data->buffer_size;
@@ -4585,6 +4628,14 @@ void uploadFileResultCallback(obs_status status,
         pstUploadInfoList->status_return);
         pstUploadInfoList++;
     }
+	if (callbackData)
+	{
+		*((obs_status*)callbackData) = status;
+	}
+	else
+	{
+		statusG = status;
+	}
 }
 
 
@@ -4660,17 +4711,17 @@ static void test_upload_file(int argc, char **argv, int optindex)
     server_callback.callback_body_type = "application/json";
 
 
-
+	obs_status ret_status = OBS_STATUS_BUTT;
     obs_upload_file_response_handler Handler =
     { 
         {&response_properties_callback,
-        &response_complete_callback},
+        &response_complete_callback_for_multi_task},
         &uploadFileResultCallback
     };
     cJSON_Delete(body);
     cJSON_free(out);
-    upload_file(&option, key, 0, &uploadFileInfo, server_callback, &Handler, 0);
-    if (statusG == OBS_STATUS_OK) {
+    upload_file(&option, key, 0, &uploadFileInfo, server_callback, &Handler, &ret_status);
+    if (ret_status == OBS_STATUS_OK) {
         printf("test upload file successfully. \n");
     }
     else
@@ -4732,7 +4783,7 @@ static void test_download_file(char *filename, char *key)
     obs_download_file_response_handler Handler =
     { 
         {&response_properties_callback,
-      &response_complete_callback },
+      &response_complete_callback_for_multi_task },
         &downloadFileResultCallback
     };
 
@@ -5362,7 +5413,7 @@ unsigned int __stdcall test_pause_concurrent_upload_file(void *param)
     obs_upload_file_response_handler Handler =
     {
         {&response_properties_callback,
-        &response_complete_callback},
+        &response_complete_callback_for_multi_task},
         &uploadFileResultCallback,
         &test_progress_callback
     };

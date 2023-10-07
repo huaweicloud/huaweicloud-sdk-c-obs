@@ -98,7 +98,7 @@ static void initialize_list_parts_data(list_parts_data *lpData)
 int parse_xmlnode_list_parts_withPart(list_parts_data *lpData, const char *elementPath,
     const char *data, int dataLen, int fit)
 {
-    if (!strcmp(elementPath, "ListPartsResult/Part/PartaNumber"))
+    if (!strcmp(elementPath, "ListPartsResult/Part/PartNumber"))
     {
         parts_info *parts = &(lpData->parts[lpData->parts_count]);
         parts->part_number = atoi(data);

@@ -28,8 +28,10 @@ L_PACKAGE_NAME=$1
 L_PRODUCT_TYPE=`echo $2 | tr A-Z a-z`
 L_PRODUCT=`echo $3 | tr A-Z a-z`
 
+CMAKE_BUILD_TYPE=Release
 if [ "debug" == "$2" ];then
     G_BUILD_OPTION=debug
+    CMAKE_BUILD_TYPE=Debug
 	export DEBUG=debug
 fi
 
@@ -124,7 +126,7 @@ mkdir cmake-build
 cd cmake-build
 mkdir cmake
 cd cmake
-cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=Release
+cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DSPDLOG_VERSION=${SPDLOG_VERSION}
 make 
 cd ../../
 #make clean
@@ -158,13 +160,13 @@ cp -f cmake-build/cmake/lib/*.so lib
 cp -f ./../../../platform/huaweisecurec/include/* include
 cp -f ./../../../platform/huaweisecurec/lib/linux/libsecurec.so lib
 cp -af ./../../../platform/eSDK_LogAPI_V2.1.10/C/linux_64/libeSDKLogAPI.so lib
-cp -af ./../../../platform/eSDK_LogAPI_V2.1.10/C/linux_64/liblog4cpp* lib 
 cp -af ./../../../build/script/Provider/build/linux/${curl_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/linux/${libxml2_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/linux/${openssl_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/linux/${pcre_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/linux/${iconv_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/linux/${cjson_version}/lib/* lib
+cp -af ./../../../build/script/Provider/build/linux/${SPDLOG_VERSION}/lib/* lib
 cp -f ./../../../build/script/Provider/build/linux/${cjson_version}/include/cJSON.h include
 #cp -f ./../../../build/script/Provider/build/linux/${nghttp2_version}/lib/* lib 
 cp -f Makefile_obs demo/Makefile

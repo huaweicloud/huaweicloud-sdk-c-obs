@@ -64,7 +64,12 @@ public:
 #else
 	static void GetIniSectionItem(const char* Section, const char* Item, const char* FileName, std::string& iniValue);
 #endif
+#ifdef WIN32
+	static std::wstring GetDllPath_W();
+	static void GetIniSectionItem(const wchar_t* Section, const wchar_t* Item, const wchar_t* FileName, std::wstring& iniValue);
+#endif
     static bool IsPathFileExist(const std::string& path);
+
 
 	// 判断是否为目录
 	static bool IsDir(const std::string& path);
@@ -76,6 +81,9 @@ public:
 	// std::string to Octal(int)
 	static unsigned int StringToOCT(const std::string& strNumber);
 	// std::string to Octal(int)
+#ifdef WIN32
+	static unsigned int StringToOCT(const std::wstring& strNumber);
+#endif
 };
 
 //工具方法

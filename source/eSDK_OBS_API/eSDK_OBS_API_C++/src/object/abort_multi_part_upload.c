@@ -25,17 +25,13 @@ void abort_multi_part_upload(const obs_options *options, char *key, const char *
 {
     request_params params;
     obs_use_api use_api = OBS_USE_API_S3;
-    set_use_api_switch(options, &use_api);
     int amp = 0;
     string_buffer(queryParams, QUERY_STRING_LEN);
     string_buffer_initialize(queryParams);
     COMMLOG(OBS_LOGINFO, "Enter abort_multi_part_upload successfully !");
-    if (!options->bucket_options.bucket_name)
-    {
-        COMMLOG(OBS_LOGERROR, "bucket_name is NULL!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
-        return;
-    }
+    
+    copy_options_and_init_params(options, &params, &use_api, handler, callback_data);
+
     if (upload_id) {
         safe_append_with_interface_log("uploadId",
             upload_id, strlen(upload_id), handler->complete_callback);
@@ -46,15 +42,6 @@ void abort_multi_part_upload(const obs_options *options, char *key, const char *
         (void)(*(handler->complete_callback))(OBS_STATUS_InvalidArgument, 0, callback_data);
         return;
     }
-
-    memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    errno_t err = EOK;
-    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options,
-        sizeof(obs_bucket_context));
-    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
-    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options,
-        sizeof(obs_http_request_option));
-    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_delete;

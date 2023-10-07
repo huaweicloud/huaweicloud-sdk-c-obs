@@ -20,6 +20,11 @@
 #include "eSDKTool.h"
 #include <algorithm> 
 
+#ifdef WIN32
+#include <Shlwapi.h>
+#pragma comment(lib, "shlwapi.lib")
+#endif
+
 #if defined(ANDROID) || defined(TARGET_MAC_OS) || defined(TARGET_OS_IPHONE)
 #include <pthread.h>
 #include <string.h>
@@ -78,32 +83,34 @@ namespace eSDK
 	}
 
 #if defined ANDROID
-	int LoggerMgr::initAndroid(const std::string& product, const std::string& iniInfo, unsigned int logLevel[LOG_CATEGORY], const std::string& logPath)
-	{
+#elif defined WIN32
+
+	int LoggerMgr::init(const std::string& product, const std::wstring& iniFile, unsigned int logLevel[LOG_CATEGORY], const std::wstring& logPath) {
+
 		(void)VOS_MutexLock(m_mutex);
 
 		//已经启动，退出
 		if (m_ProductMap.end() != m_ProductMap.find(product))
-		{      
+		{
 			(void)VOS_MutexUnlock(m_mutex);
 			return RET_INVALID_PARA;
 		}
 
 		//读取配置项
-		if(!ConfigMgrInstance().Init(iniInfo, product)) //如果读取加载配置文件出错，自动获取路径
+		if (!ConfigMgrInstance().Init(iniFile, product)) //如果读取加载配置文件出错，自动获取路径
 		{
 			(void)VOS_MutexUnlock(m_mutex);
 			return RET_INVALID_PARA;
 		}
 
-		if (!iniInfo.empty())
+		if (!iniFile.empty())
 		{
 			PRODUCT_DATA data;
 			data.peSDKLog = new eSDKLog;
-
-			data.logPath = getLogPathByCondition(logPath);
-
-			data.productname = ConfigMgrInstance().GetLogProduct();
+			data.iniFile_w = iniFile;
+			data.logPath_w = getLogPathByCondition(logPath);
+			data.productname_w = ConfigMgrInstance().GetLogProduct_W();
+			data.filePermission = ConfigMgrInstance().GetFilePermission();
 			if (NULL == data.peSDKLog)
 			{
 				(void)VOS_MutexUnlock(m_mutex);
@@ -111,7 +118,7 @@ namespace eSDK
 			}
 
 			//生成日志文件
-			if (!data.peSDKLog->InitLog4cpp(product, logLevel, data.logPath))
+			if (!data.peSDKLog->InitSPDLOG(product, logLevel, data.logPath_w, data.filePermission))
 			{
 				delete data.peSDKLog;
 				(void)VOS_MutexUnlock(m_mutex);
@@ -119,22 +126,7 @@ namespace eSDK
 			}
 			(void)m_ProductMap.insert(std::make_pair(product, data));
 
-			(void)VOS_MutexUnlock(m_mutex);
 
-			return RET_SUCCESS;
-		}
-		else
-		{
-			PRODUCT_DATA data;
-			data.productname = ConfigMgrInstance().GetLogProduct();
-
-			data.logPath = getLogPathByCondition(logPath);
-
-			ConfigMgrInstance().SetLogLevel_Interface(logLevel[0]);
-			ConfigMgrInstance().SetLogLevel_Operation(logLevel[1]);
-			ConfigMgrInstance().SetLogLevel_Run(logLevel[2]);
-
-			(void)m_ProductMap.insert(std::make_pair(product, data));
 		}
 		(void)VOS_MutexUnlock(m_mutex);
 
@@ -176,7 +168,7 @@ namespace eSDK
 			}
 
 			//生成日志文件
-			if (!data.peSDKLog->InitLog4cpp(product, logLevel, data.logPath, data.filePermission))
+			if (!data.peSDKLog->InitSPDLOG(product, logLevel, data.logPath, data.filePermission))
 			{
 				delete data.peSDKLog;
 				(void)VOS_MutexUnlock(m_mutex);
@@ -226,7 +218,7 @@ namespace eSDK
 			//关闭日志打印
 			if (NULL != data.peSDKLog)
 			{
-				data.peSDKLog->ShutDownLog4cpp();
+				data.peSDKLog->ShutDownSPDLog();
 				//释放该产品日志打印
 #if !defined(ANDROID) && !defined(TARGET_MAC_OS) && !defined(TARGET_OS_IPHONE)
 				delete data.peSDKLog;
@@ -239,7 +231,7 @@ namespace eSDK
 		else
 		{
 			//释放该产品日志打印
-            data.peSDKLog->UninitLog4cpp();
+            data.peSDKLog->UninitSPDLog();
 			delete data.peSDKLog;
 			data.peSDKLog = NULL;
 		}
@@ -463,52 +455,39 @@ namespace eSDK
 	// Get the path of the logs Add by cwx298983 2016.04.19 End
 
 
-#if defined(ANDROID) || defined(TARGET_MAC_OS) || defined(TARGET_OS_IPHONE)
-    int LoggerMgr::setLogPropertyEx(const char* product, unsigned int logSize[LOG_CATEGORY], unsigned int logNum[LOG_CATEGORY])
+#ifdef WIN32
+	std::wstring LoggerMgr::getLogPathByCondition(const std::wstring& strIniLogPath)
 	{
-		(void)VOS_MutexLock(m_mutex);
+		std::wstring strRetLogPath(L"");
 
-		PRODUCT_MAP::iterator itor = m_ProductMap.find(product);
-		if (m_ProductMap.end() == itor)
+		// 判断LogInit中传入的logPath参数是否为空，不为空，则直接使用logPath为日志生成路径；
+		// 为空再判断ini文件中logPath是否为空，如果都为空，则使用默认路径（库所在路径下的log文件）；
+		// 不为空则根据ini中logPath参数确定日志生成路径
+		if (L"" == strIniLogPath)
 		{
-			return RET_NotInit;
+			strRetLogPath = ConfigMgrInstance().GetLogPathW();
+			if (strRetLogPath.empty())
+			{
+				strRetLogPath = eSDKTool::GetDllPath_W() + L"log\\";
+			}
+			else
+			{
+				// 判断是否为相对路径
+				if (PathIsRelativeW(strRetLogPath.c_str()))
+				{
+					// 返回的必须是绝对路径
+					strRetLogPath = eSDKTool::GetDllPath_W() + strRetLogPath;
+				}
+			}
 		}
-		PRODUCT_DATA& tmpData = itor->second;
-        
-        PRODUCT_DATA data;
-        data.productname = tmpData.productname;
-        data.logPath = tmpData.logPath;
-
-		ConfigMgrInstance().SetLogSize_Interface(logSize[0]);
-		ConfigMgrInstance().SetLogSize_Operation(logSize[1]);
-		ConfigMgrInstance().SetLogSize_Run(logSize[2]);
-
-		ConfigMgrInstance().SetLogNum_Interface(logNum[0]);
-		ConfigMgrInstance().SetLogNum_Operation(logNum[1]);
-		ConfigMgrInstance().SetLogNum_Run(logNum[2]);
-
-		data.peSDKLog = new eSDKLog;
-		if (NULL == data.peSDKLog)
+		else
 		{
-			(void)VOS_MutexUnlock(m_mutex);
-			return RET_INVALID_PARA;
+			strRetLogPath = strIniLogPath;
 		}
 
-		unsigned int logLevel[3] = {INVALID_LOG_LEVEL, INVALID_LOG_LEVEL, INVALID_LOG_LEVEL};
-		//生成日志文件
-		if (!data.peSDKLog->InitLog4cpp(product, logLevel, data.logPath))
-		{
-			delete data.peSDKLog;
-			(void)VOS_MutexUnlock(m_mutex);
-			return RET_INVALID_PARA;
-		}
-        m_ProductMap.erase(itor);
-        (void)m_ProductMap.insert(std::make_pair(product, data));
-
-		(void)VOS_MutexUnlock(m_mutex);
-		return RET_SUCCESS;
+		return strRetLogPath;
 	}
+#endif // WIN32
 
-#endif
 }
 

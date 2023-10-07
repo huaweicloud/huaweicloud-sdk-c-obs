@@ -30,9 +30,9 @@ static file_path_code file_path_code_schemes = ANSI_CODE;
 
 #define ERROR_MESSAGE_BUFFER_SIZE 256
 #if defined (WIN32)
-errno_t file_sopen_s(int* pfh, const char *filename, int oflag, int shflag, int pmode)
+int file_sopen_s(int* pfh, const char *filename, int oflag, int shflag, int pmode)
 {
-	errno_t ret = -1;
+	int ret = -1;
 	char* openFunc = "default open";
 	if (file_path_code_schemes == ANSI_CODE)
 	{
@@ -109,7 +109,7 @@ char* getCharFromWchar(const wchar_t* wstr) {
 		COMMLOG(OBS_LOGERROR, "malloc failed in function: %s,line %d", __FUNCTION__, __LINE__);
 		return char_str;
 	}
-	errno_t err = memset_s(char_str, bufferSize, 0, bufferSize);
+	int err = memset_s(char_str, bufferSize, 0, bufferSize);
 	if (err != EOK) {
 		CheckAndLogNoneZero(err, "memset_s", __FUNCTION__, __LINE__);
 		CHECK_NULL_FREE(char_str);
@@ -119,7 +119,78 @@ char* getCharFromWchar(const wchar_t* wstr) {
 	return char_str;
 }
 
+wchar_t *GetWcharFromChar(const char *char_str)
+{
+	const size_t char_str_len = strlen(char_str);
+	const size_t wchar_str_size = char_str_len + 1;
+	wchar_t *wchar_str = (wchar_t *)malloc(sizeof(wchar_t) * wchar_str_size);
+	if (wchar_str == NULL) {
+		return wchar_str;
+	}
+	memset_s(wchar_str, sizeof(wchar_t) * wchar_str_size, 0, sizeof(wchar_t) * wchar_str_size);
+	size_t converted = 0;
+	int ret = mbstowcs_s(&converted, wchar_str, wchar_str_size, char_str, char_str_len);
+	if (ret != 0) {
+		CHECK_NULL_FREE(wchar_str);
+	}
+	else {
+		wchar_str[char_str_len] = L'\0';
+	}
+	
+	return wchar_str;
+}
+
 #endif
+
+char* file_path_fgets(char* _Buffer, int _MaxCount, FILE* _Stream) {
+	char* fgets_ret = NULL;
+#ifdef WIN32
+	if (file_path_code_schemes == ANSI_CODE)
+	{
+		fgets_ret = fgets(_Buffer, _MaxCount, _Stream);
+	}
+	else if (file_path_code_schemes == UNICODE_CODE)
+	{
+		fgets_ret = (char*)fgetws((wchar_t*)_Buffer, _MaxCount, _Stream);
+	}
+	else
+	{
+		COMMLOG(OBS_LOGERROR, "unkown encoding scheme, function %s failed", __FUNCTION__);
+	}
+#else
+	fgets_ret = fgets(_Buffer, _MaxCount, _Stream);
+#endif // WIN32
+	return fgets_ret;
+}
+
+int file_fopen_s(FILE** _Stream, const char *filename, const char *mode) {
+	int ret = -1;
+#ifdef WIN32
+	if (file_path_code_schemes == ANSI_CODE)
+	{
+		ret = fopen_s(_Stream, filename, mode);
+	}
+	else if (file_path_code_schemes == UNICODE_CODE)
+	{
+		wchar_t* mode_w = GetWcharFromChar(mode);
+		if (mode_w == NULL) {
+			COMMLOG(OBS_LOGERROR, "GerWcharFromChar failed, function %s failed", __FUNCTION__);
+			return -2;
+		}
+		ret = _wfopen_s(_Stream, (const wchar_t*)filename, mode_w);
+		CHECK_NULL_FREE(mode_w);
+	}
+	else
+	{
+		COMMLOG(OBS_LOGERROR, "unkown encoding scheme, function %s failed", __FUNCTION__);
+		return -2;
+	}
+#else
+	*_Stream = fopen(filename, mode);
+	ret = errno;
+#endif // WIN32
+	return ret;
+}
 
 int file_path_cmp(char const* path1, char const* path2) {
 	if (file_path_code_schemes == ANSI_CODE)
@@ -178,7 +249,7 @@ int remove_file(const char* filename)
 	return ret;
 }
 
-errno_t file_path_append(char* destination, size_t destinationSize)
+int file_path_append(char* destination, size_t destinationSize)
 {
 
 	if (file_path_code_schemes == ANSI_CODE)
@@ -196,45 +267,45 @@ errno_t file_path_append(char* destination, size_t destinationSize)
 	}
 }
 
-errno_t  path_copy(void* const destination, size_t const destinationSize,
-	void const* const source, size_t const sourceSize) 
-{
-	if (file_path_code_schemes == ANSI_CODE)
-	{
-		return memcpy_s(destination, destinationSize * sizeof(char)
-			, source, sourceSize * sizeof(char));
+uint64_t getPathUnitLen(){
+#ifdef WIN32
+	if (file_path_code_schemes == ANSI_CODE) {
+		return sizeof(char);
 	}
-	else if (file_path_code_schemes == UNICODE_CODE)
-	{
-		return memcpy_s(destination, destinationSize * sizeof(wchar_t)
-			, source, sourceSize * sizeof(wchar_t));
+	else if (file_path_code_schemes == UNICODE_CODE) {
+		return sizeof(wchar_t);
 	}
 	else
 	{
 		COMMLOG(OBS_LOGERROR, "unkown encoding scheme, function %s failed", __FUNCTION__);
+		return sizeof(char);
+	}
+#else
+	return sizeof(char);
+#endif // WIN32
+}
+
+int path_copy(void* const destination, size_t const destinationSize,
+	void const* const source, size_t const sourceSize) 
+{
+	uint64_t unitLen = getPathUnitLen();
+	if (destinationSize == 0) {
+		COMMLOG(OBS_LOGWARN, "%s failed, bufferLen is 0", __FUNCTION__);
 		return -1;
 	}
+	return memcpy_s(destination, destinationSize * unitLen, source, sourceSize * unitLen);
 }
+
 
 char *getPathBuffer(size_t bufferLen)
 {
-	uint64_t unitLen = 0;
+	uint64_t unitLen = getPathUnitLen();
 	char* pathBuffer = NULL;
 	if (bufferLen == 0) {
 		COMMLOG(OBS_LOGWARN, "%s failed, bufferLen is 0", __FUNCTION__);
 		return pathBuffer;
 	}
-	else if (file_path_code_schemes == ANSI_CODE) {
-		unitLen = sizeof(char);
-	}
-	else if (file_path_code_schemes == UNICODE_CODE) {
-		unitLen = sizeof(wchar_t);
-	}
-	else
-	{
-		COMMLOG(OBS_LOGERROR, "unkown encoding scheme, function %s failed", __FUNCTION__);
-		return pathBuffer;
-	}
+
 	size_t bufferSize = bufferLen * unitLen;
 	pathBuffer = (char*)malloc(bufferSize);
 
@@ -267,7 +338,7 @@ int checkpoint_file_path_printf(char* const path_buffer
 	return ret;
 }
 
-size_t  file_path_strlen(char const* filePath)
+size_t file_path_strlen(char const* filePath)
 {
 	if (filePath == NULL) 
 	{

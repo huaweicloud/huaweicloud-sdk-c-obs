@@ -177,6 +177,7 @@ const char *obs_get_status_name(obs_status status)
         handlecase(EmptyFile);
         handlecase(QuotaTooSmall);
         handlecase(MetadataNameDuplicate);
+        handlecase(GET_UPLOAD_ID_FAILED);
         handlecase(BUTT);
     }
 

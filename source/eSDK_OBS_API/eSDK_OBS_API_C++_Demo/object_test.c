@@ -63,6 +63,9 @@ FILE **uploadFilePool = NULL;
 #define USE_SSEC "use_ssec="
 #define USE_SSEC_LEN (sizeof(USE_SSEC) - 1)
 
+#define SSEC_CUSTOMER_KEY "ssec_customer_key="
+#define SSEC_CUSTOMER_KEY_LEN (sizeof(SSEC_CUSTOMER_KEY) - 1)
+
 #define UPLOAD_SLICE_SIZE "upload_slice_size="
 #define UPLOAD_SLICE_SIZE_LEN (sizeof(UPLOAD_SLICE_SIZE) - 1)
 
@@ -1804,7 +1807,7 @@ static void test_get_object_metadata(int argc, char **argv, int optindex)
     obs_options option;
     init_obs_options(&option);
     option.bucket_options.host_name = HOST_NAME;
-    option.bucket_options.bucket_name;
+    option.bucket_options.bucket_name = bucketname;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
@@ -1813,11 +1816,57 @@ static void test_get_object_metadata(int argc, char **argv, int optindex)
     memset_s(&objectinfo, sizeof(objectinfo), 0, sizeof(objectinfo));
     objectinfo.key = key;
 
+    server_side_encryption_params encryption_params;
+    memset_s(&encryption_params,sizeof(encryption_params), 0, sizeof(server_side_encryption_params));
+
+    while (optindex < argc) {
+        char *param = argv[optindex ++];
+        if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+            option.bucket_options.protocol = get_protocol_from_argv(param);
+        }
+        else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
+            option.bucket_options.certificate_info = ca_info;       
+            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+        else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+            option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+        else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+            option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (!strncmp(param, USE_KMS, USE_KMS_LEN)) {
+            encryption_params.encryption_type = OBS_ENCRYPTION_KMS;
+            encryption_params.kms_server_side_encryption = "kms";
+        }
+        else if (!strncmp(param, USE_SSEC, USE_SSEC_LEN)) {
+            encryption_params.encryption_type = OBS_ENCRYPTION_SSEC;
+            encryption_params.ssec_customer_algorithm = "AES256";
+        }
+        else if (!strncmp(param, SSEC_CUSTOMER_KEY, SSEC_CUSTOMER_KEY_LEN)) {
+            encryption_params.ssec_customer_key = &(param[SSEC_CUSTOMER_KEY_LEN]);
+        }
+        else {
+            fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
+        }
+    }
+
+    //must use https when using ssec
+    if(encryption_params.ssec_customer_algorithm != NULL 
+        || encryption_params.kms_server_side_encryption != NULL){
+            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+    }
+    // if use s3 protocal, you should use aws:kms
+    if(encryption_params.kms_server_side_encryption != NULL 
+        && option.request_options.auth_switch == OBS_S3_TYPE){
+            encryption_params.kms_server_side_encryption = "aws:kms";
+    }
+
+
     obs_response_handler response_handler =
     {
         &response_properties_callback,&response_complete_callback
     };
-    get_object_metadata(&option, &objectinfo, 0, &response_handler, &ret_status);
+    get_object_metadata(&option, &objectinfo, &encryption_params, &response_handler, &ret_status);
     if (OBS_STATUS_OK == ret_status)
     {
         printf("get object metadata successfully. \n");
@@ -5031,6 +5080,9 @@ static void test_upload_file(int argc, char **argv, int optindex)
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
 
+    server_side_encryption_params encryption_params;
+    memset_s(&encryption_params,sizeof(encryption_params), 0, sizeof(server_side_encryption_params));
+
     while (optindex < argc) {
         char *param = argv[optindex ++];
         if (!strncmp(param, FILENAME_PREFIX, FILENAME_PREFIX_LEN)) {
@@ -5061,9 +5113,31 @@ static void test_upload_file(int argc, char **argv, int optindex)
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
         }
+        else if (!strncmp(param, USE_KMS, USE_KMS_LEN)) {
+            encryption_params.encryption_type = OBS_ENCRYPTION_KMS;
+            encryption_params.kms_server_side_encryption = "kms";
+        }
+        else if (!strncmp(param, USE_SSEC, USE_SSEC_LEN)) {
+            encryption_params.encryption_type = OBS_ENCRYPTION_SSEC;
+            encryption_params.ssec_customer_algorithm = "AES256";
+        }
+        else if (!strncmp(param, SSEC_CUSTOMER_KEY, SSEC_CUSTOMER_KEY_LEN)) {
+            encryption_params.ssec_customer_key = &(param[SSEC_CUSTOMER_KEY_LEN]);
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
+    }
+
+    //must use https when using ssec
+    if(encryption_params.ssec_customer_algorithm != NULL 
+        || encryption_params.kms_server_side_encryption != NULL){
+            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+    }
+    // if use s3 protocal, you should use aws:kms
+    if(encryption_params.kms_server_side_encryption != NULL 
+        && option.request_options.auth_switch == OBS_S3_TYPE){
+            encryption_params.kms_server_side_encryption = "aws:kms";
     }
 
     option.request_options.server_cert_path = NULL;    //set server cert , example: /etc/certs/cabundle.pem
@@ -5103,7 +5177,7 @@ static void test_upload_file(int argc, char **argv, int optindex)
         &test_progress_callback
     };
 
-    upload_file(&option, key, 0, &uploadFileInfo, server_callback,&Handler, &ret_status);
+    upload_file(&option, key, &encryption_params, &uploadFileInfo, server_callback,&Handler, &ret_status);
     if (OBS_STATUS_OK == ret_status) {
         printf("test upload file successfully. \n");
     }
@@ -5504,9 +5578,6 @@ static void test_put_object_with_encrypt(int argc, char **argv, int optindex)
     memset_s(&encryption_params,sizeof(encryption_params) ,0, sizeof(server_side_encryption_params));
     //不设置 系统会生成默认的加密密钥
 
-    /*SSE-C*/
-    char* buffer = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
-
     //check parameters
     while (optindex < argc) {
         char *param = argv[optindex ++];
@@ -5518,18 +5589,14 @@ static void test_put_object_with_encrypt(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, USE_KMS, USE_KMS_LEN)) {
             encryption_params.encryption_type = OBS_ENCRYPTION_KMS;
-            if(demoUseObsApi == OBS_USE_API_OBS) {
-                encryption_params.kms_server_side_encryption = "kms";
-            } else {
-                encryption_params.kms_server_side_encryption = "aws:kms";
-            }
-            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+            encryption_params.kms_server_side_encryption = "kms";
         }
         else if (!strncmp(param, USE_SSEC, USE_SSEC_LEN)) {
             encryption_params.encryption_type = OBS_ENCRYPTION_SSEC;
             encryption_params.ssec_customer_algorithm = "AES256";
-            encryption_params.ssec_customer_key = buffer;
-            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+        else if (!strncmp(param, SSEC_CUSTOMER_KEY, SSEC_CUSTOMER_KEY_LEN)) {
+            encryption_params.ssec_customer_key = &(param[SSEC_CUSTOMER_KEY_LEN]);
         }
         else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
             option.bucket_options.protocol = get_protocol_from_argv(param);
@@ -5549,6 +5616,17 @@ static void test_put_object_with_encrypt(int argc, char **argv, int optindex)
         }
     }
 
+    //must use https when using ssec
+    if(encryption_params.ssec_customer_algorithm != NULL 
+        || encryption_params.kms_server_side_encryption != NULL){
+            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+    }
+    // if use s3 protocal, you should use aws:kms
+    if(encryption_params.kms_server_side_encryption != NULL 
+        && option.request_options.auth_switch == OBS_S3_TYPE){
+            encryption_params.kms_server_side_encryption = "aws:kms";
+    }
+ 
     //read from local file to buffer
     put_object_callback_data data;
     memset_s(&data,sizeof(data), 0, sizeof(put_object_callback_data));
@@ -5613,8 +5691,6 @@ void test_get_object_with_encrypt(int argc, char **argv, int optindex)
     server_side_encryption_params encryption_params;
     memset_s(&encryption_params,sizeof(encryption_params), 0, sizeof(server_side_encryption_params));
 
-    char* buffer = "K7QkYpBkM5+hcs27fsNkUnNVaobncnLht/rCB2o/9Cw=";
-
     while (optindex < argc) {
         char *param = argv[optindex++];
         if (!strncmp(param, FILENAME_PREFIX, FILENAME_PREFIX_LEN)) {
@@ -5678,18 +5754,14 @@ void test_get_object_with_encrypt(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, USE_KMS, USE_KMS_LEN)) {
             encryption_params.encryption_type = OBS_ENCRYPTION_KMS;
-            if(demoUseObsApi == OBS_USE_API_OBS) {
-                encryption_params.kms_server_side_encryption = "kms";
-            } else {
-                encryption_params.kms_server_side_encryption = "aws:kms";
-            }
-            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+            encryption_params.kms_server_side_encryption = "kms";
         }
         else if (!strncmp(param, USE_SSEC, USE_SSEC_LEN)) {
             encryption_params.encryption_type = OBS_ENCRYPTION_SSEC;
             encryption_params.ssec_customer_algorithm = "AES256";
-            encryption_params.ssec_customer_key = buffer;
-            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        }
+        else if (!strncmp(param, SSEC_CUSTOMER_KEY, SSEC_CUSTOMER_KEY_LEN)) {
+            encryption_params.ssec_customer_key = &(param[SSEC_CUSTOMER_KEY_LEN]);
         }
         //tmp auth
         else if (!strncmp(param, TMP_AUTH_EXPIRES_PREFIX,TMP_AUTH_EXPIRES_PREFIX_LEN)){
@@ -5711,6 +5783,17 @@ void test_get_object_with_encrypt(int argc, char **argv, int optindex)
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
+    }
+
+    //must use https when using ssec
+    if(encryption_params.ssec_customer_algorithm != NULL 
+        || encryption_params.kms_server_side_encryption != NULL){
+            option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+    }
+    // if use s3 protocal, you should use aws:kms
+    if(encryption_params.kms_server_side_encryption != NULL 
+        && option.request_options.auth_switch == OBS_S3_TYPE){
+            encryption_params.kms_server_side_encryption = "aws:kms";
     }
 
     get_object_callback_data callback_data = {0};

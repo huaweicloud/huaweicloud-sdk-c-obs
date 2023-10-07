@@ -203,6 +203,8 @@ uint64_t open_file_and_get_length(char *localfile, put_file_object_callback_data
 obs_status response_properties_callback(const obs_response_properties *properties, void *callback_data);
 void response_complete_callback(obs_status status, const obs_error_details *error, 
                                      void *callback_data);
+void response_complete_callback_for_multi_task(obs_status status,
+	const obs_error_details *error, void *callback_data);
 obs_status head_properties_callback(const obs_response_properties *properties, void *callback_data);
 void head_complete_callback(obs_status status, const obs_error_details *error, 
                                      void *callback_data);

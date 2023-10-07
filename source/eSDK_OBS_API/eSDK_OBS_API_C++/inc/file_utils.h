@@ -21,15 +21,18 @@ int checkPointFileSave(const char *filename, xmlDocPtr doc);
 xmlDocPtr checkPointFileRead(const char *filename, const char *encoding, int options);
 int file_path_cmp(char const* path1, char const* path2);
 int remove_file(const char* filename);
-errno_t file_path_append(char* destination, size_t destinationSize);
-errno_t path_copy(void* const destination, size_t const destinationSize,
+int file_path_append(char* destination, size_t destinationSize);
+int path_copy(void* const destination, size_t const destinationSize,
 	void const* const source, size_t const sourceSize);
 char *getPathBuffer(size_t bufferLen);
 int checkpoint_file_path_printf(char* const path_buffer
 	, size_t const path_buffer_count, char const* uploadFileName);
 size_t  file_path_strlen(char const* filePath);
+int file_fopen_s(FILE** _Stream, const char *filename, const char *mode);
+char* file_path_fgets(char* _Buffer, int _MaxCount, FILE* _Stream);
 #if defined (WIN32)
-errno_t file_sopen_s(int* pfh, const char *filename, int oflag, int shflag, int pmode);
+wchar_t *GetWcharFromChar(const char *char_str);
+int file_sopen_s(int* pfh, const char *filename, int oflag, int shflag, int pmode);
 int file_stati64(const char *path, struct __stat64 *buffer);
 #endif
 

@@ -12,17 +12,27 @@
 * specific language governing permissions and limitations under the License.
 **********************************************************************************
 */
+#ifdef WIN32
+#include <time.h>
+#endif
 #include "eSDKLog.h"
 #include "eSDKTool.h"
 #include "ConfigMgr.h"
 #include "LoggerMgr.h"
+#include "securec.h"
 #ifdef WIN32
+#define SPDLOG_WCHAR_FILENAMES
 #include <io.h>
 #include <direct.h>
 #else
 #include <sys/stat.h>
 #include <sys/types.h>
 #endif
+
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/basic_file_sink.h"    // support for basic file logging
+#include "spdlog/sinks/rotating_file_sink.h" // support for rotating file logging
+#include <mutex>
 
 extern bool g_bCloseInterfaceLog;
 
@@ -79,259 +89,315 @@ eSDKLog::~eSDKLog(void)
     }
 }
 
-//lint -e429
-bool eSDKLog::InitLog4cpp(const std::string& product, unsigned int logLevel[LOG_CATEGORY], const std::string& logPath, int mode)
+wchar_t *GetWcharFromChar(const char *char_str)
 {
+	const size_t char_str_len = strlen(char_str);
+	const size_t wchar_str_size = char_str_len + 1;
+	wchar_t *wchar_str = (wchar_t *)malloc(sizeof(wchar_t) * wchar_str_size);
+	if (wchar_str == NULL) {
+		return wchar_str;
+	}
+	memset_s(wchar_str, sizeof(wchar_t) * wchar_str_size, 0, sizeof(wchar_t) * wchar_str_size);
+	int ret = mbstowcs(wchar_str, char_str, char_str_len);
+	if (ret != 0) {
+		free(wchar_str);
+		wchar_str = 0;
+	}
+	else {
+		wchar_str[char_str_len] = L'\0';
+	}
+
+	return wchar_str;
+}
+
+static std::mutex locker;
+static std::shared_ptr<spdlog::logger> runLogger;
+static std::shared_ptr<spdlog::logger> operationLogger;
+static std::shared_ptr<spdlog::logger> interfaceLogger;
+
+#ifdef WIN32
+bool eSDKLog::InitSPDLOG(const std::string& product, unsigned int logLevel[LOG_CATEGORY], const std::wstring& logPath, int mode) {
+	
+	m_logPath_w = logPath;
+	m_nInterfaceLevel = logLevel[LOG_CATEGORY_INTERFACE];
+	bool initiateSuccessfully = false;
+	locker.lock();
+	m_InstanceInterfaceName = product + LOG_INTERFACE_INSTANCE;
+	m_InstanceOperationName = product + LOG_OPERATE_INSTANCE;
+	m_InstanceRunName = product + LOG_RUN_INSTANCE;
+	wchar_t* interfaceName_w = GetWcharFromChar(m_InstanceInterfaceName.c_str());
+	wchar_t* operationName_w = GetWcharFromChar(m_InstanceOperationName.c_str());
+	wchar_t* runName_w = GetWcharFromChar(m_InstanceRunName.c_str());
+	wstring instanceInterfaceName_W;
+	wstring instanceOperationName_W;
+	wstring instanceRunName_W;
+
+	if (interfaceName_w == nullptr) {
+		instanceInterfaceName_W = L"obs-sdk-c.interface";
+	} else {
+		instanceInterfaceName_W = interfaceName_w;
+		free(interfaceName_w);
+		interfaceName_w = nullptr;
+	}
+
+	if (operationName_w == nullptr) {
+		instanceOperationName_W = L"obs-sdk-c.operation";
+	}
+	else {
+		instanceOperationName_W = operationName_w;
+		free(operationName_w);
+		operationName_w = nullptr;
+	}
+
+	if (runName_w == nullptr) {
+		instanceRunName_W = L"obs-sdk-c.run";
+	}
+	else {
+		instanceRunName_W = runName_w;
+		free(runName_w);
+		runName_w = nullptr;
+	}
+
+	try {
+		runLogger = spdlog::rotating_logger_mt(m_InstanceRunName, logPath + L"/" + instanceRunName_W + L".log"
+			, ConfigMgrInstance().GetLogSize_Run() * 1024, ConfigMgrInstance().GetLogNum_Run());
+		runLogger->set_level(spdlog::level::level_enum(spdlog::level::debug + ConfigMgrInstance().GetLogLevel_Run()));
+		//设置日志格式为 时间（精确到毫秒） 线程号 日志名 日志级别 自定义信息
+		runLogger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [tid:%t] [%n] [%l] %v");
+		initiateSuccessfully = true;
+	}
+	catch (const spdlog::spdlog_ex &ex) {
+		initiateSuccessfully = false;
+	}
+
+	if (initiateSuccessfully) {
+		try {
+			operationLogger = spdlog::rotating_logger_mt(m_InstanceOperationName, logPath + L"/" + instanceOperationName_W + L".log"
+				, ConfigMgrInstance().GetLogSize_Run() * 1024, ConfigMgrInstance().GetLogNum_Run());
+			operationLogger->set_level(spdlog::level::level_enum(spdlog::level::debug + ConfigMgrInstance().GetLogLevel_Operation()));
+			//设置日志格式为 时间（精确到毫秒） 线程号 日志名 日志级别 自定义信息
+			operationLogger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [tid:%t] [%n] [%l] %v");
+			initiateSuccessfully = true;
+		}
+		catch (const spdlog::spdlog_ex &ex) {
+			initiateSuccessfully = false;
+		}
+	}
+
+	if (initiateSuccessfully) {
+		try {
+			interfaceLogger = spdlog::rotating_logger_mt(m_InstanceInterfaceName, logPath + L"/" + instanceInterfaceName_W + L".log"
+				, ConfigMgrInstance().GetLogSize_Run() * 1024, ConfigMgrInstance().GetLogNum_Run());
+			interfaceLogger->set_level(spdlog::level::level_enum(spdlog::level::debug + ConfigMgrInstance().GetLogLevel_Interface()));
+			//设置日志格式为 时间（精确到毫秒） 线程号 日志名 日志级别 自定义信息
+			interfaceLogger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [tid:%t] [%n] [%l] %v");
+			initiateSuccessfully = true;
+		}
+		catch (const spdlog::spdlog_ex &ex) {
+			initiateSuccessfully = false;
+		}
+	}
+	locker.unlock();
+	return initiateSuccessfully;
+}
+#else
+bool eSDKLog::InitSPDLOG(const std::string& product, unsigned int logLevel[LOG_CATEGORY], const std::string& logPath, int mode){
+
 	m_logPath = logPath;
 	m_nInterfaceLevel = logLevel[LOG_CATEGORY_INTERFACE];
-
-	// 初始化日志路径
-	std::string strInterfacePath = GetLog4cppPath(logPath, LOG_INTERFACE_FILE);
-	// 判断路径是否为空，如果为空，则返回false
-	D_IF_PATH_EMPTY(strInterfacePath);
-
-	std::string strOperationPath = GetLog4cppPath(logPath, LOG_OPERATE_FILE);
-	D_IF_PATH_EMPTY(strOperationPath);
-
-	std::string strRunPath = GetLog4cppPath(logPath, LOG_RUN_FILE);
-	D_IF_PATH_EMPTY(strRunPath);
-
+	bool initiateSuccessfully = false;
+	locker.lock();
 	m_InstanceInterfaceName = product + LOG_INTERFACE_INSTANCE;
 	m_InstanceOperationName = product + LOG_OPERATE_INSTANCE;
 	m_InstanceRunName = product + LOG_RUN_INSTANCE;
 
-	// log4cpp相关的对象new之后不需要手动释放，内存管理交由log4cpp
-	//interface log file
-	log4cpp::PatternLayout* pInterfaceLayout = new log4cpp::PatternLayout();
-	pInterfaceLayout->setConversionPattern(LOG_INTERFACE_PATTERN);
-	log4cpp::RollingFileAppender* rollfileAppenderInterface = new log4cpp::RollingFileAppender(
-		m_InstanceInterfaceName,
-		strInterfacePath,//必须使用绝对路径
-		ConfigMgrInstance().GetLogSize_Interface()*1024,//单位KB
-		ConfigMgrInstance().GetLogNum_Interface(),
-		true,
-		mode);
-	rollfileAppenderInterface->setLayout(pInterfaceLayout);
-	log4cpp::Category& logInterfaceCategory = log4cpp::Category::getInstance(m_InstanceInterfaceName);
-	logInterfaceCategory.setAdditivity(false); 
-	logInterfaceCategory.addAppender(rollfileAppenderInterface);
-	logInterfaceCategory.setPriority(GetLog4cppLevel(logLevel[LOG_CATEGORY_INTERFACE], LOG_INTERFACE_INSTANCE));
+	try {
+		runLogger = spdlog::rotating_logger_mt(m_InstanceRunName, logPath + "/" + m_InstanceRunName + ".log"
+			, ConfigMgrInstance().GetLogSize_Run() * 1024, ConfigMgrInstance().GetLogNum_Run());
+		runLogger->set_level(spdlog::level::level_enum(spdlog::level::debug + ConfigMgrInstance().GetLogLevel_Run()));
+		//设置日志格式为 时间（精确到毫秒） 线程号 日志名 日志级别 自定义信息
+		runLogger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [tid:%t] [%n] [%l] %v");
+		initiateSuccessfully = true;
+	}
+	catch (const spdlog::spdlog_ex &ex) {
+		initiateSuccessfully = false;
+	}
 
-	//operation log file
-	log4cpp::PatternLayout* pOperationLayout = new log4cpp::PatternLayout();
-	pOperationLayout->setConversionPattern(LOG_OPERATION_PATTERN);
-	log4cpp::RollingFileAppender* rollfileAppenderOperation = new log4cpp::RollingFileAppender(
-		m_InstanceOperationName,
-		strOperationPath,//必须使用绝对路径
-		ConfigMgrInstance().GetLogSize_Operation()*1024,//单位KB
-		ConfigMgrInstance().GetLogNum_Operation(),
-		true,
-		mode);
-	rollfileAppenderOperation->setLayout(pOperationLayout);
-	log4cpp::Category& logOperationCategory = log4cpp::Category::getInstance(m_InstanceOperationName);
-	logOperationCategory.setAdditivity(false); 
-	logOperationCategory.addAppender(rollfileAppenderOperation);
-	logOperationCategory.setPriority(GetLog4cppLevel(logLevel[LOG_CATEGORY_OPERATION], LOG_OPERATE_INSTANCE));
+	if (initiateSuccessfully) {
+		try {
+			operationLogger = spdlog::rotating_logger_mt(m_InstanceOperationName, logPath + "/" + m_InstanceOperationName + ".log"
+				, ConfigMgrInstance().GetLogSize_Run() * 1024, ConfigMgrInstance().GetLogNum_Run());
+			operationLogger->set_level(spdlog::level::level_enum(spdlog::level::debug + ConfigMgrInstance().GetLogLevel_Operation()));
+			//设置日志格式为 时间（精确到毫秒） 线程号 日志名 日志级别 自定义信息
+			operationLogger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [tid:%t] [%n] [%l] %v");
+			initiateSuccessfully = true;
+		}
+		catch (const spdlog::spdlog_ex &ex) {
+			initiateSuccessfully = false;
+		}
+	}
 
-	//run log file
-	log4cpp::PatternLayout* pRunLayout = new log4cpp::PatternLayout();
-	pRunLayout->setConversionPattern(LOG_RUN_PATTERN);
-	log4cpp::RollingFileAppender* rollfileAppenderRun = new log4cpp::RollingFileAppender(
-		m_InstanceRunName,
-		strRunPath,//必须使用绝对路径
-		ConfigMgrInstance().GetLogSize_Run()*1024,//单位KB
-		ConfigMgrInstance().GetLogNum_Run(),
-		true,
-		mode);
-	rollfileAppenderRun->setLayout(pRunLayout);
-	log4cpp::Category& logRunCategory = log4cpp::Category::getInstance(m_InstanceRunName);
-	logRunCategory.setAdditivity(false); 
-	logRunCategory.addAppender(rollfileAppenderRun);
-	logRunCategory.setPriority(GetLog4cppLevel(logLevel[LOG_CATEGORY_RUN], LOG_RUN_INSTANCE));
-	/*lint -restore*/
-
-	logRunCategory.critStream() << "==============log start============";	
-
-	return true;
+	if (initiateSuccessfully) {
+		try {
+			interfaceLogger = spdlog::rotating_logger_mt(m_InstanceInterfaceName, logPath + "/" + m_InstanceInterfaceName + ".log"
+				, ConfigMgrInstance().GetLogSize_Run() * 1024, ConfigMgrInstance().GetLogNum_Run());
+			interfaceLogger->set_level(spdlog::level::level_enum(spdlog::level::debug + ConfigMgrInstance().GetLogLevel_Interface()));
+			//设置日志格式为 时间（精确到毫秒） 线程号 日志名 日志级别 自定义信息
+			interfaceLogger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [tid:%t] [%n] [%l] %v");
+			initiateSuccessfully = true;
+		}
+		catch (const spdlog::spdlog_ex &ex) {
+			initiateSuccessfully = false;
+		}
+	}
+	locker.unlock();
+	return initiateSuccessfully;
 }
-//lint +e429
+#endif
 
 void eSDKLog::InvokeIntLogRolling(void)
 {
-	log4cpp::RollingFileAppender* pInfaceRollApper = dynamic_cast<log4cpp::RollingFileAppender*>(log4cpp::RollingFileAppender::getAppender(m_InstanceInterfaceName));
-	if(NULL != pInfaceRollApper)
-	{
-		(void)VOS_MutexLock(m_IntMutex);
-		pInfaceRollApper->rollOver();
-		(void)VOS_MutexUnlock(m_IntMutex);
-	}
 }
 
 void eSDKLog::InvokeOptLogRolling(void)
 {
-	log4cpp::RollingFileAppender* pOperRollApper = dynamic_cast<log4cpp::RollingFileAppender*>(log4cpp::RollingFileAppender::getAppender(m_InstanceOperationName));
-	if(NULL != pOperRollApper)
-	{
-		(void)VOS_MutexLock(m_OptMutex);
-		pOperRollApper->rollOver();
-		(void)VOS_MutexUnlock(m_OptMutex);
-	}
 }
 
 void eSDKLog::InvokeRunLogRolling(void)
 {
-	log4cpp::RollingFileAppender* pRunRollApper = dynamic_cast<log4cpp::RollingFileAppender*>(log4cpp::RollingFileAppender::getAppender(m_InstanceRunName));
-	if(NULL != pRunRollApper)
+}
+
+void eSDKLog::UninitSPDLog(void)
+{
+	if (!m_InstanceInterfaceName.empty() && runLogger != nullptr)
 	{
-		(void)VOS_MutexLock(m_RunMutex);
-		pRunRollApper->rollOver();
-		(void)VOS_MutexUnlock(m_RunMutex);
+		interfaceLogger->critical("==============log end==============");
+		interfaceLogger.reset();
+	}
+	if (!m_InstanceOperationName.empty() && runLogger != nullptr)
+	{
+		operationLogger->critical("==============log end==============");
+		operationLogger.reset();
+	}
+	if (!m_InstanceRunName.empty() && runLogger != nullptr)
+	{
+		runLogger->critical("==============log end==============");
+		runLogger.reset();
 	}
 }
 
-void eSDKLog::UninitLog4cpp(void)
+void eSDKLog::ShutDownSPDLog(void)
 {
-	try
+	if (!m_InstanceRunName.empty() && runLogger != nullptr)
 	{
-		if (!m_InstanceInterfaceName.empty() && !m_InstanceOperationName.empty() && !m_InstanceRunName.empty())
-		{
-			log4cpp::Category& logInterfaceCategory = log4cpp::Category::getInstance(m_InstanceInterfaceName);
-			log4cpp::Category& logOperationCategory = log4cpp::Category::getInstance(m_InstanceOperationName);
-			log4cpp::Category& logRunCategory = log4cpp::Category::getInstance(m_InstanceRunName);
-
-			logRunCategory.critStream() << "==============log end==============";
-
-			logInterfaceCategory.removeAllAppenders();
-			logOperationCategory.removeAllAppenders();
-			logRunCategory.removeAllAppenders();
-		}	
-	}
-	catch (...)
-	{
-	}
-}
-
-void eSDKLog::ShutDownLog4cpp(void)
-{
-    try
-    {
-		if (!m_InstanceRunName.empty())
-		{
-			log4cpp::Category& logRunCategory = log4cpp::Category::getInstance(m_InstanceRunName);
-
-			logRunCategory.critStream() << "==============log end==============";
-
-			log4cpp::Category::shutdown();
-		}       
-    }
-    catch (...)
-    {
-    }
+		runLogger->critical("==============log end==============");
+		runLogger.reset();
+	}  
 }
 
 void eSDKLog::printIntInfolog(const std::string& strcontent)
 {
-	log4cpp::Category& logInterfaceCategory = log4cpp::Category::getInstance(m_InstanceInterfaceName);
-	(void)VOS_MutexLock(m_IntMutex);
-	logInterfaceCategory.infoStream() << strcontent;
-	(void)VOS_MutexUnlock(m_IntMutex);
+	if(interfaceLogger == nullptr){
+		return;
+	}
+	interfaceLogger->info(strcontent);
 }
 
 void eSDKLog::printIntErrorlog(const std::string& strcontent)
 {
-	log4cpp::Category& logInterfaceCategory = log4cpp::Category::getInstance(m_InstanceInterfaceName);
-	(void)VOS_MutexLock(m_IntMutex);
-	logInterfaceCategory.errorStream() << strcontent;
-	(void)VOS_MutexUnlock(m_IntMutex);
+	if(interfaceLogger == nullptr){
+		return;
+	}
+	interfaceLogger->error(strcontent);
 }
 
 void eSDKLog::printOptDebuglog(const std::string& strcontent)
 {
-	log4cpp::Category& logOperateCategory = log4cpp::Category::getInstance(m_InstanceOperationName);
-	(void)VOS_MutexLock(m_OptMutex);
-	logOperateCategory.debugStream() << strcontent;
-	(void)VOS_MutexUnlock(m_OptMutex);
+	if(operationLogger == nullptr){
+		return;
+	}
+	operationLogger->debug(strcontent);
 }
 
 void eSDKLog::printOptInfolog(const std::string& strcontent)
 {
-	log4cpp::Category& logOperateCategory = log4cpp::Category::getInstance(m_InstanceOperationName);
-	(void)VOS_MutexLock(m_OptMutex);
-	logOperateCategory.infoStream() << strcontent;
-	(void)VOS_MutexUnlock(m_OptMutex);
+	if(operationLogger == nullptr){
+		return;
+	}
+	operationLogger->info(strcontent);
 }
 
 void eSDKLog::printOptWarnlog(const std::string& strcontent)
 {
-	log4cpp::Category& logOperateCategory = log4cpp::Category::getInstance(m_InstanceOperationName);
-	(void)VOS_MutexLock(m_OptMutex);
-	logOperateCategory.warnStream() << strcontent;
-	(void)VOS_MutexUnlock(m_OptMutex);
+	if(operationLogger == nullptr){
+		return;
+	}
+	operationLogger->warn(strcontent);
 }
 
 void eSDKLog::printOptErrorlog(const std::string& strcontent)
 {
-	log4cpp::Category& logOperateCategory = log4cpp::Category::getInstance(m_InstanceOperationName);
-	(void)VOS_MutexLock(m_OptMutex);
-	logOperateCategory.errorStream() << strcontent;
-	(void)VOS_MutexUnlock(m_OptMutex);
+	if(operationLogger == nullptr){
+		return;
+	}
+	operationLogger->error(strcontent);
 }
 
 void eSDKLog::printRunDebuglog(const std::string& strcontent)
 {
-	log4cpp::Category& logRunCategory = log4cpp::Category::getInstance(m_InstanceRunName);
-	(void)VOS_MutexLock(m_RunMutex);
-	logRunCategory.debugStream() << strcontent;
-	(void)VOS_MutexUnlock(m_RunMutex);
+	if(runLogger == nullptr){
+		return;
+	}
+	runLogger->debug(strcontent);
 }
 
 void eSDKLog::printRunInfolog(const std::string& strcontent)
 {
-	log4cpp::Category& logRunCategory = log4cpp::Category::getInstance(m_InstanceRunName);
-	(void)VOS_MutexLock(m_RunMutex);
-	logRunCategory.infoStream() << strcontent;
-	(void)VOS_MutexUnlock(m_RunMutex);
+	if(runLogger == nullptr){
+		return;
+	}
+	runLogger->info(strcontent);
 }
 
 void eSDKLog::printRunWarnlog(const std::string& strcontent)
 {
-	log4cpp::Category& logRunCategory = log4cpp::Category::getInstance(m_InstanceRunName);
-	(void)VOS_MutexLock(m_RunMutex);
-	logRunCategory.warnStream() << strcontent;
-	(void)VOS_MutexUnlock(m_RunMutex);
+	if(runLogger == nullptr){
+		return;
+	}
+	runLogger->warn(strcontent);
 }
 
 void eSDKLog::printRunErrorlog(const std::string& strcontent)
 {
-	log4cpp::Category& logRunCategory = log4cpp::Category::getInstance(m_InstanceRunName);
-	(void)VOS_MutexLock(m_RunMutex);
-	logRunCategory.errorStream() << strcontent;
-	(void)VOS_MutexUnlock(m_RunMutex);
+	if(runLogger == nullptr){
+		return;
+	}
+	runLogger->error(strcontent);
 }
 
-std::string eSDKLog::GetLog4cppPath(const std::string& logPath, const std::string& strLogType)
+std::string eSDKLog::GetLogPath(const std::string& logPath, const std::string& strLogType)
 {
-	std::string log4cppPath("");
+	std::string logPathC("");
 
 	// 使用默认日志路径
 	if (INVALID_LOG_PATH == logPath)
 	{
-		log4cppPath = eSDKTool::GetAppPath();
-		log4cppPath.append("log");
-		if (eSDKTool::CreateMultipleDirectory(log4cppPath.c_str()))
+		logPathC = eSDKTool::GetAppPath();
+		logPathC.append("log");
+		if (eSDKTool::CreateMultipleDirectory(logPathC.c_str()))
 		{
 #ifdef WIN32
-			log4cppPath.append("\\");
+			logPathC.append("\\");
 #else
-            log4cppPath.append("/");
+			logPathC.append("/");
 #endif
-			log4cppPath.append(ConfigMgrInstance().GetLogProduct());
-			log4cppPath.append(".");
-			log4cppPath.append(strLogType);
+			logPathC.append(ConfigMgrInstance().GetLogProduct());
+			logPathC.append(".");
+			logPathC.append(strLogType);
 		}
 		else
 		{
-			log4cppPath = "";
+			logPathC = "";
 		}
 	}
 	// 创建日志路径
@@ -340,65 +406,35 @@ std::string eSDKLog::GetLog4cppPath(const std::string& logPath, const std::strin
 		// 相对目录判断
 		if (eSDKTool::IsRelativePath(logPath))
 		{
-			return log4cppPath;
+			return logPathC;
 		}
 
 		if (eSDKTool::CreateMultipleDirectory(logPath.c_str()))
 		{
-			log4cppPath = logPath;
+			logPathC = logPath;
 #ifdef WIN32
             if ('\\' != logPath.back())
 			{
-				log4cppPath.append("\\");
+				logPathC.append("\\");
 			}
 #else			
             if ('/' != logPath[logPath.size() - 1])
 			{
-				log4cppPath.append("/");
+				logPathC.append("/");
 			}
 #endif
-			log4cppPath.append(ConfigMgrInstance().GetLogProduct());
-			log4cppPath.append(".");
-			log4cppPath.append(strLogType);
+			logPathC.append(ConfigMgrInstance().GetLogProduct());
+			logPathC.append(".");
+			logPathC.append(strLogType);
 
 			// 先判断文件夹下是否有与日志文件同名的文件夹 modify by cwx298983 2016.02.29 Start
-			if (eSDKTool::IsDir(log4cppPath))
+			if (eSDKTool::IsDir(logPathC))
 			{
-				log4cppPath = "";
+				logPathC = "";
 			}
 			// 先判断文件夹下是否有与日志文件同名的文件夹 modify by cwx298983 2016.02.29 End
 		}
 	}
 
-	return log4cppPath;
-}
-
-log4cpp::Priority::PriorityLevel eSDKLog::GetLog4cppLevel(unsigned int uiLogLevel, const std::string& strLogType)
-{
-	if (LOG_INTERFACE_INSTANCE == strLogType)
-	{
-		uiLogLevel = ConfigMgrInstance().GetLogLevel_Interface();
-	}
-	else if (LOG_OPERATE_INSTANCE == strLogType)
-	{
-		uiLogLevel = ConfigMgrInstance().GetLogLevel_Operation();
-	}
-	else if (LOG_RUN_INSTANCE == strLogType)
-	{
-		uiLogLevel = ConfigMgrInstance().GetLogLevel_Run();
-	}
-
-	switch (uiLogLevel)
-	{
-	case DEBUG_LEVEL:
-		return log4cpp::Priority::DEBUG;
-	case INFO_LEVEL:
-		return log4cpp::Priority::INFO;
-	case WARN_LEVEL:
-		return log4cpp::Priority::WARN;
-	case ERROR_LEVEL:
-		return log4cpp::Priority::ERROR;
-	default:
-		return log4cpp::Priority::INFO;
-	}
+	return logPathC;
 }

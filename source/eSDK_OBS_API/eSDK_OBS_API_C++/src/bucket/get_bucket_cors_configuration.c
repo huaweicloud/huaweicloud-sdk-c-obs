@@ -369,31 +369,17 @@ void get_bucket_cors_configuration(const obs_options *options, obs_cors_handler 
     request_params params;
     get_bucket_cors_data *gbccDataEx = NULL;
     obs_use_api use_api = OBS_USE_API_S3;
-    set_use_api_switch(options, &use_api);
 
     COMMLOG(OBS_LOGINFO, "get_bucket_cors_configuration start !");
 
-    if (!options->bucket_options.bucket_name) {
-        COMMLOG(OBS_LOGERROR, "bucket_name is NULL.");
-        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
-        return;
-    }
-
     gbccDataEx = init_get_cors_data(handler, callback_data);
+    
     if (NULL == gbccDataEx)
     {
         (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
         return;
     }
-
-    memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    errno_t err = EOK;
-    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options,
-        sizeof(obs_bucket_context));
-    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
-    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options,
-        sizeof(obs_http_request_option));
-    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    copy_options_and_init_params(options, &params, &use_api, &handler->response_handler, callback_data);
 
     params.httpRequestType = http_request_type_get;
     params.properties_callback = &get_cors_properties_callback;

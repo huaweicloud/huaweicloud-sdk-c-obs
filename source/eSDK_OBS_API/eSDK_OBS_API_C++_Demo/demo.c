@@ -2967,7 +2967,7 @@ static void test_upload_file(char *bucket_name, char *filename, char *key)
 
     obs_upload_file_response_handler Handler =
     { 
-        {&response_properties_callback, &response_complete_callback},
+        {&response_properties_callback, &response_complete_callback_for_multi_task},
         &uploadFileResultCallback
     };
 
@@ -3012,7 +3012,7 @@ static void test_download_file(char *bucket_name, char *filename, char *key)
 
     obs_download_file_response_handler Handler =
     { 
-        {&response_properties_callback, &response_complete_callback },
+        {&response_properties_callback, &response_complete_callback_for_multi_task },
         &downloadFileResultCallback
     };
 
