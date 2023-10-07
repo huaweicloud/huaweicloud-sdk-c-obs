@@ -33,6 +33,12 @@
 #include "demo_common.h"
 #include "securec.h"
 
+#ifndef _MSC_VER
+#ifndef _TRUNCATE
+#define _TRUNCATE (SECUREC_STRING_MAX_LEN - 1)
+#endif
+#endif
+
 obs_status statusG = OBS_STATUS_OK;
 int  showResponsePropertiesG = 1;
 char errorDetailsG[4096] = { 0 };
@@ -138,7 +144,7 @@ obs_status response_properties_callback(const obs_response_properties *propertie
             return OBS_STATUS_OK;
         }else {
             printf("error! obs_sever_callback_data is null!");
-            return OBS_STATUS_OK;
+            return OBS_STATUS_AbortedByCallback;
         }
     }
 
@@ -220,8 +226,61 @@ void response_complete_callback(obs_status status,
     common_error_handle(error);
 }
 
+void response_complete_callback_for_multi_task(obs_status status,
+	const obs_error_details *error,
+	void *callback_data)
+{
+	if (callback_data)
+	{
+		obs_status *ret_status = (obs_status *)callback_data;
+		//断点续传下载内部可能有多个线程异步调用回调，此处防止异常状态被正常线程的状态覆盖，建议用户结合实际业务实现回调
+		if (*ret_status == OBS_STATUS_OK || *ret_status == OBS_STATUS_BUTT) {
+			*ret_status = status;
+		}
+	}
+	else
+	{
+		if (statusG == OBS_STATUS_OK || statusG == OBS_STATUS_BUTT) {
+			statusG = status;
+		}
+	}
+	int len = 0;
+        //强烈建议用户在此处捕获异常信息，便于定位问题!!!
+	if (error && error->message) {
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"  Message: %s\n", error->message);
+	}
+	if (error && error->resource) {
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"  Resource: %s\n", error->resource);
+	}
+	if (error && error->further_details) {
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"  Further Details: %s\n", error->further_details);
+	}
+	if (error && error->extra_details_count) {
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"%s", "  Extra Details:\n");
+		int i;
+		for (i = 0; i < error->extra_details_count; i++) {
+			len += snprintf_s(&(errorDetailsG[len]),
+				sizeof(errorDetailsG) - len, _TRUNCATE, "    %s: %s\n",
+				error->extra_details[i].name,
+				error->extra_details[i].value);
+		}
+	}
+}
+
 obs_status head_properties_callback(const obs_response_properties *properties, void *callback_data)
 {
+    if(properties == NULL){
+        printf("obs_response_properties is null in %s", __FUNCTION__);
+        return OBS_STATUS_AbortedByCallback;
+    }
+    if(callback_data == NULL){
+        printf("callback_data is null in %s", __FUNCTION__);
+        return OBS_STATUS_AbortedByCallback;
+    }
     head_object_data *data = (head_object_data *)callback_data;
     data->object_length = properties->content_length;
     printf("  object length: %d \n", data->object_length);
@@ -243,6 +302,7 @@ obs_status head_properties_callback(const obs_response_properties *properties, v
         printf("    object type: %s \n", properties->obs_object_type);
     if(properties->obs_next_append_position)
         printf("append position: %s \n", properties->obs_next_append_position);
+    return OBS_STATUS_OK;
 }
 
 void head_complete_callback(obs_status status,
@@ -827,7 +887,7 @@ int put_buffer_data_callback(int buffer_size, char *buffer, void *callback_data)
     if (data->buffer_size) {
         toRead = ((data->buffer_size > (unsigned) buffer_size) ?
                     (unsigned) buffer_size : data->buffer_size);
-        memcpy_s(buffer,buffer_size ,data->put_buffer + data->cur_offset, toRead);
+        memcpy_s(buffer, buffer_size ,data->put_buffer + data->cur_offset, toRead);
     }
     
     uint64_t originalContentLength = data->buffer_size;
@@ -1323,6 +1383,14 @@ void uploadFileResultCallback(obs_status status,
         pstUploadInfoList->status_return);
         pstUploadInfoList++;
     }
+	if (callbackData)
+	{
+		*((obs_status*)callbackData) = status;
+	}
+	else
+	{
+		statusG = status;
+	}
 }
 
 

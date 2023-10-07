@@ -55,7 +55,7 @@ namespace eSDK
 	int FileMgr::DeleteFile(const std::string& strFilePathName, eSDKLog* peSDKLog)const
 	{
 #ifdef WIN32
-		if(!::DeleteFile(strFilePathName.c_str()))
+		if(!::DeleteFileA(strFilePathName.c_str()))
 #else
 		if(remove(strFilePathName.c_str()))
 #endif

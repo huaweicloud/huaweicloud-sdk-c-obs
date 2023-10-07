@@ -22,16 +22,11 @@
 #pragma warning(disable:4267) // conversion from 'size_t' to '...', possible loss of data
 #pragma warning(disable:4512) // assignment operator could not be generated
 #endif
-#ifdef WIN32
-#include "./log4cpp/config-win32.h"
-#endif
-#include "./log4cpp/Category.hh"
-#include "./log4cpp/RollingFileAppender.hh"
-#include "./log4cpp/OstreamAppender.hh"
-#include "./log4cpp/PatternLayout.hh"
+
 
 #include "eSDKLogDataType.h"
 #include "./vos/vos.h"
+#include <string>
 using namespace VPP;
 
 #ifdef WIN32
@@ -59,9 +54,9 @@ using namespace VPP;
 // 去除最后的|符号
 
 //日志实例名
-#define LOG_INTERFACE_INSTANCE		"INTERFACE"
-#define LOG_OPERATE_INSTANCE		"OPERATE"
-#define LOG_RUN_INSTANCE			"RUN"
+#define LOG_INTERFACE_INSTANCE		".interface"
+#define LOG_OPERATE_INSTANCE		".operate"
+#define LOG_RUN_INSTANCE			".run"
 #define LOG_INTERFACE_BACKUP_INSTANCE	"INTERFACEBACKUP"
 
 enum LOGTYPE
@@ -81,13 +76,17 @@ public:
 	~eSDKLog(void);
 
 public:	
-	bool InitLog4cpp(const std::string& product, unsigned int logLevel[LOG_CATEGORY], const std::string& logPath, int mode=00644);
-	
+#ifdef WIN32
+	bool InitSPDLOG(const std::string& product, unsigned int logLevel[LOG_CATEGORY], const std::wstring& logPath, int mode = 00644);
+#else
+	bool InitSPDLOG(const std::string& product, unsigned int logLevel[LOG_CATEGORY], const std::string& logPath, int mode = 00644);
+#endif
+
 	// solve the problem that the process ended without call function LogFini.
     // shut down one log4cpp object.
-	void UninitLog4cpp(void);
+	void UninitSPDLog(void);
     // shut down all log4cpp objects. It is called when the process is end or function LogFini is called.
-    void ShutDownLog4cpp(void);
+    void ShutDownSPDLog(void);
     // solve the problem that the process ended without call function LogFini.
 
 	void InvokeIntLogRolling(void);//触发interface日志绕接
@@ -105,8 +104,7 @@ public:
 	void printRunErrorlog(const std::string& strcontent);
 
 private:
-	std::string GetLog4cppPath(const std::string& logPath, const std::string& strLogType);
-	log4cpp::Priority::PriorityLevel GetLog4cppLevel(unsigned int logLevel, const std::string& strLogType);
+	std::string GetLogPath(const std::string& logPath, const std::string& strLogType);
 
 private:
 	VPP::VOS_Mutex* m_IntMutex;//接口类日志锁
@@ -119,7 +117,8 @@ private:
 	std::string m_InstanceRunName;
 
 	std::string m_logPath;
+	std::wstring m_logPath_w;
 	unsigned int m_nInterfaceLevel;
 };
-
+wchar_t *GetWcharFromChar(const char *char_str);
 #endif

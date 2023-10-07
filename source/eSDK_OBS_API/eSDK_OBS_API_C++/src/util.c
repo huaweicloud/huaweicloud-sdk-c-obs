@@ -356,7 +356,7 @@ int urlDecode(char *dest, const char *src, int maxSrcSize)
             }
             if (ret = memset_s(strOne, ARRAY_LENGTH_4, 0, 4))
             {
-                COMMLOG(OBS_LOGERROR, "in %s line %s memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
+                COMMLOG(OBS_LOGERROR, "in %s line %d memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
                 return OBS_STATUS_InternalError;
             }
             src ++;
@@ -586,7 +586,7 @@ void HMAC_SHA256(unsigned char hmac[32], const unsigned char *key, int key_len,
     int ret = 0;
     if (ret = memset_s(hmac, ARRAY_LENGTH_32, 0, 32))
     {
-        COMMLOG(OBS_LOGERROR, "in %s line %s memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
+        COMMLOG(OBS_LOGERROR, "in %s line %d memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
     }
     unsigned int i;
     for(i=0; i<tempLength; i++)
@@ -641,7 +641,7 @@ void SHA256Hash(unsigned char sha[32], const unsigned char *message, int message
     int ret = 0;
     if (ret = memset_s(sha, ARRAY_LENGTH_32, 0, 32))
     {
-        COMMLOG(OBS_LOGERROR, "in %s line %s memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
+        COMMLOG(OBS_LOGERROR, "in %s line %d memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
     }
     unsigned int i = 0;
     for(i = 0; i < tempLength; i++)

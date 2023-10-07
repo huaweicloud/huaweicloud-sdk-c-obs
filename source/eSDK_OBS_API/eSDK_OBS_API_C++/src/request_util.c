@@ -32,7 +32,7 @@
 #endif
 
 #define SSEC_KEY_MD5_LENGTH 64
-#define B64_LEN_FOR_HMAC (((20 + 1) * 4) / 3)
+#define B64_LEN_FOR_HMAC (((20 + 1) * 4) / 3 + 1)
 #ifdef WIN32
 #include <windows.h>
 #else
@@ -1281,7 +1281,7 @@ obs_status compose_put_header(const request_params *params,
                   OBS_STATUS_BadContentType, OBS_STATUS_ContentTypeTooLong);
     do_put_header(params, values, "Content-MD5: %s", md5, md5Header, OBS_STATUS_BadMd5,
                   OBS_STATUS_Md5TooLong);
-    do_put_header(params, values, "Content-Disposition: attachment; file_name=\"%s\"",
+    do_put_header(params, values, "Content-Disposition: attachment; filename=%s",
                   content_disposition_filename, contentDispositionHeader,
                   OBS_STATUS_BadContentDispositionFilename,
                   OBS_STATUS_ContentDispositionFilenameTooLong);
@@ -1903,8 +1903,9 @@ obs_status compose_temp_header(const request_params* params,
     (void)base64Encode(hmac, 20, b64);
     char cUrlEncode[512] = {0};
     (void)urlEncode(cUrlEncode, b64, B64_LEN_FOR_HMAC, 28, 0);
+	char* AccessKeyType = params->use_api == OBS_USE_API_OBS ? "AccessKeyId" : "AWSAccessKeyId";
     int ret = snprintf_s(stTempAuthInfo->tempAuthParams,ARRAY_LENGTH_1024, _TRUNCATE,
-               "AWSAccessKeyId=%s&Expires=%lld&Signature=%s", params->bucketContext.access_key,
+               "%s=%s&Expires=%lld&Signature=%s", AccessKeyType, params->bucketContext.access_key,
                (long long int)local_expires, cUrlEncode);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     

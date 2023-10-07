@@ -53,6 +53,10 @@ namespace eSDK {
 			m_uiLogLevel_Run = 0;
 			m_strProductName = "";
 			m_strLogPath = "";
+#if defined WIN32
+			m_strLogPath_w = L"";
+			m_strProductName_w = L"";
+#endif
 		}
 		catch (...)
 		{
@@ -78,6 +82,10 @@ namespace eSDK {
         m_uiLogLevel_Operation = 0;
         m_uiLogLevel_Run = 0;
 		m_strLogPath = "";
+#if defined WIN32
+		m_strLogPath_w = L"";
+		m_strProductName_w = L"";
+#endif
 		m_uiLogFilePermission = 0640;
     }
 
@@ -210,6 +218,83 @@ namespace eSDK {
 	}
 #endif
 
+#ifdef WIN32
+	bool ConfigMgr::Init(const std::wstring& iniFile, const std::string& product) {
+
+		// 校验配置文件路径
+		if (!PathFileExistsW(iniFile.c_str()))
+		{//没有配置文件时用默认的
+			//return false;
+			InitWithDefaultVal();
+			m_strProductName = product;
+			return true;
+		}
+
+		// out param
+		std::wstring tempValue(L"");
+
+		// 获取LogSize
+		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG_W, L"LogSize_Interface", iniFile.c_str(), tempValue);
+		m_uiLogSize_Interface = (unsigned int)_wtoi(tempValue.c_str());
+		tempValue.clear();
+		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG_W, L"LogSize_Operation", iniFile.c_str(), tempValue);
+		m_uiLogSize_Operation = (unsigned int)_wtoi(tempValue.c_str());
+		tempValue.clear();
+		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG_W, L"LogSize_Run", iniFile.c_str(), tempValue);
+		m_uiLogSize_Run = (unsigned int)_wtoi(tempValue.c_str());
+		tempValue.clear();
+
+		// 获取LogNum
+		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG_W, L"LogNum_Interface", iniFile.c_str(), tempValue);
+		m_uiLogNum_Interface = (unsigned int)_wtoi(tempValue.c_str());
+		tempValue.clear();
+		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG_W, L"LogNum_Operation", iniFile.c_str(), tempValue);
+		m_uiLogNum_Operation = (unsigned int)_wtoi(tempValue.c_str());
+		tempValue.clear();
+		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG_W, L"LogNum_Run", iniFile.c_str(), tempValue);
+		m_uiLogNum_Run = (unsigned int)_wtoi(tempValue.c_str());
+		tempValue.clear();
+
+		// 获取LogLevel
+		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG_W, L"LogLevel_Interface", iniFile.c_str(), tempValue);
+		m_uiLogLevel_Interface = (unsigned int)_wtoi(tempValue.c_str());
+		tempValue.clear();
+		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG_W, L"LogLevel_Operation", iniFile.c_str(), tempValue);
+		m_uiLogLevel_Operation = (unsigned int)_wtoi(tempValue.c_str());
+		tempValue.clear();
+		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG_W, L"LogLevel_Run", iniFile.c_str(), tempValue);
+		m_uiLogLevel_Run = (unsigned int)_wtoi(tempValue.c_str());
+		tempValue.clear();
+
+		// 获取sdkname
+		eSDKTool::GetIniSectionItem(SECTION_NAME_PRODUCT_W, L"sdkname", iniFile.c_str(), tempValue);
+		m_strProductName_w = tempValue;
+		tempValue.clear();
+
+		// 获取LogPath
+		eSDKTool::GetIniSectionItem(SECTION_NAME_LOGPATH_W, L"LogPath", iniFile.c_str(), tempValue);
+		m_strLogPath_w = tempValue;
+		tempValue.clear();
+
+		// 获取FilePermission
+		eSDKTool::GetIniSectionItem(SECTION_NAME_LOG_W, L"LogFilePermission", iniFile.c_str(), tempValue);
+		std::wstring strPermission = tempValue;
+		m_uiLogFilePermission = eSDKTool::StringToOCT(strPermission);
+		tempValue.clear();
+
+		return true;
+	}
+
+	std::wstring ConfigMgr::GetLogPathW()
+	{
+		return m_strLogPath_w;
+	}
+
+	const std::wstring& ConfigMgr::GetLogProduct_W(void) const
+	{
+		return m_strProductName_w;
+	}
+#endif // WIN32
 	// 去初始化
 	bool ConfigMgr::Uninit(void)
 	{
@@ -223,6 +308,7 @@ namespace eSDK {
 		m_uiLogLevel_Operation = 0;
 		m_uiLogLevel_Run = 0;
 		m_strProductName = "";
+		m_strProductName_w = L"";
 		return true;
 	}
 

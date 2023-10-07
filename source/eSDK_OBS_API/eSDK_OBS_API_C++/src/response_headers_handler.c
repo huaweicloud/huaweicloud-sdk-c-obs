@@ -298,7 +298,7 @@ void response_headers_handler_add(response_headers_handler *handler,
 }
 void response_headers_handler_done(response_headers_handler *handler, CURL *curl)
 {
-    time_t last_modified = -1;
+    time_t last_modified = 0;
     if (curl_easy_getinfo
         (curl, CURLINFO_FILETIME, &last_modified) == CURLE_OK) {
         handler->responseProperties.last_modified = last_modified;

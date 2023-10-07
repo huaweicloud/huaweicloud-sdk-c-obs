@@ -75,6 +75,7 @@
     <ClCompile Include="..\..\src\file_utils.c" />
     <ClCompile Include="..\..\src\general.c" />
     <ClCompile Include="..\..\src\log.c" />
+    <ClCompile Include="..\..\src\modify_object.c" />
     <ClCompile Include="..\..\src\object\abort_multi_part_upload.c" />
     <ClCompile Include="..\..\src\object\append_object.c" />
     <ClCompile Include="..\..\src\object\batch_delete_objects.c" />
@@ -98,10 +99,13 @@
     <ClCompile Include="..\..\src\object\set_object_metadata.c" />
     <ClCompile Include="..\..\src\object\upload_file.c" />
     <ClCompile Include="..\..\src\object\upload_part.c" />
+    <ClCompile Include="..\..\src\rename_object.c" />
     <ClCompile Include="..\..\src\request.c" />
     <ClCompile Include="..\..\src\request_context.c" />
     <ClCompile Include="..\..\src\response_headers_handler.c" />
+    <ClCompile Include="..\..\src\signal_handle.c" />
     <ClCompile Include="..\..\src\simplexml.c" />
+    <ClCompile Include="..\..\src\truncate_object.c" />
     <ClCompile Include="..\..\src\util.c" />
     <ClCompile Include="..\..\src\request_util.c" />
   </ItemGroup>
@@ -121,7 +125,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
     <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -292,7 +296,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\release_x64;$(WindowsSdkDir)\Lib\x64;..\..\build\vc100\Release;..\..\lib\win64_x64_msvc\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cjson.lib;libcurl.lib;libeay32.lib;ssleay32.lib;eSDKLogAPI.lib;pcre.lib;libiconv.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libcurl.lib;libcrypto.lib;libssl.lib;eSDKLogAPI.lib;pcre.lib;libiconv.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <AdditionalOptions>/SAFESEH:NO %(AdditionalOptions)</AdditionalOptions>
     </Link>

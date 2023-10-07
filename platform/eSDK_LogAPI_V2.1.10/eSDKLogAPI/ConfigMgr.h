@@ -32,6 +32,11 @@
 #define SECTION_NAME_PRODUCT	"ProductConfig"
 #define SECTION_NAME_LOGPATH	"LogPath"
 
+#define SECTION_NAME_LOG_W		L"LogConfig"
+#define SECTION_NAME_UPLOAD_W		L"UploadConfig"
+#define SECTION_NAME_PRODUCT_W	L"ProductConfig"
+#define SECTION_NAME_LOGPATH_W	L"LogPath"
+
 
 namespace eSDK
 {
@@ -53,6 +58,11 @@ namespace eSDK
 #else
 		bool Init(const std::string& iniFile, const std::string& product);
 #endif
+#ifdef WIN32
+		bool Init(const std::wstring& iniFile, const std::string& product);
+		std::wstring GetLogPathW(void);
+		const std::wstring& GetLogProduct_W(void) const;
+#endif // WIN32
 		// 去初始化
 		bool Uninit(void);
 
@@ -95,6 +105,8 @@ namespace eSDK
 		unsigned int m_uiLogLevel_Run;			// 日志级别
 		std::string m_strProductName;			// 日志所属模块
 		std::string m_strLogPath;				// 日志生成路径
+		std::wstring m_strProductName_w;			// 日志所属模块(宽字符)
+		std::wstring m_strLogPath_w;				// 日志生成路径(宽字符)
 		// 日志文件读取权限 add by cwx298983 2016.06.29 Start
 		unsigned int m_uiLogFilePermission;		// 日志文件读取权限
 		// 日志文件读取权限 add by cwx298983 2016.06.29 End

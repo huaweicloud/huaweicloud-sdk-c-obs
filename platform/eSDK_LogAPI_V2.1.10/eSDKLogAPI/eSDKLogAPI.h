@@ -67,6 +67,7 @@ extern "C"
 	 *@par			无
 	**/
 	eSDK_LOG_API int _STD_CALL_ LogInitForAndroid(const char* sdkname, const char* iniInfo, unsigned int logLevel[LOG_CATEGORY], const char* logPath);
+
 #else
 	/**
 	 *初始化
@@ -84,7 +85,9 @@ extern "C"
 	**/
 	eSDK_LOG_API int _STD_CALL_ LogInit(const char* sdkname, const char* iniFile, unsigned int logLevel[LOG_CATEGORY], const char* logPath);
 #endif
-
+#if defined WIN32
+	eSDK_LOG_API int _STD_CALL_ LogInit_W(const char* sdkname, const wchar_t* iniFile, unsigned int logLevel[LOG_CATEGORY], const wchar_t* logPath);
+#endif
 	/**
 	 *去初始化
 	 * 

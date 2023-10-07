@@ -91,7 +91,7 @@ void CLogger::Log_Interface_Info(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 	strInfoContent.append(para);
 	
@@ -144,7 +144,7 @@ void CLogger::Log_Interface_Error(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 	strErrContent.append(para);
 	
@@ -187,7 +187,7 @@ void CLogger::Log_Operate_Debug(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 
 	strDebugContent.append(para);
@@ -227,7 +227,7 @@ void CLogger::Log_Operate_Info(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 
 	strInfoContent.append(para);
@@ -267,7 +267,7 @@ void CLogger::Log_Operate_Warn(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 
 	strWarnContent.append(para);
@@ -307,7 +307,7 @@ void CLogger::Log_Operate_Error(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 
 	strErrorContent.append(para);

@@ -23,13 +23,13 @@
 
 using namespace eSDK;
 
-// snprintf∂®“Â
+// snprintf
 #if defined _MSC_VER  || defined WIN32
-# define SNPRINTF  _vsnprintf_s
+# define SNPRINTF_S  _vsnprintf_s
 #endif
 
 #if defined __GNUC__ || defined LINUX
-# define SNPRINTF  vsnprintf_s
+# define SNPRINTF_S  vsnprintf_s
 #endif
 
 class CLogger
