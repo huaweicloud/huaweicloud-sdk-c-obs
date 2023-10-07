@@ -1281,7 +1281,7 @@ obs_status compose_put_header(const request_params *params,
                   OBS_STATUS_BadContentType, OBS_STATUS_ContentTypeTooLong);
     do_put_header(params, values, "Content-MD5: %s", md5, md5Header, OBS_STATUS_BadMd5,
                   OBS_STATUS_Md5TooLong);
-    do_put_header(params, values, "Content-Disposition: attachment; file_name=\"%s\"",
+    do_put_header(params, values, "Content-Disposition: attachment; filename=%s",
                   content_disposition_filename, contentDispositionHeader,
                   OBS_STATUS_BadContentDispositionFilename,
                   OBS_STATUS_ContentDispositionFilenameTooLong);
