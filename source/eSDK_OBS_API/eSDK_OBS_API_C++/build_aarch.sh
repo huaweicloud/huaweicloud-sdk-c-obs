@@ -126,7 +126,7 @@ mkdir cmake-build
 cd cmake-build
 mkdir cmake
 cd cmake
-cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=Release
+cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=Release -DSPDLOG_VERSION=${SPDLOG_VERSION}
 make 
 cd ../../
 # make clean
@@ -155,13 +155,13 @@ cp -f cmake-build/cmake/lib/*.so lib
 cp -f ./../../../platform/huaweisecurec/include/* include
 cp -f ./../../../platform/huaweisecurec/lib/arm/libsecurec.so lib
 cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/C/aarch64/libeSDKLogAPI.so lib
-cp -af ./../../../platform/eSDK_LogAPI_V2.1.10/C/aarch64/liblog4cpp* lib 
 cp -af ./../../../build/script/Provider/build/arm/${curl_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/arm/${libxml2_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/arm/${openssl_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/arm/${pcre_version}/lib/* lib 
-cp -af ./../../../build/script/Provider/build/arm/${iconv_version}/lib/* lib 
+cp -af ./../../../build/script/Provider/build/arm/${iconv_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/arm/${cjson_version}/lib/* lib
+cp -af ./../../../build/script/Provider/build/arm/${SPDLOG_VERSION}/lib/* lib
 cp -f ./../../../build/script/Provider/build/arm/${cjson_version}/include/cJSON.h include
 echo "BUILD_FOR_ARM=true" >  demo/Makefile
 cat Makefile_obs >> demo/Makefile

@@ -16,28 +16,33 @@
 #include "request_util.h"
 #include <openssl/md5.h> 
 
+void copy_options_and_init_params(const obs_options *options, request_params* params,
+        obs_use_api* use_api, obs_response_handler *handler, void *callback_data){
+    set_use_api_switch(options, use_api);
+
+    if (!options->bucket_options.bucket_name) {
+        COMMLOG(OBS_LOGERROR, "bucket_name is NULL.");
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
+        return;
+    }
+
+    memset_s(params, sizeof(request_params), 0, sizeof(request_params));
+    errno_t err = EOK;
+    err = memcpy_s(&params->bucketContext, sizeof(obs_bucket_context), &options->bucket_options,
+        sizeof(obs_bucket_context));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(&params->request_option, sizeof(obs_http_request_option), &options->request_options,
+        sizeof(obs_http_request_option));
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+}
+
 void delete_bucket_lifecycle_configuration(const obs_options *options, obs_response_handler *handler,
     void *callback_data)
 {
     request_params params;
-    COMMLOG(OBS_LOGINFO, "delete_bucket_lifecycle_configuration start!");
+    COMMLOG(OBS_LOGINFO, "%s start!", __FUNCTION__);
     obs_use_api use_api = OBS_USE_API_S3;
-    set_use_api_switch(options, &use_api);
-
-    if (!options->bucket_options.bucket_name) {
-        COMMLOG(OBS_LOGERROR, "bucket_name is NULL.");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
-        return;
-    }
-
-    memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
-    errno_t err = EOK;
-    err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options,
-        sizeof(obs_bucket_context));
-    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
-    err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options,
-        sizeof(obs_http_request_option));
-    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    copy_options_and_init_params(options, &params, &use_api, handler, callback_data);
 
     params.httpRequestType = http_request_type_delete;
     params.properties_callback = handler->properties_callback;
@@ -50,5 +55,5 @@ void delete_bucket_lifecycle_configuration(const obs_options *options, obs_respo
     params.use_api = use_api;
     request_perform(&params);
 
-    COMMLOG(OBS_LOGINFO, "delete_bucket_lifecycle_configuration finish!");
+    COMMLOG(OBS_LOGINFO, "%s finish!", __FUNCTION__);
 }

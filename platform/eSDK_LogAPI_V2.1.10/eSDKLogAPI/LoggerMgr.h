@@ -35,6 +35,11 @@ public:
 	std::string iniFile;
 	std::string logPath;
 	std::string productname;
+	
+	std::wstring iniFile_w; 
+	std::wstring logPath_w;
+	std::wstring productname_w;
+	
 	unsigned int filePermission;
 
 	PRODUCT_DATA()
@@ -75,9 +80,12 @@ namespace eSDK
 	public:
 #if defined ANDROID
 		int initAndroid(const std::string& product, const std::string& iniInfo, unsigned int logLevel[LOG_CATEGORY], const std::string& logPath);
+#elif defined WIN32
+		int init(const std::string& product, const std::wstring& iniFile, unsigned int logLevel[LOG_CATEGORY], const std::wstring& logPath);
 #else
 		int init(const std::string& product, const std::string& iniFile, unsigned int logLevel[LOG_CATEGORY], const std::string& logPath);
 #endif
+
 		int printInterfacelog(const std::string& product,int iLevel,const std::string& strcontent);
 		int printOperationlog(const std::string& product,int iLevel,const std::string& strcontent);
 		int printRunlog(const std::string& product,int iLevel,const std::string& strcontent);
@@ -92,6 +100,9 @@ namespace eSDK
 
 	private:
 		std::string getLogPathByCondition(const std::string& strIniLogPath);
+#ifdef WIN32
+		std::wstring getLogPathByCondition(const std::wstring& strIniLogPath);
+#endif // WIN32
 
 	private:
 		PRODUCT_MAP m_ProductMap;

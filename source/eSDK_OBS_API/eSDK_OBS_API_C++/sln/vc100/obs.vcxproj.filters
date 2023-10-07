@@ -71,6 +71,10 @@
     <ClCompile Include="..\..\src\bucket\set_bucket_website_configuration.c" />
     <ClCompile Include="..\..\src\bucket\set_notification_configuration.c" />
     <ClCompile Include="..\..\src\file_utils.c" />
+    <ClCompile Include="..\..\src\modify_object.c" />
+    <ClCompile Include="..\..\src\rename_object.c" />
+    <ClCompile Include="..\..\src\signal_handle.c" />
+    <ClCompile Include="..\..\src\truncate_object.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\inc\error_parser.h" />

@@ -508,6 +508,9 @@ static obs_status setup_curl(http_request *request,
     if(params->request_option.proxy_auth != NULL) {
          curl_easy_setopt_safe(CURLOPT_PROXYUSERPWD, params->request_option.proxy_auth);
     }
+    if (params->request_option.forbid_reuse_tcp) {
+        curl_easy_setopt_safe(CURLOPT_FORBID_REUSE, 1);
+    }
     curl_easy_setopt_safe(CURLOPT_NETRC, CURL_NETRC_IGNORED);
     setup_CheckCA(request, params, values);
 
@@ -1339,7 +1342,9 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
 	if (request_options->proxy_auth != NULL) {
 		easy_setopt_safe(CURLOPT_PROXYUSERPWD, request_options->proxy_auth);
 	}
-
+    if (request_options->forbid_reuse_tcp) {
+        easy_setopt_safe(CURLOPT_FORBID_REUSE, 1);
+    }
     CURLcode setoptResult =  curl_easy_setopt(curl,CURLOPT_ERRORBUFFER,errorBuffer);
     COMMLOG(OBS_LOGWARN, "curl_easy_setopt curl path= %s",uri);
     if (setoptResult != CURLE_OK){
@@ -1366,20 +1371,11 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
         return OBS_STATUS_InternalError;
     }
     
-    COMMLOG(OBS_LOGINFO, "curl_easy_setopt curl with httpResponseCode = %d",httpResponseCode);
-    if(status == OBS_STATUS_OK && httpResponseCode == 200)
-    {
-		curl_easy_cleanup(curl); 
-        CHECK_NULL_FREE(uri);                                                          
-        CHECK_NULL_FREE(errorBuffer);
-        return OBS_STATUS_OK;
-    }
-    else {
-		curl_easy_cleanup(curl); 
-        CHECK_NULL_FREE(uri);                                                          
-        CHECK_NULL_FREE(errorBuffer);
-        return status;
-    }
+    COMMLOG(OBS_LOGINFO, "curl_easy_getinfo curl with httpResponseCode = %d", httpResponseCode);
+	curl_easy_cleanup(curl); 
+    CHECK_NULL_FREE(uri);                                                          
+    CHECK_NULL_FREE(errorBuffer);
+    return status;
 }
 
 static int sort_bucket_name(const char *bucket_name, const char *host_name)
@@ -1507,6 +1503,7 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
            }
            else {
                 api_switch[index].time_switch = time_obs;
+                *use_api_temp = api_switch[index].use_api;
            }
         }
         else {

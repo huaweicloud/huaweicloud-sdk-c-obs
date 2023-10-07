@@ -32,7 +32,7 @@
 #endif
 
 #define SSEC_KEY_MD5_LENGTH 64
-#define B64_LEN_FOR_HMAC (((20 + 1) * 4) / 3)
+#define B64_LEN_FOR_HMAC (((20 + 1) * 4) / 3 + 1)
 #ifdef WIN32
 #include <windows.h>
 #else

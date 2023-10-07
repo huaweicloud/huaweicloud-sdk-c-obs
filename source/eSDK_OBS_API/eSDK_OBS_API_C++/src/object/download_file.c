@@ -1210,8 +1210,8 @@ void startDownloadThreads(download_params * pstDownloadParams,
     download_file_part_info *pstOnePartInfo = downloadFilePartInfoList;
 #ifdef WIN32
     HANDLE * arrHandle = (HANDLE *)malloc(sizeof(HANDLE)*partCount);
-    unsigned  uiThread2ID;
-    DWORD   dwExitCode;
+    unsigned  uiThread2ID = 0;
+    DWORD   dwExitCode = 0;
 
 #endif
 
@@ -1639,6 +1639,13 @@ int get_download_isfirst_time_read(download_file_summary *downloadFileInfoOld,
                 pstDownloadFilePartInfoList = NULL;
             }
         }
+		else 
+		{
+			isFirstTime = 0;
+			errno_t err = EOK;
+			err = memcpy_s(pdownLoadFileInfo, sizeof(download_file_summary), downloadFileInfoOld, sizeof(download_file_summary));
+			CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+		}
     }
     return isFirstTime;
 }

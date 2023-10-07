@@ -13,6 +13,7 @@
 **********************************************************************************
 */
 #include "log.h"
+#include "file_utils.h"
 #include "securec.h"
 #include <stdlib.h>
 
@@ -29,25 +30,64 @@
 #define OBS_LOG_PATH_LEN   257
 #define LOG_CONF_MESSAGELEN 1024
 
-
-static char OBS_LOG_PATH[OBS_LOG_PATH_LEN]={0};
+static char USER_SET_OBS_LOG_PATH[OBS_LOG_PATH_LEN]={0};
 static bool ONLY_SET_LOGCONF = true;
+#if defined (WIN32)
+#include <fcntl.h>
+#include <io.h>
+static wchar_t USER_SET_OBS_LOG_PATH_W[OBS_LOG_PATH_LEN] = { 0 };
+
+int set_obs_log_path_w(const wchar_t *log_path, bool only_set_log_conf)
+{
+	if (log_path == NULL || wcslen(log_path) > OBS_LOG_PATH_LEN)
+	{
+		return 0;
+	}
+	memset_s(USER_SET_OBS_LOG_PATH_W, OBS_LOG_PATH_LEN * sizeof(wchar_t), 0, OBS_LOG_PATH_LEN * sizeof(wchar_t));
+	errno_t err = EOK;
+	err = memcpy_s(USER_SET_OBS_LOG_PATH_W, OBS_LOG_PATH_LEN * sizeof(wchar_t), log_path, wcslen(log_path) * sizeof(wchar_t));
+	if (err != EOK)
+	{
+		return 0;
+	}
+	ONLY_SET_LOGCONF = only_set_log_conf;
+	return 1;
+}
+#endif
+
+int set_obs_log_path_c(const char *log_path, bool only_set_log_conf)
+{
+	if (log_path == NULL || strlen(log_path) > OBS_LOG_PATH_LEN)
+	{
+		return 0;
+	}
+	memset_s(USER_SET_OBS_LOG_PATH, OBS_LOG_PATH_LEN, 0, OBS_LOG_PATH_LEN);
+	errno_t err = EOK;
+	err = memcpy_s(USER_SET_OBS_LOG_PATH, OBS_LOG_PATH_LEN, log_path, strlen(log_path));
+	if (err != EOK)
+	{
+		return 0;
+	}
+	ONLY_SET_LOGCONF = only_set_log_conf;
+	return 1;
+}
 
 int set_obs_log_path(const char *log_path, bool only_set_log_conf)
 {
-    if( log_path == NULL || strlen(log_path)> OBS_LOG_PATH_LEN)
-    {
-        return 0;
-    }
-    memset_s(OBS_LOG_PATH,OBS_LOG_PATH_LEN,0,OBS_LOG_PATH_LEN);
-    errno_t err = EOK;
-    err = memcpy_s(OBS_LOG_PATH,OBS_LOG_PATH_LEN,log_path,strlen(log_path));
-    if (err != EOK)
-    {
-        return 0;
-    }
-    ONLY_SET_LOGCONF = only_set_log_conf;
-    return 1;
+#if defined (WIN32)
+	if (get_file_path_code() == UNICODE_CODE) {
+		return set_obs_log_path_w((const wchar_t *)log_path, only_set_log_conf);
+	}
+	else if(get_file_path_code() == ANSI_CODE) {
+		return set_obs_log_path_c(log_path, only_set_log_conf);
+	} 
+	else {
+		COMMLOG(OBS_LOGERROR, "unkown encoding scheme, function %s failed", __FUNCTION__);
+		return 0;
+	}
+#else
+	return set_obs_log_path_c(log_path, only_set_log_conf);
+#endif
 }
 
 #ifdef WIN32
@@ -156,8 +196,7 @@ int SetSectionForSearch(char* Sect, size_t Sectlen, const char* Section, char* l
 	}
 	return 0;
 }
-
-void SearchSection(char* linebuf, char* Sect, const char* Item, char* iniValue, FILE* inifp) 
+void SearchSection_C(char* linebuf, char* Sect, const char* Item, char* iniValue, FILE* inifp) 
 {
 	int isSection = 0;
 	char* iniItem = NULL;
@@ -195,6 +234,79 @@ void SearchSection(char* linebuf, char* Sect, const char* Item, char* iniValue, 
 	}
 	*iniValue = '\0';
 }
+#ifdef WIN32
+void SearchSection_W(wchar_t* linebuf, wchar_t* Sect, const wchar_t* Item, wchar_t* iniValue, FILE* inifp) {
+
+	int isSection = 0;
+	wchar_t* iniItem = NULL;
+
+	int oldMode = _setmode(_fileno(inifp), _O_U8TEXT);
+	while (NULL != fgetws(linebuf, MAX_MSG_SIZE, inifp))
+	{
+		linebuf[MAX_MSG_SIZE - 1] = L'\0';
+
+		if (L'[' == linebuf[0])
+		{
+			if (wcsstr(linebuf, Sect))
+			{
+				isSection = 1;
+			}
+			else {
+				isSection = 0;
+			}
+			continue;
+		}
+
+		if (!isSection || L';' == linebuf[0] || !wcsstr(linebuf, Item))
+		{
+			continue;
+		}
+
+		if ((iniItem = wcschr(linebuf, L'=')) != NULL)
+		{
+			iniItem++;
+			while (L'\n' != *iniItem && L'\r' != *iniItem && L'\0' != *iniItem)
+			{
+				*iniValue = *iniItem;
+				iniItem++;
+				iniValue++;
+			}
+			break;
+		}
+	}
+	*iniValue = L'\0';
+	(void)_setmode(_fileno(inifp), oldMode);
+}
+#endif
+
+void SearchSection(char* linebuf, char* Sect, const char* Item, char* iniValue, FILE* inifp) {
+#ifdef WIN32
+	if (get_file_path_code() == ANSI_CODE)
+	{
+		SearchSection_C(linebuf, Sect, Item, iniValue, inifp);
+	}
+	else if (get_file_path_code() == UNICODE_CODE)
+	{
+		wchar_t* Sect_W = GetWcharFromChar(Sect);
+		wchar_t* Item_W = GetWcharFromChar(Item);
+		if (Sect_W == NULL || Item_W == NULL) {
+			COMMLOG(OBS_LOGERROR, "GerWcharFromChar failed, function %s failed", __FUNCTION__);
+			CHECK_NULL_FREE(Sect_W);
+			CHECK_NULL_FREE(Item_W);
+			return;
+		}
+		SearchSection_W((wchar_t*)linebuf, Sect_W, Item_W, (wchar_t*)iniValue, inifp);
+		CHECK_NULL_FREE(Sect_W);
+		CHECK_NULL_FREE(Item_W);
+	}
+	else
+	{
+		COMMLOG(OBS_LOGERROR, "unkown encoding scheme, function %s failed", __FUNCTION__);
+	}
+#else
+	SearchSection_C(linebuf, Sect, Item, iniValue, inifp);
+#endif // WIN32
+}
 
 void GetIniSectionItem(const char* Section, const char* Item, const char* FileName, char* iniValue)
 {
@@ -202,21 +314,19 @@ void GetIniSectionItem(const char* Section, const char* Item, const char* FileNa
     char* linebuf = NULL;
     FILE* inifp = NULL;
 
-    linebuf = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
+	linebuf = getPathBuffer(MAX_MSG_SIZE);
     if (NULL == linebuf)
     {
         return;
     }
-    linebuf[0] = '\0';
 
-	int ret = SetSectionForSearch(Sect, sizeof(Sect), Section, linebuf);
+	errno_t ret = SetSectionForSearch(Sect, sizeof(Sect), Section, linebuf);
 	if (ret)
 	{
 		return;
 	}
-
-    inifp = fopen(FileName, "rb");
-    if(NULL == inifp)
+	ret = file_fopen_s(&inifp, FileName, "r");
+    if(NULL == inifp || ret != 0)
     {
         *iniValue = '\0';
         CHECK_NULL_FREE(linebuf);
@@ -250,35 +360,71 @@ void itoa(int i, char*string)
     *string='\0';
 }
 #endif
+int GET_LOG_PATH_C(char *logPath, const char *tempLogPath) {
+	errno_t err = EOK;
+	if (0 != strlen(tempLogPath))
+	{
+		if (tempLogPath[0] != '.') {
+			size_t logPathLen = strlen(logPath);
+			memset_s(logPath, logPathLen, 0, logPathLen);
+		}
+		else {
 
+		}
+		err = strcat_s(logPath, sizeof(char)*MAX_MSG_SIZE, tempLogPath);
+	}
+	else
+	{
+		err = strcat_s(logPath, sizeof(char)*MAX_MSG_SIZE, "logs");
+	}
+	return err;
+}
+int GET_LOG_PATH_W(wchar_t *logPath, const wchar_t *tempLogPath) {
+	errno_t err = EOK;
+	if (0 != wcslen(tempLogPath))
+	{
+		if (tempLogPath[0] != L'.') {
+			size_t logPathLen = wcslen(logPath);
+			memset_s(logPath, logPathLen * sizeof(wchar_t), 0, logPathLen * sizeof(wchar_t));
+		}
+		else {
+
+		}
+		err = wcscat_s(logPath, sizeof(char)*MAX_MSG_SIZE, tempLogPath);
+	}
+	else
+	{
+		err = wcscat_s(logPath, sizeof(char)*MAX_MSG_SIZE, L"logs");
+	}
+	return err;
+}
 int GET_LOG_PATH(char *logPath, const char *tempLogPath) {
     errno_t err = EOK;
-    if (0 != strlen(tempLogPath))
-    {
-        if(tempLogPath[0] != '.'){
-            size_t logPathLen = strlen(logPath);
-            memset_s(logPath, logPathLen, 0, logPathLen);
-        }else{
-            
-        }
-        err = strcat_s(logPath, sizeof(char)*MAX_MSG_SIZE, tempLogPath);
-    }
-    else
-    {
-        err = strcat_s(logPath, sizeof(char)*MAX_MSG_SIZE, "logs");
-    }
+#ifdef WIN32
+	if (get_file_path_code() == ANSI_CODE) {
+		err = GET_LOG_PATH_C(logPath, tempLogPath);
+	}
+	else if (get_file_path_code() == UNICODE_CODE) {
+		err = GET_LOG_PATH_W((wchar_t*)logPath, (const wchar_t*)tempLogPath);
+	}
+#else
+	err = GET_LOG_PATH_C(logPath, tempLogPath);
+#endif // WIN32
+
     return err;
 }
 
 int copy_file(char *source, char *target)
 {
-    int ret = 0;
-    FILE *fp_src = fopen(source, "r");
+    int ret = 0; 
+	FILE *fp_src = NULL;
+	file_fopen_s(&fp_src, source, "r");
     if (fp_src == NULL)
     {
         return -1;
     }
-    FILE *fp_tar = fopen(target, "w");
+	FILE *fp_tar = NULL;
+	file_fopen_s(&fp_tar, target, "w");
     if (fp_tar == NULL)
     {
         return -1;
@@ -304,64 +450,107 @@ int MoveConf(const char * buf)
 {
     errno_t err = EOK;
     int ret = 0;
-    char* source_conf = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
-    char* target_conf = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
+    char* source_conf = getPathBuffer(MAX_MSG_SIZE);
+    char* target_conf = getPathBuffer(MAX_MSG_SIZE);
     if ((source_conf == NULL) || (target_conf == NULL))
     {
         CHECK_NULL_FREE(source_conf);
 		CHECK_NULL_FREE(target_conf);
         return -1;
     }
-    err = memset_s(source_conf, MAX_MSG_SIZE, 0, MAX_MSG_SIZE);
-    CHECK_ERR_RETURN(err);
-    err = memset_s(target_conf, MAX_MSG_SIZE, 0, MAX_MSG_SIZE);
-    CHECK_ERR_RETURN(err);
 #ifdef WIN32
-    GetModuleFileNameA(NULL, source_conf, MAX_MSG_SIZE - 1);
-    char* chr = strrchr(source_conf, '\\');
-    if (NULL != chr) {
-        *(chr + 1) = '\0';
-    }
-    ret = snprintf_s(target_conf, MAX_MSG_SIZE, MAX_MSG_SIZE - 1, "%s\\OBS.ini", buf);
-    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-    err = strcat_s(source_conf, MAX_MSG_SIZE, "OBS.ini");
-    CHECK_ERR_RETURN(err);
+	if (get_file_path_code() == ANSI_CODE) {
+		GetModuleFileNameA(NULL, source_conf, MAX_MSG_SIZE - 1);
+		char* chr = strrchr(source_conf, '\\');
+		if (NULL != chr) {
+			*(chr + 1) = '\0';
+		}
+		ret = snprintf_s(target_conf, MAX_MSG_SIZE, MAX_MSG_SIZE - 1, "%s\\OBS.ini", buf);
+		CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
+		err = strcat_s(source_conf, MAX_MSG_SIZE, "OBS.ini");
+	}
+	else if (get_file_path_code() == UNICODE_CODE) {
+		GetModuleFileNameW(NULL, (wchar_t*)source_conf, MAX_MSG_SIZE - 1);
+		wchar_t* chr = wcsrchr((wchar_t*)source_conf, L'\\');
+		if (NULL != chr) {
+			*(chr + 1) = L'\0';
+		}
+		ret = _snwprintf_s((wchar_t*)target_conf, MAX_MSG_SIZE, MAX_MSG_SIZE - 1, L"%s\\OBS.ini", (wchar_t*)buf);
+		CheckAndLogNeg(ret, "_snwprintf_s", __FUNCTION__, __LINE__);
+		err = wcscat_s((wchar_t*)source_conf, MAX_MSG_SIZE, L"OBS.ini");
+	}
+	else {
+		return -1;
+	}
 #else
     getCurrentPath(source_conf);
     ret = snprintf_s(target_conf, MAX_MSG_SIZE, MAX_MSG_SIZE - 1, "%s/OBS.ini", buf);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     err = strcat_s(source_conf, MAX_MSG_SIZE, "/OBS.ini");
-    CHECK_ERR_RETURN(err);
 #endif
+	CHECK_ERR_RETURN(err);
     copy_file(source_conf, target_conf);
-    free(source_conf);
-    free(target_conf);
+	CHECK_NULL_FREE(source_conf);
+	CHECK_NULL_FREE(target_conf);
     return 0;
+}
+
+bool isUserSetLogPath() {
+#if defined (WIN32)
+	if (get_file_path_code() == ANSI_CODE)
+	{
+		return strlen(USER_SET_OBS_LOG_PATH) != 0;
+	}
+	else if (get_file_path_code() == UNICODE_CODE)
+	{
+		return wcslen(USER_SET_OBS_LOG_PATH_W) != 0;
+	}
+	else
+	{
+		COMMLOG(OBS_LOGERROR, "unkown encoding scheme, function %s failed", __FUNCTION__);
+		return false;
+	}
+#else
+	return strlen(USER_SET_OBS_LOG_PATH) != 0;
+#endif
 }
 
 int GetConfPath(char *buf)
 {
     errno_t err = EOK;
-    bool log_path = (OBS_LOG_PATH[0] != 0) ? true : false;
-    if (log_path) {
-        err = memcpy_s(buf, sizeof(char)*MAX_MSG_SIZE, OBS_LOG_PATH, MAX_MSG_SIZE);
+	bool ifUserSetLogPath = isUserSetLogPath();
+    if (ifUserSetLogPath) {
+#ifdef WIN32
+		err = path_copy(buf, MAX_MSG_SIZE, USER_SET_OBS_LOG_PATH_W, MAX_MSG_SIZE);
+#else
+		err = path_copy(buf, MAX_MSG_SIZE, USER_SET_OBS_LOG_PATH, MAX_MSG_SIZE);
+#endif
         CHECK_ERR_RETURN(err);
     }
     else
     {
 #if defined __GNUC__ || defined LINUX
         getCurrentPath(buf);
-#else
-        GetModuleFileNameA(NULL, buf, MAX_MSG_SIZE - 1);
+#elif defined (WIN32)
+		if (get_file_path_code() == ANSI_CODE) {
+			GetModuleFileNameA(NULL, buf, MAX_MSG_SIZE - 1);
+		}
+		else if (get_file_path_code() == UNICODE_CODE) {
+			GetModuleFileNameW(NULL, (wchar_t*)buf, MAX_MSG_SIZE - 1);
+		}
+		else {
+			return -2;
+		}
 #endif
     }
-    if (log_path && (!ONLY_SET_LOGCONF))
+    if (ifUserSetLogPath && (!ONLY_SET_LOGCONF))
     {
         MoveConf(buf);
     }
     return EOK;
 }
 
+#ifdef WIN32
 int SetConfPath(char* currentPath, char* buf, char* confPath, char* logPath, char* tempLogPath) 
 {
 	errno_t err = EOK;
@@ -373,9 +562,7 @@ int SetConfPath(char* currentPath, char* buf, char* confPath, char* logPath, cha
 		CHECK_NULL_FREE(tempLogPath);
 		return -1;
 	}
-	memset_s(currentPath, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE * sizeof(char));
-
-	err = memcpy_s(currentPath, sizeof(char)*MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
+	err = path_copy(currentPath, MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
 	if (err != EOK)
 	{
 		CHECK_NULL_FREE(buf);
@@ -385,11 +572,19 @@ int SetConfPath(char* currentPath, char* buf, char* confPath, char* logPath, cha
 		CHECK_NULL_FREE(currentPath);
 		return -1;
 	}
-	char* chr = strrchr(currentPath, '\\');
-	if (NULL != chr) {
-		*(chr + 1) = '\0';
+	if (get_file_path_code() == ANSI_CODE) {
+		char* chr = strrchr(currentPath, '\\');
+		if (NULL != chr) {
+			*(chr + 1) = '\0';
+		}
 	}
-	err = memcpy_s(logPath, sizeof(char)*MAX_MSG_SIZE, currentPath, MAX_MSG_SIZE);
+	else if (get_file_path_code() == UNICODE_CODE) {
+		wchar_t* chr = wcsrchr((wchar_t*)currentPath, L'\\');
+		if (NULL != chr) {
+			*(chr + 1) = L'\0';
+		}
+	}
+	err = path_copy(logPath, MAX_MSG_SIZE, currentPath, MAX_MSG_SIZE);
 	if (err != EOK)
 	{
 		CHECK_NULL_FREE(buf);
@@ -399,7 +594,7 @@ int SetConfPath(char* currentPath, char* buf, char* confPath, char* logPath, cha
 		CHECK_NULL_FREE(currentPath);
 		return -1;
 	}
-	err = memcpy_s(confPath, sizeof(char)*MAX_MSG_SIZE, currentPath, MAX_MSG_SIZE);
+	err = path_copy(confPath, MAX_MSG_SIZE, currentPath, MAX_MSG_SIZE);
 	if (err != EOK)
 	{
 		CHECK_NULL_FREE(buf);
@@ -409,7 +604,13 @@ int SetConfPath(char* currentPath, char* buf, char* confPath, char* logPath, cha
 		CHECK_NULL_FREE(currentPath);
 		return -1;
 	}
-	int ret = strcat_s(confPath, sizeof(char)*MAX_MSG_SIZE, "OBS.ini");
+	int ret = -1;
+	if (get_file_path_code() == ANSI_CODE) {
+		ret = strcat_s(confPath, MAX_MSG_SIZE, "OBS.ini");
+	}
+	else if (get_file_path_code() == UNICODE_CODE) {
+		ret = wcscat_s((wchar_t*)confPath, MAX_MSG_SIZE, L"OBS.ini");
+	}
 	if (ret != 0) {
 		CHECK_NULL_FREE(buf);
 		CHECK_NULL_FREE(confPath);
@@ -420,7 +621,12 @@ int SetConfPath(char* currentPath, char* buf, char* confPath, char* logPath, cha
 	}
 
 	GetIniSectionItem(SECTION_PATH, PATH_VALUE, confPath, tempLogPath);
-	tempLogPath[MAX_MSG_SIZE - 1] = '\0';
+	if (get_file_path_code() == ANSI_CODE) {
+		tempLogPath[MAX_MSG_SIZE - 1] = '\0';
+	}
+	else if (get_file_path_code() == UNICODE_CODE) {
+		((wchar_t*)tempLogPath)[MAX_MSG_SIZE - 1] = L'\0';
+	}
 
 	ret = GET_LOG_PATH(logPath, tempLogPath);
 	if (ret != 0) {
@@ -434,6 +640,14 @@ int SetConfPath(char* currentPath, char* buf, char* confPath, char* logPath, cha
 
 	return 0;
 }
+#endif // WIN32
+
+void LOG_LEVEL_INIT(unsigned int *logLevel, uint64_t logLevelLen)
+{
+    for (uint64_t i = 0; i < logLevelLen; ++i) {
+        logLevel[i] = INVALID_LOG_LEVEL;
+    }
+}
 
 int LOG_INIT()
 {
@@ -442,39 +656,19 @@ int LOG_INIT()
     {
         return -1;
     }else {
-        for (size_t i = 0; i < LOG_CATEGORY; ++i) {
-            logLevel[i] = INVALID_LOG_LEVEL;
-        }
+		LOG_LEVEL_INIT(logLevel, LOG_CATEGORY);
     }
-    char* buf = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
-    if (NULL == buf)
-    {
-        CHECK_NULL_FREE(logLevel);
-        return -1;
-    }
-    memset_s(buf, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE*sizeof(char));
 
-    char* confPath = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
-    if (NULL == confPath)
-    {
-        CHECK_NULL_FREE(buf);
-        CHECK_NULL_FREE(logLevel);
-        return -1;
-    }
-    memset_s(confPath, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE*sizeof(char));
+	char* buf = getPathBuffer(MAX_MSG_SIZE);
 
-    char* logPath = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
-    if (NULL == logPath)
-    {
-        CHECK_NULL_FREE(buf);
-        CHECK_NULL_FREE(confPath);
-        CHECK_NULL_FREE(logLevel);
-        return -1;
-    }
-    memset_s(logPath, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE*sizeof(char));
+    char* confPath = getPathBuffer(MAX_MSG_SIZE);
 
-    char* tempLogPath = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
-    if (NULL == tempLogPath)
+    char* logPath = getPathBuffer(MAX_MSG_SIZE);
+
+    char* tempLogPath = getPathBuffer(MAX_MSG_SIZE);
+
+    if (NULL == tempLogPath || NULL == buf 
+		|| NULL == confPath || NULL == logPath || NULL == logLevel)
     {
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
@@ -482,17 +676,19 @@ int LOG_INIT()
         CHECK_NULL_FREE(logLevel);
         return -1;
     }
-    memset_s(tempLogPath, sizeof(char)*MAX_MSG_SIZE, 0, MAX_MSG_SIZE*sizeof(char));
 
+	errno_t err = EOK;
 #if defined __GNUC__ || defined LINUX
     GetConfPath(buf);
-    if( OBS_LOG_PATH[0] != 0 ) {
-        memcpy_s(buf, sizeof(char)*MAX_MSG_SIZE, OBS_LOG_PATH, MAX_MSG_SIZE);
+    if(USER_SET_OBS_LOG_PATH[0] != 0 ) {
+        err = memcpy_s(buf, sizeof(char)*MAX_MSG_SIZE, USER_SET_OBS_LOG_PATH, MAX_MSG_SIZE);
+		CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     }
     else {        
         getCurrentPath(buf);
     }
-    memcpy_s(confPath, sizeof(char)*MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
+    err = memcpy_s(confPath, sizeof(char)*MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
+	CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     strcat_s(confPath, sizeof(char)*MAX_MSG_SIZE, "/OBS.ini");
 	
 	FILE* confPathFile = fopen(confPath, "r");
@@ -509,9 +705,10 @@ int LOG_INIT()
 	
     GetIniSectionItem(SECTION_PATH, PATH_VALUE, confPath, tempLogPath);
     tempLogPath[MAX_MSG_SIZE - 1] = '\0';
-    memcpy_s(logPath, sizeof(char)*MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
+    err = memcpy_s(logPath, sizeof(char)*MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
+	CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
-    errno_t err = EOK;
+    err = EOK;
     err = strcat_s(logPath, sizeof(char)*MAX_MSG_SIZE, "/");
     err = GET_LOG_PATH(logPath, tempLogPath);
     if (err != EOK) {
@@ -522,11 +719,11 @@ int LOG_INIT()
         CHECK_NULL_FREE(tempLogPath);
         return -1;
     }
-#else
-	errno_t err =EOK;
+#elif defined WIN32
+	err = EOK;
     GetConfPath(buf);
 
-    char* currentPath = (char*)malloc(sizeof(char)*MAX_MSG_SIZE);
+    char* currentPath = getPathBuffer(MAX_MSG_SIZE);
 	int ret = SetConfPath(currentPath, buf, confPath, logPath, tempLogPath);
 	if (ret)
 	{
@@ -546,6 +743,27 @@ int LOG_INIT()
   //  GetIniSectionItem("ProductConfig", "support_API", confPath, tempLogPath);
 #if defined ANDROID
     int iRet = LogInitForAndroid(PRODUCT, confPath, logLevel, logPath);
+#elif defined WIN32
+
+	int iRet = 0;
+	if (get_file_path_code() == ANSI_CODE) {
+		wchar_t* confPathW = GetWcharFromChar(confPath);
+		wchar_t* logPathW = GetWcharFromChar(logPath);
+		if (confPathW == NULL || logPathW == NULL) {
+			CHECK_NULL_FREE(confPathW);
+			CHECK_NULL_FREE(logPathW);
+			iRet = -1;
+		}
+		else {
+			iRet = LogInit_W(PRODUCT, confPathW, logLevel, logPathW);
+			CHECK_NULL_FREE(confPathW);
+			CHECK_NULL_FREE(logPathW);
+		}
+		
+	}
+	else if (get_file_path_code() == UNICODE_CODE) {
+		iRet = LogInit_W(PRODUCT, (const wchar_t*)confPath, logLevel, (const wchar_t*)logPath);
+	}
 #else
     int iRet = LogInit(PRODUCT, confPath, logLevel, logPath);
 #endif

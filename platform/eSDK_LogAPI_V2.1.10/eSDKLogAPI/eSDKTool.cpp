@@ -38,9 +38,9 @@ eSDKTool::~eSDKTool(void)
 std::string eSDKTool::GetDllPath()
 {
 #ifdef WIN32
-	HMODULE hModule = GetModuleHandle("eSDKLogAPI.dll");
+	HMODULE hModule = GetModuleHandleA("eSDKLogAPI.dll");
 	char path[MAX_PATH] = {0};
-	GetModuleFileName(hModule, path, MAX_PATH);
+	GetModuleFileNameA(hModule, path, MAX_PATH);
 	std::string strPath(path);
 	strPath = strPath.substr(0, strPath.rfind("\\")+1);
 	return strPath;
@@ -83,7 +83,7 @@ std::string eSDKTool::GetAppPath()
 {
 #ifdef WIN32
 	char path[MAX_PATH] = {0};
-	GetModuleFileName(NULL, path, MAX_PATH);
+	GetModuleFileNameA(NULL, path, MAX_PATH);
 	std::string strPath(path);
 	strPath = strPath.substr(0, strPath.rfind("\\")+1);
 	return strPath;
@@ -97,36 +97,37 @@ std::string eSDKTool::GetAppPath()
 #endif
 }
 
+
 bool eSDKTool::IsPathFileExist(const std::string& path)
 {
 #ifdef WIN32
-    if (PathFileExists(path.c_str()))
+	if (PathFileExistsA(path.c_str()))
 	{
 		return true;
 	}
-    
+
 #elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)
-    NSFileManager *manager = [NSFileManager defaultManager];
-    
-    BOOL isDir;
-    if ([manager fileExistsAtPath:[NSString stringWithUTF8String:path.c_str()] isDirectory:&isDir])
-    {
-        // 存在
-        return true;
-    }
+	NSFileManager *manager = [NSFileManager defaultManager];
+
+	BOOL isDir;
+	if ([manager fileExistsAtPath : [NSString stringWithUTF8String : path.c_str()] isDirectory : &isDir])
+	{
+		// 存在
+		return true;
+	}
 #else
 	if (0 == access(path.c_str(), 0))
 	{
 		return true;
 	}
 #endif
-    return false;
+	return false;
 }
 
 bool eSDKTool::IsRelativePath(const std::string& path)
 {
 #ifdef WIN32
-	return (PathIsRelative(path.c_str()) ? true : false);
+	return (PathIsRelativeA(path.c_str()) ? true : false);
 #elif defined(TARGET_OS_IPHONE)||defined(TARGET_OS_MAC)
     NSString* strPath = [[NSString alloc] initWithUTF8String:path.c_str()];
     BOOL bAbsPath = [strPath isAbsolutePath];
@@ -275,7 +276,7 @@ bool eSDKTool::CreateMultipleDirectory(const std::string& path)
 void eSDKTool::getCurrentPath(std::string& strPath)
 {
 #ifdef WIN32
-	HMODULE hModule = GetModuleHandle("eSDKLogAPI.dll");
+	HMODULE hModule = GetModuleHandleA("eSDKLogAPI.dll");
 	char path[MAX_PATH+1] = {0};
 	::GetModuleFileNameA(hModule, path, MAX_PATH);
 	std::string strModulePath = path;
@@ -502,7 +503,7 @@ void eSDKTool::GetIniSectionItem(const char* Section, const char* Item, const ch
 	char* tchValue = new char[LENGTH];
 	memset_s(tchValue, LENGTH, 0, LENGTH*sizeof(char));
 #ifdef WIN32
-	(void)::GetPrivateProfileString(Section, Item, "", tchValue, LENGTH-1, FileName);
+	(void)::GetPrivateProfileStringA(Section, Item, "", tchValue, LENGTH-1, FileName);
 	iniValue = tchValue;
 #elif defined(TARGET_MAC_OS)||defined(TARGET_OS_IPHONE)//to support ios, get from plist file
     NSMutableDictionary* dict =  [ [ NSMutableDictionary alloc ] initWithContentsOfFile:[NSString stringWithUTF8String:FileName]];
@@ -587,6 +588,30 @@ void eSDKTool::GetIniSectionItem(const char* Section, const char* Item, const ch
 	return ;
 }
 //lint +e438
+#endif
+
+
+#ifdef WIN32
+void eSDKTool::GetIniSectionItem(const wchar_t* Section, const wchar_t* Item, const wchar_t* FileName, std::wstring& iniValue) {
+	const int LENGTH = 1024;
+	wchar_t* tchValue = new wchar_t[LENGTH];
+	memset_s(tchValue, LENGTH * sizeof(wchar_t), 0, LENGTH * sizeof(wchar_t));
+	(void)::GetPrivateProfileStringW(Section, Item, L"", tchValue, LENGTH - 1, FileName);
+	iniValue = tchValue;
+	delete[] tchValue;
+	tchValue = NULL;
+
+}
+
+std::wstring eSDKTool::GetDllPath_W()
+{
+	HMODULE hModule = GetModuleHandleW(L"eSDKLogAPI.dll");
+	wchar_t path[MAX_PATH] = { 0 };
+	GetModuleFileNameW(hModule, path, MAX_PATH);
+	std::wstring strPath(path);
+	strPath = strPath.substr(0, strPath.rfind(L"\\") + 1);
+	return strPath;
+}
 #endif
 
 #ifndef WIN32
@@ -747,7 +772,7 @@ bool eSDKTool::IsDir(const std::string& path)
 {
 	bool bRet = false;
 #ifdef WIN32
-	if (FILE_ATTRIBUTE_DIRECTORY == PathIsDirectory(path.c_str()))
+	if (FILE_ATTRIBUTE_DIRECTORY == PathIsDirectoryA(path.c_str()))
 	{
 		bRet = true;
 	}
@@ -786,3 +811,22 @@ unsigned int eSDKTool::StringToOCT(const std::string& strNumber)
 	return nRet;
 }
 // std::string to Octal(int)
+
+#ifdef WIN32
+unsigned int eSDKTool::StringToOCT(const std::wstring& strNumber)
+{
+	unsigned int nRet = 0;
+
+	for (unsigned int i = 0; i < strNumber.length(); ++i)
+	{
+		if (strNumber[i] < L'0' || strNumber[i] > L'9')
+		{
+			return 0;
+		}
+
+		nRet = 8 * nRet + (strNumber[i] - L'0');
+	}
+
+	return nRet;
+}
+#endif

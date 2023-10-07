@@ -213,6 +213,7 @@ typedef enum
     * obs-meta errors
     */
      OBS_STATUS_MetadataNameDuplicate,
+     OBS_STATUS_GET_UPLOAD_ID_FAILED,
     
 	
     OBS_STATUS_BUTT
@@ -714,16 +715,6 @@ typedef struct obs_copy_destination_object_info
     char *etag_return;
 }obs_copy_destination_object_info;
 
-typedef struct _obs_upload_file_configuration
-{
-    char *upload_file;
-    uint64_t part_size;
-    char * check_point_file;
-    int enable_check_point;
-    int task_num;
-    int *pause_upload_flag;
-}obs_upload_file_configuration;
-
 typedef struct _obs_upload_file_server_callback
 {
     char * callback_url;
@@ -1083,6 +1074,7 @@ typedef struct obs_http_request_option
     char *proxy_host;
     char *proxy_auth;
     char *ssl_cipher_list;
+    bool forbid_reuse_tcp;
     obs_http2_switch http2_switch;
     obs_bbr_switch   bbr_switch;
 	obs_auth_switch  auth_switch;
@@ -1161,6 +1153,17 @@ typedef struct obs_put_properties
 	metadata_action_indicator metadata_action;
     obs_upload_file_server_callback server_callback;
 } obs_put_properties;
+
+typedef struct _obs_upload_file_configuration
+{
+    char *upload_file;
+    uint64_t part_size;
+    char * check_point_file;
+    int enable_check_point;
+    int task_num;
+    int *pause_upload_flag;
+    obs_put_properties *put_properties;
+}obs_upload_file_configuration;
 
 typedef struct server_side_encryption_params
 {

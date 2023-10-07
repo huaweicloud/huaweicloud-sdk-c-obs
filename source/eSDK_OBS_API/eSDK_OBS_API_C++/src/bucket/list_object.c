@@ -48,7 +48,8 @@ obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element
         memset_s(strTmpSource, strTmpSourceLen, 0, strTmpSourceLen);
         if (ret = strncpy_s(strTmpSource, strTmpSourceLen, data, data_len))
         {
-            COMMLOG(OBS_LOGERROR, "in %s line %s strncpy_s error, code is %d.", __FUNCTION__, __LINE__, ret);
+            COMMLOG(OBS_LOGERROR, "in %s line %d strncpy_s error, code is %d.", __FUNCTION__, __LINE__, ret);
+            CHECK_NULL_FREE(strTmpSource);
             return OBS_STATUS_InternalError;
         }
         char* strTmpOut = UTF8_To_String(strTmpSource);

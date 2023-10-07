@@ -7,7 +7,8 @@ endif
 CXXFLAGS = -fPIC -fstack-protector-all -Wl,-z,relro,-z,now
 SHARED = -shared
 TARGET = libeSDKLogAPI.so
-INCLUDEDIR = -I ../../../platform/huaweisecurec/include -I ../output/include -I ../ -I ../vos -I ../log4cpp/include
+${warning spdlog_dir is ${spdlog_dir}}
+INCLUDEDIR = -I ../../../platform/huaweisecurec/include -I ../output/include -I ../ -I ../vos -I ../../../../${spdlog_dir}/include
 
 ../../../platform/huaweisecurec/src/%.o : ../../../platform/huaweisecurec/src/%.c
 	$(CXX) $(CXXFLAGS) $(INCLUDEDIR) -c -DENV_LINUX -DLOG4CPP_HAVE_SSTREAM $< -o $@ 
@@ -23,9 +24,9 @@ OBJS += $(SECUREC_OBJS)
 
 $(TARGET): $(OBJS)
 ifeq ($(ARCH), aarch64)
-	$(CXX) $(CXXFLAGS) $(SHARED) -DDEBUG -DENV_LINUX $^ -L../C/aarch64 -llog4cpp -o $(TARGET) -lpthread
+	$(CXX) $(CXXFLAGS) $(SHARED) -DDEBUG -DENV_LINUX $^ -L../../../../${spdlog_dir}/lib -lspdlog -o $(TARGET) -lpthread
 else
-	$(CXX) $(CXXFLAGS) $(SHARED) -DDEBUG -DENV_LINUX $^ -L../C/linux_64 -llog4cpp -o $(TARGET) -lpthread
+	$(CXX) $(CXXFLAGS) $(SHARED) -DDEBUG -DENV_LINUX $^ -L../../../../${spdlog_dir}/lib -lspdlog -o $(TARGET) -lpthread
 endif
 
 .PHONY: clean

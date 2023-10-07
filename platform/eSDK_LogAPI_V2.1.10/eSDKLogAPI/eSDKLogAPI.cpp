@@ -29,11 +29,11 @@ using namespace eSDK;
 
 // snprintf定义
 #if defined _MSC_VER  || defined WIN32
-# define SNPRINTF  _vsnprintf_s
+# define SNPRINTF_S  _vsnprintf_s
 #endif 
 
 #if defined __GNUC__ || defined LINUX
-# define SNPRINTF  vsnprintf_s
+# define SNPRINTF_S  vsnprintf_s
 #endif
 
 #ifndef USE_OBS_STATIC_LIB
@@ -65,6 +65,20 @@ int _STD_CALL_ LogInitForAndroid(const char* product, const char* iniInfo, unsig
 	return RET_SUCCESS;
 }
 // 安卓读取无法读取ini文件，故直接传送ini文件内容
+#elif defined WIN32
+int _STD_CALL_ LogInit_W(const char* product, const wchar_t* iniFile, unsigned int logLevel[LOG_CATEGORY], const wchar_t* logPath) {
+
+	CheckPointerReturnCode(product, RET_NULL_POINTER);
+	CheckPointerReturnCode(iniFile, RET_NULL_POINTER);
+	CheckPointerReturnCode(logPath, RET_NULL_POINTER);
+
+	if (RET_SUCCESS != LOGMGRINSTANE().init(product, iniFile, logLevel, logPath))
+	{
+		return RET_INVALID_PARA;
+	}
+
+	return RET_SUCCESS;
+}
 #else
 
 int _STD_CALL_ LogInit(const char* product, const char* iniFile, unsigned int logLevel[LOG_CATEGORY], const char* logPath)
@@ -137,7 +151,7 @@ void _STD_CALL_ Log_Interface_Info(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 	strInfoContent.append(para);
 
@@ -190,7 +204,7 @@ void _STD_CALL_ Log_Interface_Error(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 	strErrContent.append(para);
 
@@ -233,7 +247,7 @@ void _STD_CALL_ Log_Operate_Debug(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 
 	strDebugContent.append(para);
@@ -273,7 +287,7 @@ void _STD_CALL_ Log_Operate_Info(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 
 	strInfoContent.append(para);
@@ -313,7 +327,7 @@ void _STD_CALL_ Log_Operate_Warn(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 
 	strWarnContent.append(para);
@@ -353,7 +367,7 @@ void _STD_CALL_ Log_Operate_Error(
 	char para[1024] = {0};
 	va_list args;
 	va_start(args, params);
-	(void)SNPRINTF(para, sizeof(para), sizeof(para) - 1, params, args);
+	(void)SNPRINTF_S(para, sizeof(para), sizeof(para) - 1, params, args);
 	va_end(args);
 
 	strErrorContent.append(para);
