@@ -128,6 +128,12 @@ mkdir cmake
 cd cmake
 cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DSPDLOG_VERSION=${SPDLOG_VERSION}
 make 
+
+if [ 0 -ne $? ];then
+    echo 'make failed in build.sh'
+	exit 1
+fi
+
 cd ../../
 #make clean
 #make

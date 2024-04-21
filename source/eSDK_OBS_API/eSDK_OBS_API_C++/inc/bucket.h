@@ -67,11 +67,12 @@ static char * g_storage_class_obs[OBS_STORAGE_CLASS_BUTT] =
     "COLD"
 };
 
+#define MAX_BUCKET_DATA_DOC_LEN (20 * 1024 + 1)
 typedef struct update_bucket_common_data
 {
     obs_response_properties_callback *properties_callback;
     obs_response_complete_callback *complete_callback;
-    char doc[1024];
+    char doc[MAX_BUCKET_DATA_DOC_LEN];
     int docLen;
     int docBytesWritten;
     void *callback_data;
@@ -204,6 +205,7 @@ typedef struct get_bucket_common_data
     string_buffer(common_data, 256);
 } get_bucket_common_data;
 
+#define MAX_BUCKET_POLICY_LENGTH (21 * 1024)
 typedef struct get_bucket_policy_data
 {
     simple_xml simpleXml;
@@ -215,7 +217,8 @@ typedef struct get_bucket_policy_data
     int policyReturnSize;
     char *policyReturn;
 
-    string_buffer(policy, 1024);
+    string_buffer(policy, MAX_BUCKET_POLICY_LENGTH);
+	int currentPolicyLength;
 } get_bucket_policy_data;
 
 typedef struct get_bucket_storageInfo_data

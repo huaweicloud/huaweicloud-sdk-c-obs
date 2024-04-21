@@ -125,7 +125,6 @@ obs_status parse_xml_list_versions(list_versions_data *version_data, const char 
     const char *data, int data_len)
 {
     int fit = 1;
-    int ret = 0;
 
     list_bucket_versions *versions = &(version_data->versions[version_data->versions_count]);
     if (!strcmp(element_path, "ListVersionsResult/NextKeyMarker")) {
@@ -157,6 +156,7 @@ obs_status parse_xml_list_versions(list_versions_data *version_data, const char 
     {
 #ifdef WIN32
         int strTmpSourceLen = data_len + 1;
+		int ret = 0;
         if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_STR_TMP_SIZE) {
             COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
             return OBS_STATUS_OutOfMemory;

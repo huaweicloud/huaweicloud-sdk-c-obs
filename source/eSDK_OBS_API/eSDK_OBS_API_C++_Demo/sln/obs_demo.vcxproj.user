@@ -1,7 +1,23 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerEnvironment>PATH=%PATH%;$(ProjectDir)..\..\eSDK_OBS_API_C++\build\vc100\Debug;$(ProjectDir)..\..\eSDK_OBS_API_C++\bin\win64_x64_msvc\release;$(ProjectDir)..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\release_x64;$(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>PATH=%PATH%;$(ProjectDir)..\..\eSDK_OBS_API_C++\build\vc100\$(Configuration);$(ProjectDir)..\..\eSDK_OBS_API_C++\bin\win64_x64_msvc\release;$(ProjectDir)..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug_x64;$(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>put_object_from_file test911 exampleObjectKey D:\\test.zip customdomain=obs.testcname.com protocol=https use_obs_auth</LocalDebuggerCommandArguments>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LocalDebuggerEnvironment>PATH=%PATH%;$(ProjectDir)..\..\eSDK_OBS_API_C++\build\vc100\$(Configuration);$(ProjectDir)..\..\eSDK_OBS_API_C++\bin\win64_x64_msvc\release;$(ProjectDir)..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug_x64;$(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>put_object_from_file test911 exampleObjectKey D:\\test.zip customdomain=obs.testcname.com protocol=https use_obs_auth</LocalDebuggerCommandArguments>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LocalDebuggerEnvironment>PATH=%PATH%;$(ProjectDir)..\..\eSDK_OBS_API_C++\build\vc100\$(Configuration);$(ProjectDir)..\..\eSDK_OBS_API_C++\bin\win32_x86_msvc\release;$(ProjectDir)..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug;$(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>put_object_from_file test911 exampleObjectKey D:\\test.zip customdomain=obs.testcname.com protocol=https use_obs_auth</LocalDebuggerCommandArguments>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LocalDebuggerEnvironment>PATH=%PATH%;$(ProjectDir)..\..\eSDK_OBS_API_C++\build\vc100\$(Configuration);$(ProjectDir)..\..\eSDK_OBS_API_C++\bin\win32_x86_msvc\release;$(ProjectDir)..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug;$(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>put_object_from_file test911 exampleObjectKey D:\\test.zip customdomain=obs.testcname.com protocol=https use_obs_auth</LocalDebuggerCommandArguments>
   </PropertyGroup>
 </Project>

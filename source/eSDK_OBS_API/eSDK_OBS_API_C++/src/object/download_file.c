@@ -393,15 +393,16 @@ int readCheckpointFile_Download(download_file_summary * pstDownLoadSummary,
 void removeTempFiles(const char * fileName, download_file_part_info * downloadPartList, int removeAll)
 {
     download_file_part_info * partNode = downloadPartList;
-    char fileNameTemp[1024] = { 0 };
+    char* fileNameTemp = getPathBuffer(ARRAY_LENGTH_1024);
     if ((fileName == NULL) || (downloadPartList == NULL))
     {
+		CHECK_NULL_FREE(fileNameTemp);
         return;
     }
 
     if (removeAll)
     {
-        remove(fileName);
+		remove_file(fileName);
     }
 
     while (partNode)
@@ -415,12 +416,13 @@ void removeTempFiles(const char * fileName, download_file_part_info * downloadPa
 #endif
         if (partNode->downloadStatus != COMBINE_SUCCESS)
         {
-            int ret = sprintf_s(fileNameTemp, ARRAY_LENGTH_1024, "%s.%d", fileName, partNode->part_num);
-            CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
-            remove(fileNameTemp);
+            int ret = temp_part_file_path_printf(fileNameTemp, ARRAY_LENGTH_1024, fileName, partNode->part_num);
+			CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
+			remove_file(fileNameTemp);
         }
         partNode = partNode->next;
     }
+	CHECK_NULL_FREE(fileNameTemp);
 }
 
 int setDownloadpartList(download_file_summary *pstDownLoadFileSummaryNew, uint64_t downloadPartsize,
@@ -942,21 +944,21 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
     download_file_callback_data  data;
     data.fdStorefile = -1;
     int fd = -1;
-    char * fileNameTemp = (char*)malloc(1024);
+	size_t fileNameTempLen = file_path_strlen(storeFileName) + 10;
+    char * fileNameTemp = getPathBuffer(fileNameTempLen);
 
     if(fileNameTemp == NULL){
         COMMLOG(OBS_LOGERROR, "malloc failed in function: %s,line %d", __FUNCTION__, __LINE__);
         return 1;
     }
 
-    int ret = sprintf_s(fileNameTemp, 1024, "%s.%d", storeFileName, part_num);
+	int ret = temp_part_file_path_printf(fileNameTemp, fileNameTempLen, storeFileName, part_num);
     CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
 
     (void)file_sopen_s(&fd, fileNameTemp, _O_BINARY | _O_RDWR | _O_CREAT,
         _SH_DENYNO, _S_IREAD | _S_IWRITE);
 
-    free(fileNameTemp);
-    fileNameTemp = NULL;
+	CHECK_NULL_FREE(fileNameTemp);
 
     if (fd == -1)
     {
@@ -1054,6 +1056,7 @@ void * DownloadThreadProc_linux(void* param)
 
     if (fd == -1)
     {
+		checkAndLogStrError(SYMBOL_NAME_STR(open), __FUNCTION__, __LINE__);
         COMMLOG(OBS_LOGERROR, "open store file failed, partnum[%d]\n", part_num);
         return NULL;
     }
@@ -1201,7 +1204,7 @@ void startDownloadThreads(download_params * pstDownloadParams,
     {
         COMMLOG(OBS_LOGWARN, "startDownloadThreads: downloadFileProcDataList malloc failed\n");
         if (pstDownloadParams->response_handler->complete_callback) {
-            (pstDownloadParams->response_handler->complete_callback)(OBS_STATUS_InternalError, 0, callback_data);
+            (pstDownloadParams->response_handler->complete_callback)(OBS_STATUS_OutOfMemory, 0, callback_data);
         }
         return;
     }
@@ -1222,7 +1225,7 @@ void startDownloadThreads(download_params * pstDownloadParams,
     {
         COMMLOG(OBS_LOGWARN, "startDownloadThreads: arrThread malloc failed\n", i);
         if (pstDownloadParams->response_handler->complete_callback) {
-            (pstDownloadParams->response_handler->complete_callback)(OBS_STATUS_InternalError, 0, callback_data);
+            (pstDownloadParams->response_handler->complete_callback)(OBS_STATUS_OutOfMemory, 0, callback_data);
         }
         CHECK_NULL_FREE(downloadFileProcDataList);
         return;
@@ -1319,6 +1322,7 @@ int combinePartsFileRead(uint64_t remain_bytes, int bytesToRead, int bytesReadOu
         if (bytesReadOut < 0)
         {
             COMMLOG(OBS_LOGWARN, "combinePartsFile: bytesReadOut is negative");
+			checkAndLogStrError(SYMBOL_NAME_STR(read), __FUNCTION__, __LINE__);
             writeSuccess = 0;
             break;
         }
@@ -1360,13 +1364,13 @@ void combinePartsFileSuccess(download_file_part_info *partNode, const char *chec
 #endif // defined __GNUC__ || defined LINUX
         //must resure do remove tempfile after updateCheckPoint(COMBINE_SUCCESS)
     }
-    remove(fileNameTemp);
+    remove_file(fileNameTemp);
 }
 
 int combinePartsFile(const char * fileName, download_file_part_info * downloadPartList, const char * check_point_file, void *xmlwrite_mutex)
 {
     download_file_part_info * partNode = downloadPartList;
-    char fileNameTemp[1024] = { 0 };
+    char* fileNameTemp = getPathBuffer(LENGTH_1024);
     int fdDest = -1;
     int fdSrc = -1;
     uint64_t remain_bytes = 0;
@@ -1380,6 +1384,7 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
     is_true = ((fileName == NULL) || (downloadPartList == NULL));
     if (is_true)
     {
+		CHECK_NULL_FREE(fileNameTemp);
         return -1;
     }
 #if defined WIN32
@@ -1389,10 +1394,15 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
 
 #if defined __GNUC__ || defined LINUX
     fdDest = open(fileName, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+	if (fdDest == -1)
+	{
+		checkAndLogStrError(SYMBOL_NAME_STR(open), __FUNCTION__, __LINE__);
+	}
 #endif
     if (fdDest == -1)
     {
         COMMLOG(OBS_LOGERROR, "%s open file[%s] failed\n", "combinePartsFile", fileName);
+		CHECK_NULL_FREE(fileNameTemp);
         return -1;
     }
 
@@ -1402,6 +1412,7 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
         COMMLOG(OBS_LOGERROR, "malloc failed.");
         close(fdDest);
         fdDest = -1;
+		CHECK_NULL_FREE(fileNameTemp);
         return -1;
     }
 
@@ -1418,6 +1429,7 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
             {
                 free(buff);
                 buff = NULL;
+				CHECK_NULL_FREE(fileNameTemp);
                 return -1;
             }
 #else
@@ -1425,6 +1437,7 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
             {
                 free(buff);
                 buff = NULL;
+				CHECK_NULL_FREE(fileNameTemp);
                 return -1;
             }
 #endif
@@ -1432,7 +1445,8 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
             continue;
         }
 
-        int ret = sprintf_s(fileNameTemp, ARRAY_LENGTH_1024, "%s.%d", fileName, partNode->part_num);
+        int ret = temp_part_file_path_printf(fileNameTemp, 
+			ARRAY_LENGTH_1024, fileName, partNode->part_num);
         CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
 
 #if defined WIN32
@@ -1444,6 +1458,9 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
 #if defined __GNUC__ || defined LINUX
         sleep(0);
         fdSrc = open(fileNameTemp, O_RDONLY);
+		if (fdSrc == -1) {
+			checkAndLogStrError(SYMBOL_NAME_STR(open), __FUNCTION__, __LINE__);
+		}
 #endif
         if (fdSrc == -1)
         {
@@ -1452,6 +1469,7 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
             fdDest = -1;
             free(buff);
             buff = NULL;
+			CHECK_NULL_FREE(fileNameTemp);
             return -1;
         }
 
@@ -1486,9 +1504,10 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
     is_true = ((writeSuccess == 0) && (check_point_file == NULL));
     if (is_true)
     {
-        (void)remove(fileName);
+        (void)remove_file(fileName);
     }
 
+	CHECK_NULL_FREE(fileNameTemp);
     return 0;
 }
 
@@ -1565,27 +1584,44 @@ int get_download_isfirst_time_setFile(obs_download_file_configuration *download_
     int isFirstTime)
 {
     is_true = ((download_file_config->downLoad_file == NULL)
-        || (!strlen(download_file_config->downLoad_file)));
+        || (!file_path_strlen(download_file_config->downLoad_file)));
     if (is_true)
     {
+#if defined WIN32
+        if(get_file_path_code() == ANSI_CODE){
+            errno_t err = EOK;
+            err = memcpy_s(storeFile, ARRAY_LENGTH_1024, key, strlen(key) + 1);
+            CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+        } else if(get_file_path_code() == UNICODE_CODE){
+        	wchar_t* wcharKey = GetWcharFromChar(key);
+        	if (wcharKey != NULL) {
+        		errno_t err = path_copy(storeFile, ARRAY_LENGTH_1024, wcharKey, file_path_strlen((char const*)wcharKey) + 1);
+        		CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+        		CHECK_NULL_FREE(wcharKey);
+        	}
+        } else {
+        
+        }
+#endif
+
+#if defined __GNUC__ || defined LINUX
         errno_t err = EOK;
         err = memcpy_s(storeFile, ARRAY_LENGTH_1024, key, strlen(key) + 1);
         CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+#endif
     }
     else
     {
-        errno_t err = EOK;
-        err = memcpy_s(storeFile, ARRAY_LENGTH_1024, download_file_config->downLoad_file,
-            strlen(download_file_config->downLoad_file) + 1);
+        errno_t err = path_copy(storeFile, ARRAY_LENGTH_1024, download_file_config->downLoad_file, 
+			file_path_strlen(download_file_config->downLoad_file)+1);
         CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     }
     is_true = ((download_file_config->check_point_file != NULL)
-        && (strlen(download_file_config->check_point_file) != 0));
+        && (file_path_strlen(download_file_config->check_point_file) != 0));
     if (is_true)
     {
-        errno_t err = EOK;
-        err = memcpy_s(checkpointFile, ARRAY_LENGTH_1024, download_file_config->check_point_file,
-            strlen(download_file_config->check_point_file) + 1);
+        errno_t err = path_copy(checkpointFile, ARRAY_LENGTH_1024, download_file_config->check_point_file,
+			file_path_strlen(download_file_config->check_point_file) + 1);
         if (err != EOK)
         {
             COMMLOG(OBS_LOGWARN, "get_download_isfirst_time: memcpy_s failed!\n");
@@ -1697,18 +1733,18 @@ void download_complete_handle_success(obs_download_file_configuration *download_
         {
             handler->download_file_callback(OBS_STATUS_OK, strReturn, 0, NULL, callback_data);
         }
-        remove(checkpointFile);
+        remove_file(checkpointFile);
     }
     else
     {
-        COMMLOG(OBS_LOGERROR, "DownloadFile combine failed\n");
+        COMMLOG(OBS_LOGERROR, "DownloadFile combine failed\n"); 
         if (download_file_config->enable_check_point == 0)
         {
             removeTempFiles(storeFile, pstDownloadFilePartInfoList, 1);
         }
         if (handler->download_file_callback)
         {
-            handler->download_file_callback(OBS_STATUS_InternalError,
+            handler->download_file_callback(OBS_STATUS_OpenFileFailed,
                 "DownloadFile combine failed\n", 0, NULL, callback_data);
         }
     }
@@ -1845,13 +1881,13 @@ void download_file(const obs_options *options, char *key, char* version_id,
 {
     download_file_summary downLoadFileInfo;
     int retVal = -1;
-    char storeFile[1024] = { 0 };
+    char* storeFile = getPathBuffer(1024);
     int isFirstTime = 1;
     download_file_part_info * pstDownloadFilePartInfoList = NULL;
     download_file_part_info * pstPartInfoListDone = NULL;
     download_file_part_info * pstPartInfoListNotDone = NULL;
     int partCount = 0;
-    char checkpointFile[1024];
+    char* checkpointFile = getPathBuffer(1024);
     int partCountToProc = 0;
     uint64_t part_size = 0;
     int is_true = 0;
@@ -1870,6 +1906,8 @@ void download_file(const obs_options *options, char *key, char* version_id,
             key,
             version_id);
         (void)(*(handler->response_handler.complete_callback))(ret_status, 0, callback_data);
+		CHECK_NULL_FREE(storeFile);
+		CHECK_NULL_FREE(checkpointFile);
         return;
     }
     //if the storage is glacier, restore the object firstly
@@ -1880,6 +1918,8 @@ void download_file(const obs_options *options, char *key, char* version_id,
         {
             COMMLOG(OBS_LOGERROR, "in DownloadFile restoreGlacierObject failed(%d).", ret_status);
             (void)(*(handler->response_handler.complete_callback))(ret_status, 0, callback_data);
+			CHECK_NULL_FREE(storeFile);
+			CHECK_NULL_FREE(checkpointFile);
             return;
         }
     }
@@ -1902,8 +1942,10 @@ void download_file(const obs_options *options, char *key, char* version_id,
         {
             if (download_file_config->enable_check_point)
             {
-                remove(checkpointFile);
+                remove_file(checkpointFile);
             }
+			CHECK_NULL_FREE(storeFile);
+			CHECK_NULL_FREE(checkpointFile);
             return;
         }
     }
@@ -1943,4 +1985,6 @@ void download_file(const obs_options *options, char *key, char* version_id,
     partCountToProc = download_file_linux(download_file_config, pstPartInfoListDone, pstPartInfoListNotDone,
         stDownloadParams, partCountToProc, checkpointFile, handler, callback_data, storeFile, partCount);
 #endif
+	CHECK_NULL_FREE(storeFile);
+	CHECK_NULL_FREE(checkpointFile);
 }

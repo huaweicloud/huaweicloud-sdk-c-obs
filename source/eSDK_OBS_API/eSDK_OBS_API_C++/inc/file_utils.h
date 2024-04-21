@@ -17,6 +17,7 @@
 
 #include <sys/stat.h>
 #include <libxml/tree.h>
+#define SYMBOL_NAME_STR(x) #x
 int checkPointFileSave(const char *filename, xmlDocPtr doc);
 xmlDocPtr checkPointFileRead(const char *filename, const char *encoding, int options);
 int file_path_cmp(char const* path1, char const* path2);
@@ -25,11 +26,14 @@ int file_path_append(char* destination, size_t destinationSize);
 int path_copy(void* const destination, size_t const destinationSize,
 	void const* const source, size_t const sourceSize);
 char *getPathBuffer(size_t bufferLen);
+int temp_part_file_path_printf(char * fileNameTempBuffer,
+	size_t const fileNameTempBufferCount, const char * storeFileName, int part_num);
 int checkpoint_file_path_printf(char* const path_buffer
 	, size_t const path_buffer_count, char const* uploadFileName);
 size_t  file_path_strlen(char const* filePath);
 int file_fopen_s(FILE** _Stream, const char *filename, const char *mode);
 char* file_path_fgets(char* _Buffer, int _MaxCount, FILE* _Stream);
+void checkAndLogStrError(const char* failedFuncName, const char* funcName, int lineNum);
 #if defined (WIN32)
 wchar_t *GetWcharFromChar(const char *char_str);
 int file_sopen_s(int* pfh, const char *filename, int oflag, int shflag, int pmode);

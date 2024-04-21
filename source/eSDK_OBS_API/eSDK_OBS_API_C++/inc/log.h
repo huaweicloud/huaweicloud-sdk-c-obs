@@ -67,13 +67,6 @@ do{\
 
 
 
-typedef enum
-{
-    OBS_LOGDEBUG = 0,
-    OBS_LOGINFO,
-    OBS_LOGWARN,
-    OBS_LOGERROR
-}OBS_LOGLEVEL;
 
 #if defined __GNUC__ || defined LINUX
 typedef struct
@@ -140,6 +133,11 @@ void LOG_EXIT();
 ss.
  **/
 void COMMLOG(OBS_LOGLEVEL level, const char *pszFormat, ...);
+/**
+ * get current thread id
+ *
+ **/
+unsigned long thread_id(void);
 #if defined __GNUC__ || defined LINUX
 void itoa(int i, char*string);
 #endif
@@ -199,6 +197,7 @@ void itoa(int i, char*string);
 void NULLLOG();
 void CheckAndLogNoneZero(int, const char*, const char*, unsigned long);
 void CheckAndLogNeg(int, const char*, const char*, unsigned long);
+int CheckAndLogNULL(void* ptr, const char* ptrName, const char* name, const char* funcName, unsigned long line);
 
 
 #endif

@@ -35,7 +35,9 @@ void delete_object(const obs_options *options, obs_object_info *object_info,
         safe_append("versionId", object_info->version_id, strlen(object_info->version_id), handler->complete_callback);
     }
 
-    copy_options_and_init_params(options, &params, &use_api, handler, callback_data);
+	if (OBS_STATUS_OK != copy_options_and_init_params(options, &params, &use_api, handler, callback_data)) {
+		return;
+	}
 
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_delete;

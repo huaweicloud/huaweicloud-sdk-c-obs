@@ -25,6 +25,7 @@
 #include "pcre.h"
 #include "request_util.h"
 #include "object.h"
+#include "file_utils.h"
 
 #if defined __GNUC__ || defined LINUX
 #include <sys/utsname.h>
@@ -155,6 +156,7 @@ void request_headers_done(http_request *request)
     }
 }
 
+#define ERROR_HEADER_LOWERCASE "error"
 
 size_t curl_header_func(void *ptr, size_t size, size_t nmemb,
                                void *data)
@@ -166,7 +168,38 @@ size_t curl_header_func(void *ptr, size_t size, size_t nmemb,
     response_headers_handler_add
         (&(request->responseHeadersHandler), (char *) ptr, len);
 
-    return len;
+	char* header = (char*)ptr;
+	if (strstr(header, ERROR_HEADER_LOWERCASE) == NULL) {
+		return len;
+	}
+	COMMLOG(OBS_LOGERROR, "%s", header);
+
+	if (request->errorParser.obsErrorDetails.error_headers_count >= ERROR_HEADERS_SIZE) {
+		COMMLOG(OBS_LOGERROR, "Failed to write error header to %s!",
+			SYMBOL_NAME_STR(request->errorParser.obsErrorDetails.error_headers));
+		return len;
+	}
+	int headerLen = strlen(header);
+	if (request->errorParser.errorHeadersNamesValuesSize + headerLen + 1 >= ERROR_HEADERS_NAMES_VALUES_MAX_SIZE) {
+		COMMLOG(OBS_LOGERROR, "Failed to write error headers to %s , errorHeadersNamesValues is full!",
+			SYMBOL_NAME_STR(request->errorParser.errorHeadersNamesValuesSize));
+		return len;
+	}
+
+	char *bufferedHeader = string_multibuffer_current
+	(request->errorParser.errorHeadersNamesValues);
+	int ret = 0;
+	string_multibuffer_add(request->errorParser.errorHeadersNamesValues,
+		header, headerLen, ret);
+	if (0 == ret) {
+		COMMLOG(OBS_LOGERROR, "Failed to write error headers to %s , errorHeadersNamesValues is full in line %d !",
+			SYMBOL_NAME_STR(request->errorParser.errorHeadersNamesValuesSize), __LINE__);
+		return len;
+	}
+
+	int headIndex = request->errorParser.obsErrorDetails.error_headers_count++;
+	request->errorParser.error_headers[headIndex] = bufferedHeader;
+	return len;
 }
 
 size_t curl_read_func(void *ptr, size_t size, size_t nmemb, void *data)
@@ -338,18 +371,6 @@ static void lock_callback(int mode, int type, const char *file, int line)
     }
 }
 
-static unsigned long thread_id(void)
-{
-    unsigned long ret;
-
-#if defined __GNUC__ || defined LINUX
-    ret = (unsigned long)pthread_self();
-#else
-    ret = (unsigned long)GetCurrentThreadId();
-#endif
-
-    return(ret);
-}
 #endif
 
 void init_locks(void)
@@ -632,7 +653,7 @@ obs_status headers_append_expires_s3(const obs_put_properties *properties,
 {
     obs_status status = OBS_STATUS_OK;
     char expires[20];
-    snprintf_s(expires, sizeof(expires), _TRUNCATE, "%ld", properties->obs_expires);
+    snprintf_s(expires, sizeof(expires), _TRUNCATE, "%lld", (long long int)properties->obs_expires);
     status = headers_append(len, values, 1, "x-amz-expires: %s",expires, NULL);
     return status;
 }
@@ -642,7 +663,7 @@ obs_status headers_append_expires_obs(const obs_put_properties *properties,
 {
     obs_status status = OBS_STATUS_OK;
     char expires[20];
-    snprintf_s(expires, sizeof(expires), _TRUNCATE, "%ld", properties->obs_expires);
+    snprintf_s(expires, sizeof(expires), _TRUNCATE, "%lld", (long long int)properties->obs_expires);
     status = headers_append(len, values, 1, "x-obs-expires: %s", expires, NULL);
     return status;
 }
@@ -806,7 +827,7 @@ obs_status request_compose_limit_s3_header(request_computed_values *values, uint
     obs_status status;
     char limit_tmp[10] = { 0 };
     snprintf_s(limit_tmp, sizeof(limit_tmp), _TRUNCATE, \
-        "%ld", limit);
+        "%llu", (long long unsigned int)limit);
     if ((status = headers_append(len, values, 1,
         "x-amz-traffic-limit: %s",
         limit_tmp, NULL)) != OBS_STATUS_OK) {
@@ -820,7 +841,7 @@ obs_status request_compose_limit_obs_header(request_computed_values *values, uin
     obs_status status;
     char limit_tmp[10] = { 0 };
     snprintf_s(limit_tmp, sizeof(limit_tmp), _TRUNCATE, \
-        "%ld", limit);
+        "%llu", (long long unsigned int)limit);
     if ((status = headers_append(len, values, 1,
         "x-obs-traffic-limit: %s",
         limit_tmp, NULL)) != OBS_STATUS_OK) {
@@ -1895,6 +1916,7 @@ obs_status compose_temp_header(const request_params* params,
         }
     }
     unsigned char hmac[20] = {0};
+	COMMLOG(OBS_LOGINFO, "%s, local StringToSign is(between ---):\n---\n%.*s\n---\n", __FUNCTION__, sizeof(signbuf), signbuf);
     HMAC_SHA1(hmac, (unsigned char*) params->bucketContext.secret_access_key,
               strlen(params->bucketContext.secret_access_key),
               (unsigned char*) signbuf, len);
@@ -1903,7 +1925,7 @@ obs_status compose_temp_header(const request_params* params,
     (void)base64Encode(hmac, 20, b64);
     char cUrlEncode[512] = {0};
     (void)urlEncode(cUrlEncode, b64, B64_LEN_FOR_HMAC, 28, 0);
-	char* AccessKeyType = params->use_api == OBS_USE_API_OBS ? "AccessKeyId" : "AWSAccessKeyId";
+    char* AccessKeyType = params->use_api == OBS_USE_API_OBS ? "AccessKeyId" : "AWSAccessKeyId";
     int ret = snprintf_s(stTempAuthInfo->tempAuthParams,ARRAY_LENGTH_1024, _TRUNCATE,
                "%s=%s&Expires=%lld&Signature=%s", AccessKeyType, params->bucketContext.access_key,
                (long long int)local_expires, cUrlEncode);

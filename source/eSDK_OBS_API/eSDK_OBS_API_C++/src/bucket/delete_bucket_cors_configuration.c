@@ -22,8 +22,10 @@ void delete_bucket_cors_configuration(const obs_options *options, obs_response_h
     request_params params;
     COMMLOG(OBS_LOGINFO, "%s start!", __FUNCTION__);
     obs_use_api use_api = OBS_USE_API_S3;
-    copy_options_and_init_params(options, &params, &use_api, handler, callback_data);
 
+	if (OBS_STATUS_OK != copy_options_and_init_params(options, &params, &use_api, handler, callback_data)) {
+		return;
+	}
     params.httpRequestType = http_request_type_delete;
     params.properties_callback = handler->properties_callback;
     params.complete_callback = handler->complete_callback;

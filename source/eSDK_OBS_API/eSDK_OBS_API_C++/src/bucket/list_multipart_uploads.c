@@ -157,7 +157,6 @@ obs_status parse_xml_list_multipart_uploads(list_multipart_uploads_data *lmu_dat
     const char *element_path, const char *data, int data_len)
 {
     int fit = 1;
-    int ret;
     multipart_upload_info  *uploads = &(lmu_data->uploads[lmu_data->uploads_count]);
 
     if (!strcmp(element_path, "ListMultipartUploadsResult/IsTruncated")) {
@@ -172,6 +171,7 @@ obs_status parse_xml_list_multipart_uploads(list_multipart_uploads_data *lmu_dat
     else if (!strcmp(element_path, "ListMultipartUploadsResult/Upload/Key")) {
 #ifdef WIN32
         int strTmpSourceLen = data_len + 1;
+		int ret = 0;
         if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_STR_TMP_SIZE) {
             COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
             return OBS_STATUS_OutOfMemory;

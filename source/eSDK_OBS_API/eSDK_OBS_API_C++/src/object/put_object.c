@@ -29,8 +29,9 @@ void put_object(const obs_options *options, char *key, uint64_t content_length,
     request_params params;
     COMMLOG(OBS_LOGINFO, "Enter put_object successfully !");
     obs_use_api use_api = OBS_USE_API_S3;
-    copy_options_and_init_params(options, &params, &use_api, &handler->response_handler, callback_data);
-
+	if (OBS_STATUS_OK != copy_options_and_init_params(options, &params, &use_api, &handler->response_handler, callback_data)) {
+		return;
+	}
     params.temp_auth = options->temp_auth;
     params.httpRequestType = http_request_type_put;
     params.key = key;

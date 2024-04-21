@@ -14,6 +14,7 @@
 */
 #include "vos.h"
 #include "string.h"
+#include "securec.h"
 //lint -e438
 namespace VPP
 {  
@@ -26,7 +27,7 @@ namespace VPP
 		{
 			return VOS_NULL ;
 		}
-		memset( buf , 0x00 , (ULONG)size );
+		memset_s( buf , (ULONG)size , 0x00 , (ULONG)size );
 
 		return buf ;
 	}

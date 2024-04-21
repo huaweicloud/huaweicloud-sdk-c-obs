@@ -27,7 +27,6 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
     complete_multi_part_upload_data *cmuData = (complete_multi_part_upload_data *)callback_data;
 
     int fit = 1;
-    int ret = 0;
     if (!data)
     {
         return OBS_STATUS_OK;
@@ -36,6 +35,7 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
     if (!strcmp(elementPath, "CompleteMultipartUploadResult/Location")) {
 #ifdef WIN32
         int strTmpSourceLen = dataLen + 1;
+		int ret = 0;
         if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_STR_TMP_SIZE) {
             COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
             return OBS_STATUS_OutOfMemory;
@@ -50,6 +50,7 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
         if (ret = strncpy_s(strTmpSource, strTmpSourceLen, data, dataLen)) 
         {
             COMMLOG(OBS_LOGERROR, "in %s line %d strncpy_s error, code is %d.", __FUNCTION__, __LINE__, ret);
+			CHECK_NULL_FREE(strTmpSource);
             return OBS_STATUS_InternalError;
         }
         char* strTmpOut = UTF8_To_String(strTmpSource);
@@ -66,6 +67,7 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
     else if (!strcmp(elementPath, "CompleteMultipartUploadResult/Key")) {
 #ifdef WIN32
         int strTmpSourceLen = dataLen + 1;
+		int ret = 0;
         if (strTmpSourceLen <= 0 || strTmpSourceLen > OBS_MAX_STR_TMP_SIZE) {
             COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
             return OBS_STATUS_OutOfMemory;
@@ -80,6 +82,7 @@ static obs_status complete_multi_part_upload_xml_callback(const char *elementPat
         if (ret = strncpy_s(strTmpSource, strTmpSourceLen, data, dataLen))
         {
             COMMLOG(OBS_LOGERROR, "in %s line %d strncpy_s error,code is %d.", __FUNCTION__, __LINE__, ret);
+			CHECK_NULL_FREE(strTmpSource);
             return OBS_STATUS_InternalError;
         }
         char* strTmpOut = UTF8_To_String(strTmpSource);

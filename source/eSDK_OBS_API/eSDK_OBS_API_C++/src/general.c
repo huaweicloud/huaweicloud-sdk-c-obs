@@ -178,6 +178,12 @@ const char *obs_get_status_name(obs_status status)
         handlecase(QuotaTooSmall);
         handlecase(MetadataNameDuplicate);
         handlecase(GET_UPLOAD_ID_FAILED);
+        handlecase(Security_Function_Failed);
+		handlecase(BadAccessLabel);
+		handlecase(FsNotSupport);
+		handlecase(JSON_PARSE_ERROR);
+		handlecase(JSON_CREATE_ERROR);
+		handlecase(AccessLabelNotFound);
         handlecase(BUTT);
     }
 
@@ -243,6 +249,7 @@ void init_obs_options(obs_options *options)
     options->bucket_options.token = NULL;
     options->bucket_options.uri_style = OBS_URI_STYLE_VIRTUALHOST;
     options->bucket_options.epid = NULL;
+	options->bucket_options.useCname = false;
     options->temp_auth = NULL;
 }
 
@@ -425,6 +432,9 @@ int obs_status_is_retryable(obs_status status) //lint !e578
         case OBS_STATUS_RequestTimeout:
         case OBS_STATUS_PartialFile:
         case OBS_STATUS_NoToken:
+		case OBS_STATUS_Security_Function_Failed:
+		case OBS_STATUS_JSON_PARSE_ERROR:
+		case OBS_STATUS_JSON_CREATE_ERROR:
             return 1;
         default:
             return 0;

@@ -23,10 +23,9 @@
 #include "common.h"
 #include "cJSON.h"
 
-
 #ifdef WIN32
-#define LIBOBS_VER_MAJOR "3.23"
-#define LIBOBS_VER_MINOR "9"
+#define LIBOBS_VER_MAJOR "3.24"
+#define LIBOBS_VER_MINOR "3"
 #endif
 
 #if defined __GNUC__ || defined LINUX
@@ -39,8 +38,8 @@
 #define DOMAIN_LEN 254
 #define HEAD_CALLBACK_LEN 8192
 
-#define OBS_SDK_VERSION "3.23.9"
-#define USER_AGENT_VALUE  "obs-sdk-c-3.23.9" ;
+#define OBS_SDK_VERSION "3.24.3"
+#define USER_AGENT_VALUE  "obs-sdk-c-3.24.3" ;
 
 #define DEFAULT_LOW_SPEED_LIMIT    (1)
 #define DEFAULT_LOW_SPEED_TIME_S   (300)

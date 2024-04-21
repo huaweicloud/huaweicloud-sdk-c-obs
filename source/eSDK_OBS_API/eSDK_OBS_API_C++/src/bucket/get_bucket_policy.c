@@ -32,8 +32,11 @@ obs_status get_bucket_policy_properties_callback(const obs_response_properties *
 obs_status get_bucket_policy_data_callback(int buffer_size, const char *buffer, void *callback_data)
 {
     get_bucket_policy_data *policy_data = (get_bucket_policy_data *)callback_data;
-    int ret = snprintf_s(policy_data->policy, sizeof(policy_data->policy), buffer_size + 1, "%s", buffer);
-    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
+	int ret = memcpy_s(policy_data->policy + policy_data->currentPolicyLength, 
+		sizeof(policy_data->policy) - (policy_data->currentPolicyLength * sizeof(char)), 
+			buffer, buffer_size);
+    CheckAndLogNeg(ret, "memcpy_s", __FUNCTION__, __LINE__);
+	policy_data->currentPolicyLength += buffer_size;
 
     return OBS_STATUS_OK;
 }

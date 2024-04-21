@@ -28,7 +28,7 @@ obs_status init_set_bucket_quota_cbdata(uint64_t storage_quota, update_bucket_co
 
 
     quota_data->docLen = snprintf_s(quota_data->doc, sizeof(quota_data->doc), _TRUNCATE,
-        "<Quota><StorageQuota>%lu</StorageQuota></Quota>", storage_quota);
+        "<Quota><StorageQuota>%llu</StorageQuota></Quota>", (long long unsigned int)storage_quota);
     if (quota_data->docLen < 0)
     {
         *data = NULL;

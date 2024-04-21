@@ -21,6 +21,8 @@
 
 
 #define EXTRA_DETAILS_SIZE 8
+#define ERROR_HEADERS_SIZE 8
+#define ERROR_HEADERS_NAMES_VALUES_MAX_SIZE (ERROR_HEADERS_SIZE * 1024)
 
 typedef struct error_parser
 {
@@ -40,7 +42,10 @@ typedef struct error_parser
     
     obs_name_value extra_details[EXTRA_DETAILS_SIZE];
 
+	char* error_headers[ERROR_HEADERS_SIZE];
+
     string_multibuffer(extraDetailsNamesValues, EXTRA_DETAILS_SIZE * 1024);
+	string_multibuffer(errorHeadersNamesValues, ERROR_HEADERS_NAMES_VALUES_MAX_SIZE);
 } error_parser;
 
 

@@ -42,6 +42,7 @@
 obs_status statusG = OBS_STATUS_OK;
 int  showResponsePropertiesG = 1;
 char errorDetailsG[4096] = { 0 };
+char errorHeadersG[4096] = { 0 };
 char locationconstraint[2048]={0};
 char ACCESS_KEY_ID[2048]={0};
 char SECRET_ACCESS_KEY[2048]={0};
@@ -183,14 +184,17 @@ void common_error_handle(const obs_error_details *error)
 {
     int len = 0;
     if (error && error->message) {
+		printf("Error Message: \n	%s\n", error->message);
         len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1 ,
                         "  Message: %s\n", error->message);
     }
     if (error && error->resource) {
+		printf("Error Resource: \n	%s\n", error->resource);
         len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1,
                         "  Resource: %s\n", error->resource);
     }
     if (error && error->further_details) {
+		printf("Error further_details: \n	%s\n", error->further_details);
         len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1,
                         "  Further Details: %s\n", error->further_details);
     }
@@ -199,12 +203,28 @@ void common_error_handle(const obs_error_details *error)
                         "%s", "  Extra Details:\n");
         int i;
         for (i = 0; i < error->extra_details_count; i++) {
+			printf("Error Extra Detail(%d):\n	%s:%s\n", i, 
+				error->extra_details[i].name, error->extra_details[i].value);
             len += snprintf_s(&(errorDetailsG[len]), 
                             sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1,"    %s: %s\n",
                             error->extra_details[i].name,
                             error->extra_details[i].value);
         }
     }
+    
+	if (error && error->error_headers_count) {
+		len += snprintf_s(&(errorHeadersG[len]), sizeof(errorHeadersG) - len, _TRUNCATE,
+			"%s", "  Extra Details:\n");
+		int i;
+		for (i = 0; i < error->error_headers_count; i++) {
+			char* errorHeader = error->error_headers[i];
+			printf("Error Headers(%d):\n	%s\n", i,
+				errorHeader == NULL ? "NULL Header": errorHeader);
+			len += snprintf_s(&(errorHeadersG[len]),
+				sizeof(errorHeadersG) - len, _TRUNCATE, "    %s\n",
+				errorHeader == NULL ? "NULL Header" : errorHeader);
+		}
+	}
     return;
 }
 
@@ -244,31 +264,7 @@ void response_complete_callback_for_multi_task(obs_status status,
 			statusG = status;
 		}
 	}
-	int len = 0;
-        //强烈建议用户在此处捕获异常信息，便于定位问题!!!
-	if (error && error->message) {
-		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-			"  Message: %s\n", error->message);
-	}
-	if (error && error->resource) {
-		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-			"  Resource: %s\n", error->resource);
-	}
-	if (error && error->further_details) {
-		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-			"  Further Details: %s\n", error->further_details);
-	}
-	if (error && error->extra_details_count) {
-		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-			"%s", "  Extra Details:\n");
-		int i;
-		for (i = 0; i < error->extra_details_count; i++) {
-			len += snprintf_s(&(errorDetailsG[len]),
-				sizeof(errorDetailsG) - len, _TRUNCATE, "    %s: %s\n",
-				error->extra_details[i].name,
-				error->extra_details[i].value);
-		}
-	}
+    common_error_handle(error);
 }
 
 obs_status head_properties_callback(const obs_response_properties *properties, void *callback_data)
@@ -311,6 +307,7 @@ void head_complete_callback(obs_status status,
 {
     head_object_data *data = (head_object_data *)callback_data;
     data->ret_status = status;
+    common_error_handle(error);
 }
 
 
@@ -949,6 +946,7 @@ obs_status get_properties_callback(const obs_response_properties *properties, vo
         printf("    object type: %s \n", properties->obs_object_type);
     if(properties->obs_next_append_position)
         printf("append position: %s \n", properties->obs_next_append_position);
+    return OBS_STATUS_OK;
 }
 
 int token_bucket = 0;
@@ -1383,14 +1381,14 @@ void uploadFileResultCallback(obs_status status,
         pstUploadInfoList->status_return);
         pstUploadInfoList++;
     }
-	if (callbackData)
-	{
-		*((obs_status*)callbackData) = status;
-	}
-	else
-	{
-		statusG = status;
-	}
+    if (callbackData)
+    {
+        *((obs_status*)callbackData) = status;
+    }
+    else
+    {
+        statusG = status;
+    }
 }
 
 
@@ -1593,4 +1591,112 @@ void deinit_uploadfilepool(FILE **fd, uint64_t part_num)
         fclose(fd[i]);
     }
     free(fd);
+}
+
+int put_dir_access_label_json_callback(int buffer_size, char *buffer, void *callback_data) {
+
+	Access_label_data *data =
+		(Access_label_data *)callback_data;
+
+	int toRead = 0;
+	if (data->json_str_remain_size > 0) {
+		toRead = ((data->json_str_remain_size > (unsigned)buffer_size) ?
+			(unsigned)buffer_size : data->json_str_remain_size);
+		errno_t ret = memcpy_s(buffer, buffer_size, data->json_str + data->json_current_offset, toRead);
+		if (ret != EOK) {
+			printf("memcpy_s failed in put_dir_access_label_json_callback!");
+		}
+	}
+
+	data->json_str_remain_size -= toRead;
+	data->json_current_offset += toRead;
+
+
+	return toRead;
+}
+
+obs_status get_dir_access_label_json_callback(int buffer_size, const char *buffer,
+	void *callback_data)
+{
+	Access_label_data *data = (Access_label_data *)callback_data;
+	errno_t ret = memcpy_s(data->json_str + data->json_current_offset, buffer_size, buffer, buffer_size);
+	data->json_current_offset += buffer_size;
+	return ((ret != EOK) ?
+		OBS_STATUS_Security_Function_Failed : OBS_STATUS_OK);
+}
+
+
+void dir_access_label_response_complete_callback(obs_status status,
+	const obs_error_details *error,
+	void *callback_data) {
+	if (callback_data)
+	{
+		Access_label_data *dir_access_label_datas = (Access_label_data *)callback_data;
+		dir_access_label_datas->status = status;
+	}
+	else
+	{
+		statusG = status;
+	}
+	int len = 0;
+	if (error && error->message) {
+		printf("Error Message: \n	%s\n", error->message);
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"  Message: %s\n", error->message);
+	}
+	if (error && error->resource) {
+		printf("Error Resource: \n	%s\n", error->resource);
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"  Resource: %s\n", error->resource);
+	}
+	if (error && error->further_details) {
+		printf("Error further_details: \n	%s\n", error->further_details);
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"  Further Details: %s\n", error->further_details);
+	}
+	if (error && error->extra_details_count) {
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
+			"%s", "  Extra Details:\n");
+		int i;
+		for (i = 0; i < error->extra_details_count; i++) {
+			printf("Error Extra Detail(%d):\n	%s:%s\n", i,
+				error->extra_details[i].name, error->extra_details[i].value);
+			len += snprintf_s(&(errorDetailsG[len]),
+				sizeof(errorDetailsG) - len, _TRUNCATE, "    %s: %s\n",
+				error->extra_details[i].name,
+				error->extra_details[i].value);
+		}
+	}
+
+	if (error && error->error_headers_count) {
+		len += snprintf_s(&(errorHeadersG[len]), sizeof(errorHeadersG) - len, _TRUNCATE,
+			"%s", "  Extra Details:\n");
+		int i;
+		for (i = 0; i < error->error_headers_count; i++) {
+			char* errorHeader = error->error_headers[i];
+			printf("Error Headers(%d):\n	%s\n", i,
+				errorHeader == NULL ? "NULL Header" : errorHeader);
+			len += snprintf_s(&(errorHeadersG[len]),
+				sizeof(errorHeadersG) - len, _TRUNCATE, "    %s\n",
+				errorHeader == NULL ? "NULL Header" : errorHeader);
+		}
+	}
+}
+
+
+obs_bucket_type get_bucket_type_from_argv(char *param)
+{
+	obs_bucket_type bucket_type = OBS_BUCKET_OBJECT;
+	char *val = &(param[BUCKET_TYPE_LEN]);
+	printf("bucket_type is: %s\n", val);
+	if (!strcmp(val, "OBS_BUCKET_OBJECT")) {
+		bucket_type = OBS_BUCKET_OBJECT;
+	}
+	else if (!strcmp(val, "OBS_BUCKET_PFS")) {
+		bucket_type = OBS_BUCKET_PFS;
+	}
+	else {
+		fprintf(stderr, "ERROR: Unknown bucket_type: %s, use default OBS_BUCKET_OBJECT\n", val);
+	}
+	return bucket_type;
 }

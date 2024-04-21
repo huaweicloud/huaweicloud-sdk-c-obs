@@ -379,7 +379,9 @@ void get_bucket_cors_configuration(const obs_options *options, obs_cors_handler 
         (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
         return;
     }
-    copy_options_and_init_params(options, &params, &use_api, &handler->response_handler, callback_data);
+	if (OBS_STATUS_OK != copy_options_and_init_params(options, &params, &use_api, &handler->response_handler, callback_data)) {
+		return;
+	}
 
     params.httpRequestType = http_request_type_get;
     params.properties_callback = &get_cors_properties_callback;

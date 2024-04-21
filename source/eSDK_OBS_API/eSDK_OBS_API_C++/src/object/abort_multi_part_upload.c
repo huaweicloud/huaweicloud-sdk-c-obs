@@ -30,8 +30,9 @@ void abort_multi_part_upload(const obs_options *options, char *key, const char *
     string_buffer_initialize(queryParams);
     COMMLOG(OBS_LOGINFO, "Enter abort_multi_part_upload successfully !");
     
-    copy_options_and_init_params(options, &params, &use_api, handler, callback_data);
-
+	if (OBS_STATUS_OK != copy_options_and_init_params(options, &params, &use_api, handler, callback_data)) {
+		return;
+	}
     if (upload_id) {
         safe_append_with_interface_log("uploadId",
             upload_id, strlen(upload_id), handler->complete_callback);

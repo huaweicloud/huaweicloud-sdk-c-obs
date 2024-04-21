@@ -22,6 +22,8 @@
 #define strncasecmp  _strnicmp
 #else
 #include <strings.h>
+#include <sys/time.h>
+#include <pthread.h>
 #endif
 #include "eSDKOBS.h"
 
@@ -139,6 +141,7 @@ int GetModuleFilePath(const char* sModuleName, char* sPath, unsigned int unSize)
     fp = fopen ("/proc/self/maps", "r");
     if (NULL == fp)
     {
+		checkAndLogStrError(SYMBOL_NAME_STR(fopen), __FUNCTION__, __LINE__);
         return iRet;
     }
 	iRet = ReadModeleFile(fp, sPath, pTmpFullDir, pTmpModuleDir, sLine, 1024,sModuleName, unSize);
@@ -521,9 +524,18 @@ int GetConfPath(char *buf)
 	bool ifUserSetLogPath = isUserSetLogPath();
     if (ifUserSetLogPath) {
 #ifdef WIN32
-		err = path_copy(buf, MAX_MSG_SIZE, USER_SET_OBS_LOG_PATH_W, MAX_MSG_SIZE);
+		if (get_file_path_code() == UNICODE_CODE) {
+			err = path_copy(buf, OBS_LOG_PATH_LEN, USER_SET_OBS_LOG_PATH_W, OBS_LOG_PATH_LEN);
+		}
+		else if (get_file_path_code() == ANSI_CODE) {
+			err = path_copy(buf, OBS_LOG_PATH_LEN, USER_SET_OBS_LOG_PATH, OBS_LOG_PATH_LEN);
+		}
+		else {
+			COMMLOG(OBS_LOGERROR, "unkown encoding scheme, function %s failed", __FUNCTION__);
+			err = -1;
+		}
 #else
-		err = path_copy(buf, MAX_MSG_SIZE, USER_SET_OBS_LOG_PATH, MAX_MSG_SIZE);
+		err = path_copy(buf, OBS_LOG_PATH_LEN, USER_SET_OBS_LOG_PATH, OBS_LOG_PATH_LEN);
 #endif
         CHECK_ERR_RETURN(err);
     }
@@ -681,7 +693,7 @@ int LOG_INIT()
 #if defined __GNUC__ || defined LINUX
     GetConfPath(buf);
     if(USER_SET_OBS_LOG_PATH[0] != 0 ) {
-        err = memcpy_s(buf, sizeof(char)*MAX_MSG_SIZE, USER_SET_OBS_LOG_PATH, MAX_MSG_SIZE);
+        err = memcpy_s(buf, sizeof(char)*OBS_LOG_PATH_LEN, USER_SET_OBS_LOG_PATH, OBS_LOG_PATH_LEN);
 		CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     }
     else {        
@@ -694,6 +706,7 @@ int LOG_INIT()
 	FILE* confPathFile = fopen(confPath, "r");
     if(NULL == confPathFile) 
     {
+		checkAndLogStrError(SYMBOL_NAME_STR(fopen), __FUNCTION__, __LINE__);
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
         CHECK_NULL_FREE(logPath);
@@ -785,6 +798,67 @@ void LOG_EXIT()
     LogFini(PRODUCT);
     return ;
 }
+void print_current_time_ms(char* buffer, int bufferLen) {
+	// buffer是24个字符的时间字符串，包含毫秒
+
+#ifdef _WIN32
+	SYSTEMTIME st;
+	GetLocalTime(&st);
+	sprintf_s(buffer, bufferLen, "%04d-%02d-%02d %02d:%02d:%02d.%03d", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+#else
+	struct timeval tv;
+	struct tm* tm_info;
+	gettimeofday(&tv, NULL);
+	tm_info = localtime(&tv.tv_sec);
+	strftime(buffer, bufferLen, "%Y-%m-%d %H:%M:%S", tm_info);
+	size_t timeStrLen = strlen(buffer);
+	sprintf_s(buffer + timeStrLen, bufferLen - timeStrLen, ".%03ld", tv.tv_usec / 1000);
+#endif
+
+}
+
+unsigned long thread_id(void)
+{
+	unsigned long ret;
+
+#if defined __GNUC__ || defined LINUX
+	ret = (unsigned long)pthread_self();
+#else
+	ret = (unsigned long)GetCurrentThreadId();
+#endif
+
+	return(ret);
+}
+
+char* getLevelStr(OBS_LOGLEVEL level) {
+	switch (level)
+	{
+	case OBS_LOGDEBUG:
+		return SYMBOL_NAME_STR(OBS_LOGDEBUG);
+	case OBS_LOGINFO:
+		return SYMBOL_NAME_STR(OBS_LOGINFO);
+	case OBS_LOGWARN:
+		return SYMBOL_NAME_STR(OBS_LOGWARN);
+	case OBS_LOGERROR:
+		return SYMBOL_NAME_STR(OBS_LOGERROR);
+	default:
+		return SYMBOL_NAME_STR(OBS_LOGERROR);
+	}
+}
+#define OBS_LOG_TIME_LEN 24
+void OBSLogPrintf(OBS_LOGLEVEL level, char* acMsg, size_t acMsgLen) {
+	char time_ms[OBS_LOG_TIME_LEN] = { 0 };
+	print_current_time_ms(time_ms, OBS_LOG_TIME_LEN);
+	long currentTid = thread_id();
+	char* levelStr = getLevelStr(level);
+	printf("[%s] [tid:%ld] [obs-sdk-c.printLog] [%s] |%s\n", time_ms, currentTid, levelStr, acMsg);
+}
+
+OBSLogCallBack userCustomLog = NULL;
+
+void setUserCustomLog(OBSLogCallBack userCustomLogNew) {
+	userCustomLog = userCustomLogNew;
+}
 
 void COMMLOG(OBS_LOGLEVEL level, const char *pszFormat, ...)
 {
@@ -802,7 +876,10 @@ void COMMLOG(OBS_LOGLEVEL level, const char *pszFormat, ...)
         return;
     }
 
-    if(level == OBS_LOGDEBUG)
+	if (userCustomLog) {
+		(*userCustomLog)(level, acMsg, sizeof(acMsg));
+	}
+    else if(level == OBS_LOGDEBUG)
     {
         (void)Log_Run_Debug(PRODUCT,acMsg, sizeof(acMsg));
     }
@@ -824,15 +901,29 @@ void NULLLOG() {
     return;
 }
 
+void LogError(const char* name, const char* funcName, unsigned long line, OBS_LOGLEVEL logLevel) {
+	COMMLOG(logLevel, "%s failed in function: %s, line (%ld)!", name, funcName, line);
+}
+
 void CheckAndLogNoneZero(int ret, const char* name, const char* funcName, unsigned long line) {
     if (ret != 0) {
-        COMMLOG(OBS_LOGWARN, "%s failed in %s.(%ld)", name, funcName, line);
+		LogError(name, funcName, line, OBS_LOGWARN);
     }
 }
 
 void CheckAndLogNeg(int ret, const char* name, const char* funcName, unsigned long line) {
     if (ret < 0) {
-        COMMLOG(OBS_LOGWARN, "%s failed in %s.(%ld)", name, funcName, line);
+		LogError(name, funcName, line, OBS_LOGWARN);
     }
+}
+int CheckAndLogNULL(void* ptr, const char* ptrName, const char* name, const char* funcName, unsigned long line) {
+	if (ptr == NULL) {
+		COMMLOG(OBS_LOGERROR, "%s is NULL!", ptrName);
+		LogError(name, funcName, line, OBS_LOGERROR);
+		return 0;
+	}
+	else {
+		return 1;
+	}
 }
 

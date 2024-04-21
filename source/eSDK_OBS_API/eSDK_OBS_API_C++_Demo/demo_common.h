@@ -334,5 +334,17 @@ void destroy_logging_message(bucket_logging_message *logging_message);
 FILE** init_uploadfilepool(FILE **fd, uint64_t part_num, char *filename);
 void deinit_uploadfilepool(FILE **fd, uint64_t part_num);
 
+
+#define ACCESS_LABEL "access_label="
+#define ACCESS_LABEL_LEN (sizeof(ACCESS_LABEL) - 1)
+int put_dir_access_label_json_callback(int buffer_size, char *buffer, void *callback_data);
+obs_status get_dir_access_label_json_callback(int buffer_size, const char *buffer, void *callback_data);
+void dir_access_label_response_complete_callback(obs_status status, 
+    const obs_error_details *error, void *callback_data);
+    
+#define BUCKET_TYPE "bucket_type="
+#define BUCKET_TYPE_LEN (sizeof(BUCKET_TYPE) - 1)
+obs_bucket_type get_bucket_type_from_argv(char *param);
+
 #endif /* UTIL_H */
 

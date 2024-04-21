@@ -117,7 +117,7 @@ obs_status headers_append_list_bucket_type(obs_bucket_list_type bucket_list_type
 
 bool is_check_ca(const obs_options *options);
 
-void copy_options_and_init_params(const obs_options *options, request_params* params,
+obs_status copy_options_and_init_params(const obs_options *options, request_params* params,
         obs_use_api* use_api, obs_response_handler *handler, void *callback_data);
 #endif /* REQUEST_UTIL_H */
 

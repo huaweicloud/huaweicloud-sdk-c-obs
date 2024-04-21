@@ -14,13 +14,14 @@
 */
 #include "vos.h"
 #include "vos_config.h"
+#include "securec.h"
 namespace VPP{  
 ULONG  VOS_CreateThread( VOS_THREAD_FUNC pfnThread, VOID *args, VOS_Thread **pstVosThread,ULONG ulStackSize)
 {
     VOS_Thread *pstThread = VOS_NULL ;
 #ifdef HIKVISION
     struct sched_param param;
-    memset(&param, 0x0, sizeof(param));
+    memset_s(&param, sizeof(param), 0x0, sizeof(param));
     PUMW_LOG(VPP::PUMW_LOG_INFO, "VOS_CreateThread start.\n");
 #endif
     pstThread = (VOS_Thread*)VOS_malloc(sizeof(VOS_Thread));//lint !e838

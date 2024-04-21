@@ -16,14 +16,14 @@
 #include "request_util.h"
 #include <openssl/md5.h> 
 
-void copy_options_and_init_params(const obs_options *options, request_params* params,
+obs_status copy_options_and_init_params(const obs_options *options, request_params* params,
         obs_use_api* use_api, obs_response_handler *handler, void *callback_data){
     set_use_api_switch(options, use_api);
 
     if (!options->bucket_options.bucket_name) {
         COMMLOG(OBS_LOGERROR, "bucket_name is NULL.");
         (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
-        return;
+        return OBS_STATUS_InvalidBucketName;
     }
 
     memset_s(params, sizeof(request_params), 0, sizeof(request_params));
@@ -34,6 +34,11 @@ void copy_options_and_init_params(const obs_options *options, request_params* pa
     err = memcpy_s(&params->request_option, sizeof(obs_http_request_option), &options->request_options,
         sizeof(obs_http_request_option));
     CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+	if (err != 0) {
+		(void)(*(handler->complete_callback))(OBS_STATUS_Security_Function_Failed, 0, callback_data);
+		return OBS_STATUS_Security_Function_Failed;
+	}
+	return OBS_STATUS_OK;
 }
 
 void delete_bucket_lifecycle_configuration(const obs_options *options, obs_response_handler *handler,
@@ -42,7 +47,9 @@ void delete_bucket_lifecycle_configuration(const obs_options *options, obs_respo
     request_params params;
     COMMLOG(OBS_LOGINFO, "%s start!", __FUNCTION__);
     obs_use_api use_api = OBS_USE_API_S3;
-    copy_options_and_init_params(options, &params, &use_api, handler, callback_data);
+	if (OBS_STATUS_OK != copy_options_and_init_params(options, &params, &use_api, handler, callback_data)) {
+		return;
+	}
 
     params.httpRequestType = http_request_type_delete;
     params.properties_callback = handler->properties_callback;

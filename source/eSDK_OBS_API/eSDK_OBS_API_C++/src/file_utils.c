@@ -20,6 +20,7 @@
 #include <wchar.h>
 #include <libxml/tree.h>
 #include <errno.h>
+#include "file_utils.h"
 
 #if defined (WIN32)
 #include <io.h>
@@ -27,7 +28,7 @@
 #define TEMP_RANDOM_NAME_LEN 4
 
 static file_path_code file_path_code_schemes = ANSI_CODE;
-
+void checkAndLogStrError(const char* failedFuncName, const char* funcName, int lineNum);
 #define ERROR_MESSAGE_BUFFER_SIZE 256
 #if defined (WIN32)
 int file_sopen_s(int* pfh, const char *filename, int oflag, int shflag, int pmode)
@@ -36,12 +37,12 @@ int file_sopen_s(int* pfh, const char *filename, int oflag, int shflag, int pmod
 	char* openFunc = "default open";
 	if (file_path_code_schemes == ANSI_CODE)
 	{
-		openFunc = "_sopen_s";
+		openFunc = SYMBOL_NAME_STR(_sopen_s);
 		ret = _sopen_s(pfh, filename, oflag, shflag, pmode);
 	}
 	else if (file_path_code_schemes == UNICODE_CODE)
 	{
-		openFunc = "_wsopen_s";
+		openFunc = SYMBOL_NAME_STR(_wsopen_s);
 		ret = _wsopen_s(pfh, (wchar_t*)filename, oflag, shflag, pmode);
 	}
 	else
@@ -50,11 +51,7 @@ int file_sopen_s(int* pfh, const char *filename, int oflag, int shflag, int pmod
 		return -1;
 	}
 	if (ret != 0) {
-		char errorMsg[ERROR_MESSAGE_BUFFER_SIZE] = { 0 };
-		(void)strerror_s(errorMsg, ERROR_MESSAGE_BUFFER_SIZE, errno);
-		errorMsg[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
-		COMMLOG(OBS_LOGERROR, "%s failed in function %s, ret is %d, errno is %d, strerror_s is : %s."
-			, openFunc, __FUNCTION__, ret, errno, errorMsg);
+		checkAndLogStrError(openFunc, __FUNCTION__, __LINE__);
 	}
 	return ret;
 }
@@ -78,12 +75,9 @@ int file_stati64(const char *path, struct __stat64 *buffer)
 		COMMLOG(OBS_LOGERROR, "unkown encoding scheme, function %s failed", __FUNCTION__);
 		return -1;
 	}
+
 	if (ret != 0) {
-		char errorMsg[ERROR_MESSAGE_BUFFER_SIZE] = { 0 };
-		(void)strerror_s(errorMsg, ERROR_MESSAGE_BUFFER_SIZE, errno);
-		errorMsg[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
-		COMMLOG(OBS_LOGERROR, "%s failed in function %s, ret is %d, errno is %d, strerror_s is : %s."
-			, statFunc, __FUNCTION__, ret, errno, errorMsg);
+		checkAndLogStrError(statFunc, __FUNCTION__, __LINE__);
 	}
 	return ret;
 }
@@ -125,6 +119,7 @@ wchar_t *GetWcharFromChar(const char *char_str)
 	const size_t wchar_str_size = char_str_len + 1;
 	wchar_t *wchar_str = (wchar_t *)malloc(sizeof(wchar_t) * wchar_str_size);
 	if (wchar_str == NULL) {
+		COMMLOG(OBS_LOGERROR, "malloc failed in function: %s,line %d", __FUNCTION__, __LINE__);
 		return wchar_str;
 	}
 	memset_s(wchar_str, sizeof(wchar_t) * wchar_str_size, 0, sizeof(wchar_t) * wchar_str_size);
@@ -142,16 +137,50 @@ wchar_t *GetWcharFromChar(const char *char_str)
 
 #endif
 
+int needCheckStrError = true;
+void checkAndLogStrError(const char* failedFuncName, const char* funcName, int lineNum) {
+	int err = errno;
+	if (needCheckStrError && err != EOK) {
+		char errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE] = { 0 };
+		char* errorMsg = "default error";
+#if defined (WIN32)
+		(void)strerror_s(errorMsgBuffer, ERROR_MESSAGE_BUFFER_SIZE, err);
+		errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
+		errorMsg = errorMsgBuffer;
+#define STRERRORFUNCNAME "strerror_s"
+#elif (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !_GNU_SOURCE
+		(void)strerror_r(err, errorMsgBuffer, ERROR_MESSAGE_BUFFER_SIZE);
+		errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
+		errorMsg = errorMsgBuffer;
+#define STRERRORFUNCNAME "strerror_r(XSI-compliant version)"
+#else
+		errorMsg = strerror_r(err, errorMsgBuffer, ERROR_MESSAGE_BUFFER_SIZE);
+		if(errorMsg == NULL || errorMsgBuffer[0] != '\0'){
+			errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
+			errorMsg = errorMsgBuffer;
+		}
+#define STRERRORFUNCNAME "strerror_r(GNU-specific version)"
+#endif
+		COMMLOG(OBS_LOGERROR, 
+			"Function :%s failed in function %s, line %d"
+			", errno is : %d, %s is : %s.", failedFuncName,
+			funcName, lineNum, err, STRERRORFUNCNAME, errorMsg);
+	}
+}
+
 char* file_path_fgets(char* _Buffer, int _MaxCount, FILE* _Stream) {
 	char* fgets_ret = NULL;
+	char* fgetsName = "default fgets";
 #ifdef WIN32
 	if (file_path_code_schemes == ANSI_CODE)
 	{
 		fgets_ret = fgets(_Buffer, _MaxCount, _Stream);
+		fgetsName = SYMBOL_NAME_STR(fgets);
 	}
 	else if (file_path_code_schemes == UNICODE_CODE)
 	{
 		fgets_ret = (char*)fgetws((wchar_t*)_Buffer, _MaxCount, _Stream);
+		fgetsName = SYMBOL_NAME_STR(fgetws);
 	}
 	else
 	{
@@ -159,16 +188,22 @@ char* file_path_fgets(char* _Buffer, int _MaxCount, FILE* _Stream) {
 	}
 #else
 	fgets_ret = fgets(_Buffer, _MaxCount, _Stream);
+	fgetsName = SYMBOL_NAME_STR(fgets);
 #endif // WIN32
+	if (fgets_ret == NULL) {
+		checkAndLogStrError(fgetsName, __FUNCTION__, __LINE__);
+	}
 	return fgets_ret;
 }
 
 int file_fopen_s(FILE** _Stream, const char *filename, const char *mode) {
 	int ret = -1;
+	char* fopenFuncName = "defaultOpen";
 #ifdef WIN32
 	if (file_path_code_schemes == ANSI_CODE)
 	{
 		ret = fopen_s(_Stream, filename, mode);
+		fopenFuncName = SYMBOL_NAME_STR(fopen_s);
 	}
 	else if (file_path_code_schemes == UNICODE_CODE)
 	{
@@ -178,6 +213,7 @@ int file_fopen_s(FILE** _Stream, const char *filename, const char *mode) {
 			return -2;
 		}
 		ret = _wfopen_s(_Stream, (const wchar_t*)filename, mode_w);
+		fopenFuncName = SYMBOL_NAME_STR(_wfopen_s);
 		CHECK_NULL_FREE(mode_w);
 	}
 	else
@@ -187,8 +223,12 @@ int file_fopen_s(FILE** _Stream, const char *filename, const char *mode) {
 	}
 #else
 	*_Stream = fopen(filename, mode);
+	fopenFuncName = SYMBOL_NAME_STR(fopen);
 	ret = errno;
 #endif // WIN32
+	if (ret != 0) {
+		checkAndLogStrError(fopenFuncName, __FUNCTION__, __LINE__);
+	}
 	return ret;
 }
 
@@ -220,11 +260,11 @@ int remove_file(const char* filename)
 	else if (file_path_code_schemes == UNICODE_CODE)
 	{
 #if defined __GNUC__ || defined LINUX
-		removeFunc = "remove";
+		removeFunc = SYMBOL_NAME_STR(remove);
 		ret = remove(filename);
 #endif
 #if defined (WIN32)
-		removeFunc = "_wremove";
+		removeFunc = SYMBOL_NAME_STR(_wremove);
 		ret = _wremove((const wchar_t*)filename);
 #endif
 	}
@@ -234,17 +274,7 @@ int remove_file(const char* filename)
 		return -1;
 	}
 	if (ret != 0) {
-		char errorMsg[ERROR_MESSAGE_BUFFER_SIZE] = { 0 };
-		char *strerrorFunc = "strerror_r";
-#if defined (WIN32)
-		(void)strerror_s(errorMsg, ERROR_MESSAGE_BUFFER_SIZE, errno);
-		strerrorFunc = "strerror_s";
-#else
-		(void)strerror_r(errno, errorMsg, ERROR_MESSAGE_BUFFER_SIZE);
-#endif
-		errorMsg[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
-		COMMLOG(OBS_LOGERROR, "%s failed in function %s, ret is %d, errno is %d, %s is : %s."
-			, removeFunc, __FUNCTION__, ret, errno, strerrorFunc, errorMsg);
+		checkAndLogStrError(removeFunc, __FUNCTION__, __LINE__);
 	}
 	return ret;
 }
@@ -317,6 +347,26 @@ char *getPathBuffer(size_t bufferLen)
 	return pathBuffer;
 }
 
+int temp_part_file_path_printf(char * fileNameTempBuffer, 
+	size_t const fileNameTempBufferCount, const char * storeFileName, int part_num) {
+	int ret = -1;
+	if (file_path_code_schemes == ANSI_CODE)
+	{
+		ret = sprintf_s(fileNameTempBuffer, fileNameTempBufferCount, "%s.%d", storeFileName, part_num);
+	}
+	else if (file_path_code_schemes == UNICODE_CODE)
+	{
+		ret = swprintf_s((wchar_t*)fileNameTempBuffer, fileNameTempBufferCount
+			, L"%s.%d", (wchar_t const*)storeFileName, part_num);
+	}
+	else
+	{
+		COMMLOG(OBS_LOGERROR, "unkown encoding scheme, function %s failed", __FUNCTION__);
+		ret = -1;
+	}
+	return ret;
+}
+
 int checkpoint_file_path_printf(char* const path_buffer
 	, size_t const path_buffer_count, char const* uploadFileName)
 {
@@ -362,9 +412,6 @@ size_t file_path_strlen(char const* filePath)
 
 int checkPointFileSave(const char *filename, xmlDocPtr doc) 
 {
-#if defined __GNUC__ || defined LINUX
-	return xmlSaveFile(filename, doc);
-#endif
 #if defined (WIN32)
 	int ret = -1;
 	if (file_path_code_schemes == ANSI_CODE)
@@ -387,6 +434,9 @@ int checkPointFileSave(const char *filename, xmlDocPtr doc)
 		ret = -1;
 	}
 	return ret;
+
+#else
+	return xmlSaveFile(filename, doc);
 #endif
 }
 
