@@ -337,21 +337,34 @@ void canonicalize_resource_subResource(const request_params *params, const char 
 
 }
 
+static void add_bucket_name_or_cname_to_canonicalize_resource(const request_params *params,
+	const char *urlEncodedKey,
+	char *buffer, int* buffer_size_to_return, int* len_to_return) {
+	int len = *len_to_return;
+	int buffer_size = *buffer_size_to_return;
+	const obs_bucket_context  * bucketContext = &params->bucketContext;
+	const char * bucket_name = bucketContext->bucket_name;
+	if ((params->bucketContext.useCname) && (bucketContext->host_name && bucketContext->host_name[0] != '\0')) {
+		buffer[len++] = '/';
+		append_request(bucketContext->host_name, strlen(bucketContext->host_name));
+	}
+	else if (bucket_name && bucket_name[0]) {
+		buffer[len++] = '/';
+		append_request(bucket_name, strlen(bucket_name));
+	}
+	*len_to_return = len;
+	*buffer_size_to_return = buffer_size;
+}
+
 static void canonicalize_resource(const request_params *params,
                                   const char *urlEncodedKey,
                                   char *buffer ,int buffer_size)
 {
     int len = 0;
     *buffer = 0;
-    const obs_bucket_context  * bucketContext = &params->bucketContext;
-    const char * bucket_name = bucketContext->bucket_name;
     const char * subResource = params->subResource;
-
-    if (bucket_name && bucket_name[0]) {
-        buffer[len++] = '/';
-        append_request(bucket_name, strlen(bucket_name));
-    }
-
+	add_bucket_name_or_cname_to_canonicalize_resource
+		(params, urlEncodedKey, buffer, &buffer_size, &len);
     append_request("/", sizeof("/"));
     if (urlEncodedKey && urlEncodedKey[0]) {
         append_request(urlEncodedKey, strlen(urlEncodedKey));
@@ -381,7 +394,7 @@ static obs_status compose_uri(char *buffer, int buffer_size,
 
     uri_append("http%s://", (bucketContext->protocol == OBS_PROTOCOL_HTTP) ? "" : "s");
     const char *host_name = bucketContext->host_name;
-    if (bucketContext->bucket_name && bucketContext->bucket_name[0]) 
+    if (!bucketContext->useCname && bucketContext->bucket_name && bucketContext->bucket_name[0])
     {
         if (bucketContext->uri_style == OBS_URI_STYLE_VIRTUALHOST) {
             uri_append("%s.%s", bucketContext->bucket_name, host_name);
@@ -804,12 +817,8 @@ obs_status compose_auth_header_append(const request_params *params,
 }
 
 static obs_status compose_auth_header(const request_params *params,
-                                    request_computed_values *values)
+                                    request_computed_values *values, char* signbuf, int buf_len)
 {
-    char signbuf[17 + 129 + 129 + 1 +
-                 (sizeof(values->canonicalizedAmzHeaders) - 1) +
-                 (sizeof(values->canonicalizedResource) - 1) + 1];
-    int buf_len = sizeof(signbuf);
     int lencount = 0;
 	int *len = &lencount;
     
@@ -843,7 +852,6 @@ static obs_status compose_auth_header(const request_params *params,
             }
         }
     }
-    //COMMLOG(OBS_LOGWARN, "%s request_perform : StringToSign:  %.*s", __FUNCTION__, buf_len, signbuf);
 
     if(params->use_api == OBS_USE_API_S3)
     {
@@ -1120,7 +1128,57 @@ void request_set_opt_for_progress(http_request *request) {
         COMMLOG(OBS_LOGWARN, "%s curl_easy_setopt CURLOPT_NOPROGRESS failed! CURLcode = %d", __FUNCTION__,setoptResult);
     }
 }
+#define SignatureDoesNotMatch "SignatureDoesNotMatch"
+int checkRequestForLogStringToSign(http_request *request) {
+	if (NULL == request) {
+		COMMLOG(OBS_LOGERROR, "Failed to log StringToSign ,because request is NULL");
+		return 0;
+	}
+	else {
+		return 1;
+	}
+}
+int checkSignBufForLogStringToSign(char* signBuf) {
+	if ( NULL == signBuf) {
+		COMMLOG(OBS_LOGERROR, "Failed to log StringToSign ,because signBuf is NULL");
+		return 0;
+	}
+	else {
+		return 1;
+	}
+}
+int checkSignBufLenForLogStringToSign(int signBufLen) {
+	if (0 == signBufLen) {
+		COMMLOG(OBS_LOGERROR, "Failed to log StringToSign ,because signBufLen is 0");
+		return 0;
+	}
+	else {
+		return 1;
+	}
+}
+int checkForLogStringToSign(http_request *request, char* signBuf, int signBufLen) {
+	return checkRequestForLogStringToSign(request) && 
+		checkSignBufForLogStringToSign(signBuf) && 
+		checkSignBufLenForLogStringToSign(signBufLen);
+}
 
+void logStringToSign(http_request *request, char* signBuf, int signBufLen) {
+	if (!checkForLogStringToSign(request, signBuf, signBufLen)) {
+		return;
+	}
+	OBS_LOGLEVEL logLevelForStringToSign = OBS_LOGINFO;
+	int errorHeaderCount = request->errorParser.obsErrorDetails.error_headers_count;
+	for (int i = 0; i < errorHeaderCount; ++i) {
+		if (strstr(request->errorParser.obsErrorDetails.error_headers[i], SignatureDoesNotMatch)) {
+			logLevelForStringToSign = OBS_LOGERROR;
+			break;
+		}
+	}
+	if (strstr(request->errorParser.code, SignatureDoesNotMatch)) {
+		logLevelForStringToSign = OBS_LOGERROR;
+	}
+	COMMLOG(logLevelForStringToSign, "In request_perform, local StringToSign is(between ---):\n---\n%.*s\n---\n", signBufLen, signBuf);
+}
 void request_perform(const request_params *params)
 {
     COMMLOG(OBS_LOGWARN, "enter request perform!!!");
@@ -1166,6 +1224,10 @@ void request_perform(const request_params *params)
     canonicalize_obs_headers(&computed, params->use_api);
     canonicalize_resource(params, computed.urlEncodedKey, computed.canonicalizedResource,
         sizeof(computed.canonicalizedResource));
+	char signbuf[17 + 129 + 129 + 1 +
+		(sizeof(computed.canonicalizedAmzHeaders) - 1) +
+		(sizeof(computed.canonicalizedResource) - 1) + 1];
+	int signbuf_len = sizeof(signbuf);
     if (params->temp_auth)
     {
         if ((status = compose_temp_header(params, &computed, &stTempInfo)) != OBS_STATUS_OK) {
@@ -1173,7 +1235,7 @@ void request_perform(const request_params *params)
             return_status(status);
         }
     }
-    else if ((status = compose_auth_header(params, &computed)) != OBS_STATUS_OK)
+    else if ((status = compose_auth_header(params, &computed, signbuf, signbuf_len)) != OBS_STATUS_OK)
     {
         CHECK_NULL_FREE(errorBuffer);
         return_status(status);
@@ -1226,6 +1288,7 @@ void request_perform(const request_params *params)
 				, __FUNCTION__, code, curl_easy_strerror(code)
 				, obs_get_status_name(request->status), request->status, errorBuffer);
         }
+		logStringToSign(request, signbuf, signbuf_len);
         request_finish(&request);
         retry = is_retry(request, retry);
     }
@@ -1260,7 +1323,12 @@ size_t api_header_func(void *ptr, size_t size, size_t nmemb,
      return size*nmemb;
 }
 
-obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protocol, const obs_http_request_option *request_options)
+size_t curl_read_func_for_api_version(void *ptr, size_t size, size_t nmemb, void *data)
+{
+	// in case of rewind failed 65;
+	return 0;
+}
+obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protocol, const obs_http_request_option *request_options, bool useCname)
 {
     COMMLOG(OBS_LOGINFO, "get api version start!");
     obs_status status = OBS_STATUS_ErrorUnknown;
@@ -1309,7 +1377,8 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
         return OBS_STATUS_FailedToIInitializeRequest;
     }
     obs_status statu = OBS_STATUS_OK;
-    if (( statu =compose_api_version_uri(uri,uriSize,bucket_name,host_name,"apiversion",protocol)) != OBS_STATUS_OK) {
+	statu = compose_api_version_uri(uri, uriSize, useCname ? "" : bucket_name, host_name, "apiversion", protocol);
+    if (statu != OBS_STATUS_OK) {
         curl_easy_cleanup(curl);
         CHECK_NULL_FREE(uri);                                                          
         CHECK_NULL_FREE(errorBuffer);
@@ -1334,7 +1403,7 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
     easy_setopt_safe(CURLOPT_LOW_SPEED_TIME, request_options->speed_time);
     easy_setopt_safe(CURLOPT_CONNECTTIMEOUT_MS, request_options->connect_time);
     easy_setopt_safe(CURLOPT_TIMEOUT, request_options->max_connected_time);
-
+	easy_setopt_safe(CURLOPT_READFUNCTION, &curl_read_func_for_api_version);
     
     if (request_options->proxy_host != NULL) {
 		easy_setopt_safe(CURLOPT_PROXY, request_options->proxy_host);
@@ -1449,8 +1518,9 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
     errno_t err = EOK;
     if (use_api_index == -1) {
         use_api_index++;
-        if(get_api_version(options->bucket_options.bucket_name,options->bucket_options.host_name,
-                           options->bucket_options.protocol, &options->request_options) == OBS_STATUS_OK )
+        if(get_api_version(options->bucket_options.bucket_name,
+options->bucket_options.host_name,
+                           options->bucket_options.protocol, &options->request_options, options->bucket_options.useCname) == OBS_STATUS_OK )
         {   
 			err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
             CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
@@ -1487,8 +1557,9 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
         {
            if ( difftime(time_obs , api_switch[index].time_switch) > 900.00)
            {
-                if(get_api_version(options->bucket_options.bucket_name,options->bucket_options.host_name,
-                                   options->bucket_options.protocol, &options->request_options) == OBS_STATUS_OK )
+                if(get_api_version(options->bucket_options.bucket_name,
+options->bucket_options.host_name,
+                                   options->bucket_options.protocol, &options->request_options, options->bucket_options.useCname) == OBS_STATUS_OK )
                 {
                     api_switch[index].use_api = OBS_USE_API_OBS;
                     api_switch[index].time_switch = time_obs;
@@ -1508,8 +1579,9 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
         }
         else {
             use_api_index++;
-            if(get_api_version(options->bucket_options.bucket_name,options->bucket_options.host_name,
-                               options->bucket_options.protocol, &options->request_options) == OBS_STATUS_OK )
+            if(get_api_version(options->bucket_options.bucket_name,
+options->bucket_options.host_name,
+                               options->bucket_options.protocol, &options->request_options, options->bucket_options.useCname) == OBS_STATUS_OK )
             {
 				err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
                 CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);

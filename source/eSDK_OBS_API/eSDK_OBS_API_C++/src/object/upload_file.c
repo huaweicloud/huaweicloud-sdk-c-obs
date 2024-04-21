@@ -83,6 +83,10 @@ int getUploadFileSummary(upload_file_summary *pstUploadFileSummay, obs_upload_fi
 #if defined __GNUC__ || defined LINUX  
         struct stat statbuf;
         ret_stat = stat(obs_upload_file_config->upload_file, &statbuf);
+		if (ret_stat == -1)
+		{
+			checkAndLogStrError(SYMBOL_NAME_STR(stat), __FUNCTION__, __LINE__);
+		}
 #else
         struct _stati64 statbuf;
         ret_stat = file_stati64(obs_upload_file_config->upload_file, &statbuf);
@@ -447,6 +451,9 @@ void abortMultipartUploadAndFree(const obs_options *options, char *key,
     {
 #if defined __GNUC__ || defined LINUX
         fdTemp = open(checkpointFilename, O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+		if (fdTemp == -1) {
+			checkAndLogStrError(SYMBOL_NAME_STR(open), __FUNCTION__, __LINE__);
+		}
 
 #else
         (void)file_sopen_s(&fdTemp, checkpointFilename, _O_CREAT | _O_TRUNC, _SH_DENYNO,
@@ -462,7 +469,7 @@ void abortMultipartUploadAndFree(const obs_options *options, char *key,
     {
         close(fdTemp);
         fdTemp = -1;
-    }
+	}
 }
 
 
@@ -996,7 +1003,12 @@ static int  uploadPartCallback(int buffer_size, char * buffer, void *callback_da
                 (unsigned)buffer_size : cbd->bytesRemaining);
 
             bytesRead = read(fdUpload, buffer, toRead);
-            cbd->bytesRemaining -= bytesRead;
+			if (bytesRead < 0) {
+				checkAndLogStrError(SYMBOL_NAME_STR(read), __FUNCTION__, __LINE__);
+			}
+			else {
+				cbd->bytesRemaining -= bytesRead; 
+			}
         }
     }
     return bytesRead;
@@ -1007,13 +1019,17 @@ static int  uploadPartCallback(int buffer_size, char * buffer, void *callback_da
 static void uploadProgressCallback(uint64_t ulnow, uint64_t utotal, void *callback_data){
     upload_file_callback_data * cbd =  (upload_file_callback_data *)callback_data;
 
+	if (cbd == NULL) {
+		COMMLOG(OBS_LOGWARN, "callback_data is null in function %s", __FUNCTION__);
+		return;
+	}
     upload_file_progress_info *progressInfo = cbd->progressInfo;
-    uint64_t total_upload = progressInfo->uploadedSize;
-    if (ulnow == 0) {
-        return;
-    }
     if (progressInfo == NULL) {
         COMMLOG(OBS_LOGWARN, "progressInfo is null");
+        return;
+    }
+    uint64_t total_upload = progressInfo->uploadedSize;
+    if (ulnow == 0) {
         return;
     }
 
@@ -1108,7 +1124,7 @@ unsigned __stdcall UploadThreadProc_win32(void* param)
                     char pathToUpdate[ARRAY_LENGTH_2014];
                     char contentToSet[ARRAY_LENGTH_64];
 
-                    int ret = sprintf_s(pathToUpdate, ARRAY_LENGTH_2014, "%s%u/%s", "uploadinfo/partsinfo/part", part_num + 1, "uploadStatus");
+                    int ret = sprintf_s(pathToUpdate, ARRAY_LENGTH_2014, "%s%d/%s", "uploadinfo/partsinfo/part", part_num + 1, "uploadStatus");
                     if (ret < 0) {
                         COMMLOG(OBS_LOGWARN, "sprintf_s  failed in function: %s, line: %d", __FUNCTION__, __LINE__);
                     } else {
@@ -1191,6 +1207,7 @@ void *UploadThreadProc_linux(void* param)
     if (fd == -1)
     {
         COMMLOG(OBS_LOGINFO, "open upload file failed, partnum[%d]\n", part_num);
+		checkAndLogStrError(SYMBOL_NAME_STR(open), __FUNCTION__, __LINE__);
     }
     else
     {
@@ -2090,7 +2107,7 @@ void upload_file(const obs_options *options, char *key, server_side_encryption_p
     while (pstUploadPartListNotDone)
     {
 #if defined (WIN32)
-        Sleep(1000);
+        Sleep(SLEEP_TIMES_FOR_WIN32);
 #else
         sleep(1);
 #endif

@@ -41,7 +41,9 @@ FILE **uploadFilePool = NULL;
 static void test_head_object(char *key, char *bucket_name)
 {
     obs_options option;
-    head_object_data data = {0};
+    head_object_data data;
+    data.ret_status = OBS_STATUS_OK;
+    data.object_length = 0;
     init_obs_options(&option);
 
     option.bucket_options.host_name = HOST_NAME;
@@ -765,6 +767,7 @@ static void test_set_bucket_logging_with_grant(char *bucket_name_src, char *buck
     
     int aclGrantCount = 2;
     obs_acl_grant acl_grants[2] = {0};
+    memset_s(acl_grants, 2*sizeof(obs_acl_grant), 0, 2*sizeof(obs_acl_grant));
     acl_grants[0].grantee_type = OBS_GRANTEE_TYPE_CANONICAL_USER;
     strcpy_s(acl_grants[0].grantee.canonical_user.id,sizeof(acl_grants[0].grantee.canonical_user.id), "userid1");
     strcpy_s(acl_grants[0].grantee.canonical_user.display_name,sizeof(acl_grants[0].grantee.canonical_user.display_name), "dis1");
@@ -2563,7 +2566,9 @@ void test_object_option(char *bucket_name, char *cKey)
 
 static void test_head_bucket(char *bucket_name)
 {
-    head_object_data data = {0};
+    head_object_data data;
+    data.ret_status = OBS_STATUS_OK;
+    data.object_length = 0;
     obs_options option;
     init_obs_options(&option);
     option.bucket_options.host_name = HOST_NAME;
@@ -3055,6 +3060,7 @@ void *upload_thread_proc(void * thread_param)
         printf("test upload part %u faied(%s).\n",uploadPartInfo.part_number,
             obs_get_status_name(concurrent_temp->ret_status));
     }
+    return NULL;
 }
 
 
@@ -3788,13 +3794,14 @@ int test_pfs()
     test_delete_object("obj526", NULL, BUCKET_NAME);
     test_delete_bucket(BUCKET_NAME);
     test_delete_bucket(bucket_obj_acl); 
+    return 1;
 }
 
 int main(int argc, char **argv)
 {
-    strcpy_s(ACCESS_KEY_ID,sizeof(ACCESS_KEY_ID),"xxxxxxxxxxxxxxxxxxxx");
-    strcpy_s(SECRET_ACCESS_KEY,sizeof(SECRET_ACCESS_KEY),"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    strcpy_s(HOST_NAME,sizeof(HOST_NAME),"xx.xx.xx.xx");
+    strcpy_s(ACCESS_KEY_ID,sizeof(ACCESS_KEY_ID), getenv("ACCESS_KEY_ID"));
+    strcpy_s(SECRET_ACCESS_KEY, sizeof(SECRET_ACCESS_KEY),getenv("SECRET_ACCESS_KEY"));      
+    strcpy_s(HOST_NAME, sizeof(HOST_NAME),getenv("OBS_TEST_HOSTNAME")); 
     strcpy_s(BUCKET_NAME,sizeof(BUCKET_NAME),"esdk-c-test");
      
     obs_canned_acl canned_acl = OBS_CANNED_ACL_BUCKET_OWNER_FULL_CONTROL;
@@ -3805,7 +3812,8 @@ int main(int argc, char **argv)
 
     /*------ obs init------*/
     set_obs_log_path("/var/log/OBS_SDK_C", false);                   //此行代码用于示例设置日志文件路径功能，在实际使用中请注释该行
-    obs_initialize(OBS_INIT_ALL);
+	//setUserCustomLog(OBSLogPrintf); // set user custom log callback, you can define your own log callback which will be called asynchronously
+	obs_initialize(OBS_INIT_ALL);
     set_online_request_max_count(10);
 
     /*------ bucket test------*/

@@ -29,7 +29,7 @@ static obs_status errorXmlCallback(const char *elementPath, const char *data,
 
     int fit;
 
-    COMMLOG(OBS_LOGWARN, "%s errorXml : %s : %.*s", __FUNCTION__,elementPath, dataLen, data);
+    COMMLOG(OBS_LOGERROR, "%s errorXml : %s : %.*s", __FUNCTION__,elementPath, dataLen, data);
 
     if (!strcmp(elementPath, "Error")) {
     }
@@ -100,14 +100,17 @@ void error_parser_initialize(error_parser *errorParser)
     errorParser->obsErrorDetails.message = 0;
     errorParser->obsErrorDetails.resource = 0;
     errorParser->obsErrorDetails.further_details = 0;
-    errorParser->obsErrorDetails.extra_details_count = 0;
+    errorParser->obsErrorDetails.extra_details_count = 0; 
+    errorParser->obsErrorDetails.error_headers_count = 0;
     errorParser->obsErrorDetails.extra_details = errorParser->extra_details;
+	errorParser->obsErrorDetails.error_headers = errorParser->error_headers;
     errorParser->errorXmlParserInitialized = 0;
     string_buffer_initialize(errorParser->code);
     string_buffer_initialize(errorParser->message);
     string_buffer_initialize(errorParser->resource);
     string_buffer_initialize(errorParser->further_details);
     string_multibuffer_initialize(errorParser->extraDetailsNamesValues);
+	string_multibuffer_initialize(errorParser->errorHeadersNamesValues);
 }
 
 
@@ -222,6 +225,9 @@ void error_parser_convert_status(error_parser *errorParser, obs_status *status)
     HANDLE_CODE(NoSuchCORSConfiguration);
     HANDLE_CODE(InArrearOrInsufficientBalance);
     HANDLE_CODE(NoSuchTagSet);
+	HANDLE_CODE(BadAccessLabel);
+	HANDLE_CODE(FsNotSupport);
+	HANDLE_CODE(AccessLabelNotFound);
     *status = OBS_STATUS_ErrorUnknown;
 
  code_set:

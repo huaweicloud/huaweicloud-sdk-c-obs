@@ -17,6 +17,7 @@
 #if defined __GNUC__ || defined LINUX
 #include <pthread.h>
 #include <signal.h>
+#include <securec.h>
 
 static void handle_SIGPIPE(int signal, siginfo_t *siginfo, void *u_contxt)
 {

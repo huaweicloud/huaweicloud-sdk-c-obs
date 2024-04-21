@@ -128,6 +128,12 @@ mkdir cmake
 cd cmake
 cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=Release -DSPDLOG_VERSION=${SPDLOG_VERSION}
 make 
+
+if [ 0 -ne $? ];then
+    echo 'make failed in build_aarch.sh'
+	exit 1
+fi
+
 cd ../../
 # make clean
 # make

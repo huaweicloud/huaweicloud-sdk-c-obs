@@ -695,7 +695,7 @@ void eSDKTool::GetSrandNum(std::string& sRandNum)
 		close(fd);
 		char* tempStr = new char[256];
 		memset_s(tempStr, 256, 0, 256*sizeof(char));
-		sprintf_s(tempStr, 256, "%ld", dSrandNum);
+		sprintf_s(tempStr, 256, "%lu", dSrandNum);
 		sRandNum = std::string(tempStr);
 		delete[] tempStr;
 		tempStr = NULL;

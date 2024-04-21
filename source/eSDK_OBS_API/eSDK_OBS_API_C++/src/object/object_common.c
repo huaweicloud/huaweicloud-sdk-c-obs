@@ -219,6 +219,7 @@ int open_file(const char * file_name, int *ret_stat, int *file_size)
 #endif
         if (fd != -1)
         {
+			checkAndLogStrError(SYMBOL_NAME_STR(open), __FUNCTION__, __LINE__);
             close(fd);
         }
     }

@@ -40,11 +40,11 @@ using namespace eSDK;
 #ifndef WIN64
 // 导出接口预处理
 #pragma comment(linker, "/EXPORT:LogFini=_LogFini@4")
-#pragma comment(linker, "/EXPORT:LogInit=_LogInit@16")
-#pragma comment(linker, "/EXPORT:Log_Run_Debug=_Log_Run_Debug@8")
-#pragma comment(linker, "/EXPORT:Log_Run_Error=_Log_Run_Error@8")
-#pragma comment(linker, "/EXPORT:Log_Run_Info=_Log_Run_Info@8")
-#pragma comment(linker, "/EXPORT:Log_Run_Warn=_Log_Run_Warn@8")
+#pragma comment(linker, "/EXPORT:LogInit=_LogInit_W@16")
+#pragma comment(linker, "/EXPORT:Log_Run_Debug=_Log_Run_Debug@12")
+#pragma comment(linker, "/EXPORT:Log_Run_Error=_Log_Run_Error@12")
+#pragma comment(linker, "/EXPORT:Log_Run_Info=_Log_Run_Info@12")
+#pragma comment(linker, "/EXPORT:Log_Run_Warn=_Log_Run_Warn@12")
 // 导出接口预处理
 #endif
 #endif // !USE_OBS_STATIC_LIB

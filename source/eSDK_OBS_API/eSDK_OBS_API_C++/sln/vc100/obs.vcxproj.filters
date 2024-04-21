@@ -75,6 +75,9 @@
     <ClCompile Include="..\..\src\rename_object.c" />
     <ClCompile Include="..\..\src\signal_handle.c" />
     <ClCompile Include="..\..\src\truncate_object.c" />
+    <ClCompile Include="..\..\src\delete_access_label.c" />
+    <ClCompile Include="..\..\src\get_access_label.c" />
+    <ClCompile Include="..\..\src\set_access_label.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\inc\error_parser.h" />
@@ -90,5 +93,6 @@
     <ClInclude Include="..\..\inc\bucket.h" />
     <ClInclude Include="..\..\inc\object.h" />
     <ClInclude Include="..\..\inc\file_utils.h" />
+    <ClInclude Include="..\..\inc\access_label.h" />
   </ItemGroup>
 </Project>

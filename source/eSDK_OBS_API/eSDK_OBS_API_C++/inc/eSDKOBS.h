@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <math.h>
 #if defined __GNUC__ || defined LINUX
 #include <sys/select.h>
@@ -56,7 +57,7 @@ extern "C" {
 #define ARRAY_LENGTH_1024 1024
 #define ARRAY_LENGTH_2014 2014
 #define SLEEP_TIMES_FOR_LINUX 1
-#define SLEEP_TIMES_FOR_WIN32 0.05
+#define SLEEP_TIMES_FOR_WIN32 100
 #define SLEEP_TIMES_FOR_WAIT 0
 
 typedef enum
@@ -214,8 +215,12 @@ typedef enum
     */
      OBS_STATUS_MetadataNameDuplicate,
      OBS_STATUS_GET_UPLOAD_ID_FAILED,
-    
-	
+	 OBS_STATUS_Security_Function_Failed,
+	 OBS_STATUS_BadAccessLabel,
+	 OBS_STATUS_FsNotSupport,
+	 OBS_STATUS_JSON_PARSE_ERROR,
+	 OBS_STATUS_JSON_CREATE_ERROR,
+	 OBS_STATUS_AccessLabelNotFound,
     OBS_STATUS_BUTT
 } obs_status;
 
@@ -524,6 +529,10 @@ typedef struct obs_error_details
     int extra_details_count;
 
     obs_name_value *extra_details;
+
+	int error_headers_count;
+
+	char** error_headers;
 } obs_error_details;
 
 typedef struct obs_response_properties
@@ -897,6 +906,8 @@ typedef obs_status (obs_delete_object_data_callback)(int contents_count,
 typedef obs_status (obs_smn_callback)(obs_smn_notification_configuration* notification_conf,
             void *callback_data);
 
+typedef int(put_access_label_callback)(int buffer_size, char *buffer, void *callback_data);
+typedef obs_status(get_access_label_callback)(int buffer_size, const char *buffer, void *callback_data);
 
 /**************************response handler struct**********************************************/
 
@@ -1012,12 +1023,24 @@ typedef struct obs_smn_handler
     obs_smn_callback *get_smn_callback_func;
 }obs_smn_handler;
 
+typedef struct put_access_label_handler
+{
+	obs_response_handler response_handler;
+	put_access_label_callback *put_access_label_callback_impl;
+}put_access_label_handler;
+
+typedef struct get_access_label_handler
+{
+	obs_response_handler response_handler;
+	get_access_label_callback *get_access_label_callback_impl;
+}get_access_label_handler;
 
 /**************************return struct*******************************************/
 typedef struct obs_bucket_context
 {
     char *host_name;
     char *bucket_name;
+	bool useCname;
     obs_protocol protocol;
     obs_uri_style uri_style;
     char *access_key;
@@ -1217,6 +1240,20 @@ typedef struct bucket_logging_message
      char *agency;
      int  agency_size;
 }bucket_logging_message;
+
+#define MAX_LABEL_LENGTH 53
+#define MAX_LABEL_NUM 512
+typedef struct Access_label_data {
+	char labels[MAX_LABEL_NUM][MAX_LABEL_LENGTH];
+	int labels_len;
+
+	char* json_str;
+	int json_str_remain_size;
+	int json_current_offset;
+	void* callback_data;
+	obs_status status;
+
+}Access_label_data;
 
 /****************************init handle *****************************************************/
 eSDK_OBS_API obs_status obs_initialize(int win32_flags);
@@ -1512,6 +1549,27 @@ eSDK_OBS_API void set_file_path_code(file_path_code code);
  
 eSDK_OBS_API file_path_code get_file_path_code();
 #endif
+
+typedef enum
+{
+	OBS_LOGDEBUG = 0,
+	OBS_LOGINFO,
+	OBS_LOGWARN,
+	OBS_LOGERROR
+}OBS_LOGLEVEL;
+typedef void(*OBSLogCallBack)(OBS_LOGLEVEL level, char* acMsg, size_t acMsgLen);
+eSDK_OBS_API void OBSLogPrintf(OBS_LOGLEVEL level, char* acMsg, size_t acMsgLen);
+eSDK_OBS_API void setUserCustomLog(OBSLogCallBack userCustomLogNew);
+eSDK_OBS_API obs_status init_access_label(Access_label_data * dir_access_labels);
+eSDK_OBS_API void set_access_label(const obs_options *options,
+char* key, put_access_label_handler * handler,
+	Access_label_data * dir_access_labels);
+eSDK_OBS_API void get_access_label(const obs_options *options,
+ char* key, get_access_label_handler * handler,
+	Access_label_data * dir_access_labels);
+eSDK_OBS_API void delete_access_label(const obs_options *options, char* key,
+	obs_response_handler *handler,
+	void* callback_data);
 #ifdef __cplusplus
 }
 #endif
