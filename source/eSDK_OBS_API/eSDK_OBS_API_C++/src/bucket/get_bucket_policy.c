@@ -35,7 +35,10 @@ obs_status get_bucket_policy_data_callback(int buffer_size, const char *buffer, 
 	int ret = memcpy_s(policy_data->policy + policy_data->currentPolicyLength, 
 		sizeof(policy_data->policy) - (policy_data->currentPolicyLength * sizeof(char)), 
 			buffer, buffer_size);
-    CheckAndLogNeg(ret, "memcpy_s", __FUNCTION__, __LINE__);
+	if (ret < 0) {
+		COMMLOG(OBS_LOGWARN, "%s failed in function: %s, line (%ld)!", "memcpy_s", __FUNCTION__, __LINE__);
+		return OBS_STATUS_Security_Function_Failed;
+	}
 	policy_data->currentPolicyLength += buffer_size;
 
     return OBS_STATUS_OK;
@@ -71,7 +74,7 @@ void get_bucket_policy(const obs_options *options, int policy_return_size,
     get_bucket_policy_data *policy_data = (get_bucket_policy_data*)malloc(sizeof(get_bucket_policy_data));
     if (!policy_data)
     {
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         COMMLOG(OBS_LOGERROR, "malloc get_policy_data failed !");
         return;
     }

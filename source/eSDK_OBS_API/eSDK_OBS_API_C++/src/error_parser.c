@@ -228,6 +228,8 @@ void error_parser_convert_status(error_parser *errorParser, obs_status *status)
 	HANDLE_CODE(BadAccessLabel);
 	HANDLE_CODE(FsNotSupport);
 	HANDLE_CODE(AccessLabelNotFound);
+	HANDLE_CODE(NoSuchTrashConfiguration);
+	HANDLE_CODE(InvalidRequestBody);
     *status = OBS_STATUS_ErrorUnknown;
 
  code_set:

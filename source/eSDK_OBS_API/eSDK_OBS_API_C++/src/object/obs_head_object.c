@@ -29,7 +29,8 @@ void obs_head_object(const obs_options *options, char *key, obs_response_handler
     COMMLOG(OBS_LOGINFO, "Enter obs_head_object Successfully!");
     if (!options->bucket_options.bucket_name) {
         COMMLOG(OBS_LOGERROR, "bucket_name is NULL!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
+		check_before_complete(handler->complete_callback,
+			OBS_STATUS_InvalidBucketName, 0, callback_data, __FUNCTION__, __LINE__);
         return;
     }
     errno_t err = EOK;
@@ -45,7 +46,6 @@ void obs_head_object(const obs_options *options, char *key, obs_response_handler
     params.key = key;
     params.properties_callback = handler->properties_callback;
     params.complete_callback = handler->complete_callback;
-    params.callback_data = callback_data;
     params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
     params.callback_data = callback_data;

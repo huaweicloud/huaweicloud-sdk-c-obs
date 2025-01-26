@@ -119,6 +119,13 @@ bool is_check_ca(const obs_options *options);
 
 obs_status copy_options_and_init_params(const obs_options *options, request_params* params,
         obs_use_api* use_api, obs_response_handler *handler, void *callback_data);
+
+int debug_libcurl_callback(CURL *handle,
+	curl_infotype type,
+	char *data,
+	size_t size,
+	void *userptr);
+
 #endif /* REQUEST_UTIL_H */
 
 

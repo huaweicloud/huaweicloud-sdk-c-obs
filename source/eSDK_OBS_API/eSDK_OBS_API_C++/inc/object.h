@@ -433,6 +433,8 @@ int updateCheckPoint(char * elementPath, const char * content, const char * file
 
 int isXmlFileValid(const char * file_name, exml_root xmlRootIn);
 
+void checkAndXmlFreeDoc(xmlDocPtr* doc);
+
 int open_file(const char * file_name, int *ret_stat, int *file_size);
 
 int set_check_pointFile_with_name(const char * checkPointFileName,

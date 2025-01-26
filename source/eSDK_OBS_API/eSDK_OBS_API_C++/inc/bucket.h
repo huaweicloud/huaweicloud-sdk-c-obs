@@ -249,6 +249,21 @@ typedef struct get_bucket_storage_class_policy_data
     string_buffer(storage_class_policy,15);     
 } get_bucket_storage_class_policy_data;
 
+typedef struct get_bucket_trash_config_data
+{
+	simple_xml simpleXml;
+
+	obs_response_properties_callback *responsePropertiesCallback;
+	obs_response_complete_callback *responseCompleteCallback;
+	void *callback_data;
+
+	int common_data_return_size;
+	char *common_data_return;
+	bucket_trash_configuration *bucket_trash_configuration_return;
+
+	string_buffer(common_data, 256);
+} get_bucket_trash_config_data;
+
 typedef struct tagging_kv
 {
     string_buffer(key, MAX_NAME_LEN);
@@ -514,6 +529,10 @@ void update_bucket_common_complete_callback(obs_status status,
     const obs_error_details *error_details,
     void *callback_data);
 
+void update_bucket_common_complete_callback_no_free(obs_status status,
+    const obs_error_details *error_details,
+    void *callback_data);
+    
 obs_status append_xml_document(int *xml_document_len_return, char *xml_document,
     int xml_document_buffer_size, char *fmt, ...);
 

@@ -17,7 +17,7 @@ G_BUILD_OPTION=release
 G_BUILD_DIR=${G_CWD}
 g_PATH=build
 
-G_SECUREC_PATH=$G_CWD/../../../platform/huaweisecurec
+G_SECUREC_PATH=$G_CWD/../../../platform/libboundscheck
 
 #THIRTY_DIRĿ¼
 G_THIRTY_DIR=$G_CWD/../../../build/script/Provider
@@ -42,12 +42,12 @@ fi
 #export iconv_version=iconv-1.15
 #export libxml2_version=libxml2-2.9.9
 #else
-export openssl_version=openssl-1.1.1k
-export curl_version=curl-7.78.0
+export openssl_version=openssl-1.1.1w
+export curl_version=curl-8.11.1
 export pcre_version=pcre-8.45
 export iconv_version=iconv-1.15
 export libxml2_version=libxml2-2.9.9
-export cjson_version=cjson-1.7.15
+export cjson_version=cjson-1.7.18
 #fi
 #export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #
@@ -120,8 +120,8 @@ compileThirty()
 
 # make
 popd >/dev/null
-
 make clean
+rm -rf cmake-build
 mkdir cmake-build
 cd cmake-build
 mkdir cmake
@@ -163,8 +163,8 @@ fi
 
 cp -f inc/eSDKOBS.h include
 cp -f cmake-build/cmake/lib/*.so lib
-cp -f ./../../../platform/huaweisecurec/include/* include
-cp -f ./../../../platform/huaweisecurec/lib/linux/libsecurec.so lib
+cp -f ./../../../platform/libboundscheck/include/* include
+cp -f ./../../../platform/libboundscheck/lib/linux/*.so lib
 cp -af ./../../../platform/eSDK_LogAPI_V2.1.10/C/linux_64/libeSDKLogAPI.so lib
 cp -af ./../../../build/script/Provider/build/linux/${curl_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/linux/${libxml2_version}/lib/* lib
@@ -187,8 +187,8 @@ tar zcvf ${L_PACKAGE_NAME}.tgz demo include lib readme.txt
 
 #cp -f ${g_PATH}/include/* include_static
 #cp -f ${g_PATH}/lib/*.a lib_static
-#cp -f ./../../../platform/huaweisecurec/include/* include_static
-#cp -f ./../../../platform/huaweisecurec/src/libsecurec.a lib_static
+#cp -f ./../../../platform/libboundscheck/include/* include_static
+#cp -f ./../../../platform/libboundscheck/src/*.a lib_static
 #cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/eSDKLogAPI/libeSDKLogAPI.a lib_static
 #cp -f /usr/local/log4cpp/lib/*.a lib_static
 #cp -f ./../../../build/script/Provider/build/linux/${curl_version}/static_package/lib/* lib_static

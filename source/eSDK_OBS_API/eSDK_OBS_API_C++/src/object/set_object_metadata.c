@@ -32,17 +32,17 @@ void set_object_metadata(const obs_options *options, obs_object_info *object_inf
 
     if (NULL == object_info->key || !strlen(object_info->key)) {
         COMMLOG(OBS_LOGERROR, "key is NULL!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidKey, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidKey, 0, callback_data);
         return;
     }
     if (!options->bucket_options.bucket_name) {
         COMMLOG(OBS_LOGERROR, "bucket_name is NULL!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
         return;
     }
     if (put_properties->metadata_action == OBS_NO_METADATA_ACTION) {
         COMMLOG(OBS_LOGERROR, "put_properties.metadata_action is OBS_NO_METADATA_ACTION!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidArgument, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidArgument, 0, callback_data);
         return;
     }
 

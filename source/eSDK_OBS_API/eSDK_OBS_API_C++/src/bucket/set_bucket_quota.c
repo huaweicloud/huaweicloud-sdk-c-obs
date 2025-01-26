@@ -59,7 +59,7 @@ void set_bucket_quota(const obs_options *options, uint64_t storage_quota,
     if (status != OBS_STATUS_OK)
     {
         COMMLOG(OBS_LOGERROR, "Malloc update_bucket_common_data failed!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         return;
     }
     quota_data->complete_callback = handler->complete_callback;

@@ -321,14 +321,14 @@ void set_notification_configuration(const obs_options *options,
 
     if (!options->bucket_options.bucket_name) {
         COMMLOG(OBS_LOGERROR, "bucket_name is NULL.");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
         return;
     }
 
     if (!notification_conf)
     {
-        COMMLOG(OBS_LOGERROR, "set_notification faied, notification_conf is null.");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidParameter, 0, 0);
+        COMMLOG(OBS_LOGERROR, "set_notification failed, notification_conf is null.");
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidParameter, 0, callback_data);
         return;
     }
 

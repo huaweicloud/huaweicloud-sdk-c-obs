@@ -26,11 +26,19 @@ obs_status copy_options_and_init_params(const obs_options *options, request_para
         return OBS_STATUS_InvalidBucketName;
     }
 
-    memset_s(params, sizeof(request_params), 0, sizeof(request_params));
-    errno_t err = EOK;
+    errno_t err = memset_s(params, sizeof(request_params), 0, sizeof(request_params));
+    CheckAndLogNoneZero(err, "memset_s", __FUNCTION__, __LINE__);
+	if (err != 0) {
+		(void)(*(handler->complete_callback))(OBS_STATUS_Security_Function_Failed, 0, callback_data);
+		return OBS_STATUS_Security_Function_Failed;
+	}
     err = memcpy_s(&params->bucketContext, sizeof(obs_bucket_context), &options->bucket_options,
         sizeof(obs_bucket_context));
     CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+	if (err != 0) {
+		(void)(*(handler->complete_callback))(OBS_STATUS_Security_Function_Failed, 0, callback_data);
+		return OBS_STATUS_Security_Function_Failed;
+	}
     err = memcpy_s(&params->request_option, sizeof(obs_http_request_option), &options->request_options,
         sizeof(obs_http_request_option));
     CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);

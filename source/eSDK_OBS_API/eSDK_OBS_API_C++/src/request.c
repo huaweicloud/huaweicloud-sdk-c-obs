@@ -90,7 +90,7 @@ void set_openssl_callback(obs_openssl_switch switch_flag)
     g_switch_openssl = switch_flag;
 }
 
-void request_api_deinitialize()
+void request_api_deinitialize(void)
 {
 #if defined __GNUC__ || defined LINUX
     pthread_mutex_destroy(&requestStackMutexG);
@@ -131,7 +131,7 @@ obs_status request_api_initialize_global(unsigned int flags)
 	return OBS_STATUS_OK;
 }
 
-void request_api_initialize_setPlatform()
+void request_api_initialize_setPlatform(void)
 {
 #if defined __GNUC__ || defined LINUX
 	pthread_mutex_init(&requestStackMutexG, 0);
@@ -524,9 +524,16 @@ static obs_status setup_curl(http_request *request,
     if (params->request_option.forbid_reuse_tcp) {
         curl_easy_setopt_safe(CURLOPT_FORBID_REUSE, 1);
     }
+	if (params->request_option.curl_max_connects >= 0) {
+		curl_easy_setopt_safe(CURLOPT_MAXCONNECTS, params->request_option.curl_max_connects);
+	}
     curl_easy_setopt_safe(CURLOPT_NETRC, CURL_NETRC_IGNORED);
     setup_CheckCA(request, params, values);
 
+	if (OBS_LOGDEBUG >= getRunLogLevel() && params->request_option.curl_log_verbose) {
+		curl_easy_setopt_safe(CURLOPT_VERBOSE, 1);
+		curl_easy_setopt_safe(CURLOPT_DEBUGFUNCTION, &debug_libcurl_callback);
+	}
     curl_easy_setopt_safe(CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt_safe(CURLOPT_MAXREDIRS, 10);
     curl_easy_setopt_safe(CURLOPT_USERAGENT, userAgentG);
@@ -595,7 +602,7 @@ static obs_status setup_curl(http_request *request,
     return set_curl_easy_setopt_safe(request, params);
 }
 
-static void release_token()
+static void release_token(void)
 {
 #if defined __GNUC__ || defined LINUX
     pthread_mutex_lock(&requestStackMutexG);
@@ -859,7 +866,6 @@ static obs_status compose_auth_header(const request_params *params,
                  "Authorization: AWS %s:%.*s", params->bucketContext.access_key,
                  b64Len, b64);
         CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-        COMMLOG(OBS_LOGINFO, "%s request_perform : Authorization: AWS %s:*****************", __FUNCTION__,params->bucketContext.access_key);
     }
     else
     {
@@ -867,7 +873,6 @@ static obs_status compose_auth_header(const request_params *params,
                  "Authorization: OBS %s:%.*s", params->bucketContext.access_key,
                  b64Len, b64);
         CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-        COMMLOG(OBS_LOGINFO, "%s request_perform : Authorization: OBS %s:*****************", __FUNCTION__,params->bucketContext.access_key);
     }
 
     char * userAgent = USER_AGENT_VALUE;
@@ -968,6 +973,47 @@ void request_finish_log_obs(struct curl_slist* tmp, OBS_LOGLEVEL logLevel)
 	}
 }
 
+#define MASKED_AUTHORIZATION_SIZE 50
+#define AUTHORIZATION_PREFIX_LEN 40
+#define MASKED_INFO_SIZE 10
+#ifndef min
+#define min(a,b)            (((a) < (b)) ? (a) : (b))
+#endif // !min
+
+void request_finish_log_authorization_masked(struct curl_slist* tmp, OBS_LOGLEVEL logLevel) {
+	if (getRunLogLevel() > logLevel) {
+		return; // can't log
+	}
+	do {
+		char* last_colon_location = strrchr(tmp->data, ':');
+		if (last_colon_location == NULL) {
+			break;
+		}
+		else {
+			char masked_authorization[MASKED_AUTHORIZATION_SIZE] = { 0 };
+			size_t strncat_len = min((last_colon_location - tmp->data) + 1, AUTHORIZATION_PREFIX_LEN);
+			errno_t error = strncat_s(masked_authorization, MASKED_AUTHORIZATION_SIZE, tmp->data, strncat_len);
+			if (checkIfErrorAndLogStrError(SYMBOL_NAME_STR(strncat_s), __FUNCTION__, __LINE__, error)) {
+				break;
+			}
+			char masked_info[MASKED_INFO_SIZE];
+			error = memset_s(masked_info, MASKED_INFO_SIZE, '*', MASKED_INFO_SIZE);
+			if (checkIfErrorAndLogStrError(SYMBOL_NAME_STR(memset_s), __FUNCTION__, __LINE__, error)) {
+				break;
+			}
+			masked_info[MASKED_INFO_SIZE - 1] = '\0';
+			error = strncat_s(masked_authorization + strncat_len, 
+                MASKED_AUTHORIZATION_SIZE - strncat_len, masked_info, MASKED_INFO_SIZE);
+			if (checkIfErrorAndLogStrError(SYMBOL_NAME_STR(strncat_s), __FUNCTION__, __LINE__, error)) {
+				break;
+			}
+			COMMLOG(logLevel, masked_authorization);
+			return;
+		}
+	} while (false);
+	COMMLOG(logLevel, "failed to mask auth info");
+}
+
 void request_finish_log(struct curl_slist* tmp, OBS_LOGLEVEL logLevel) {
 	if (0 == strncmp(tmp->data, "x-amz", 5))
 	{
@@ -976,6 +1022,9 @@ void request_finish_log(struct curl_slist* tmp, OBS_LOGLEVEL logLevel) {
 	else if(0 == strncmp(tmp->data, "x-obs", 5))
 	{
 		request_finish_log_obs(tmp, logLevel);
+	}
+	else if (0 == strncmp(tmp->data, "Authorization:", strlen("Authorization:"))) {
+		request_finish_log_authorization_masked(tmp, logLevel);
 	}
 	else
 	{
@@ -1179,46 +1228,65 @@ void logStringToSign(http_request *request, char* signBuf, int signBufLen) {
 	}
 	COMMLOG(logLevelForStringToSign, "In request_perform, local StringToSign is(between ---):\n---\n%.*s\n---\n", signBufLen, signBuf);
 }
+
+void setCurlErrorBuffer(CURL *curl, char* errorBuffer, size_t errorBufferSize) {
+    if(errorBufferSize < CURL_ERROR_SIZE){
+        COMMLOG(OBS_LOGWARN, "errorBufferSize is less than CURL_ERROR_SIZE, "
+            "curl error may be truncated");
+    }
+    CURLcode setoptResult = curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer);
+    if (setoptResult != CURLE_OK) {
+        COMMLOG(OBS_LOGERROR, 
+            "%s curl_easy_setopt CURLOPT_ERRORBUFFER failed! CURLcode = %d", __FUNCTION__, setoptResult);
+    }
+}
+
+obs_status checkParameters(const request_params *params) {
+	obs_status status = OBS_STATUS_OK;
+	do {
+		if (params->bucketContext.host_name == NULL) {
+			status = OBS_STATUS_NULL_HOSTNAME;
+			COMMLOG(OBS_LOGERROR, "%s in %s, %s is null!", obs_get_status_name(status), __FUNCTION__,
+				SYMBOL_NAME_STR(params->bucketContext.host_name));
+			break;
+		}
+		if (params->bucketContext.secret_access_key == NULL) {
+			status = OBS_STATUS_NULL_SECRETE_ACCESS_KEY;
+			COMMLOG(OBS_LOGERROR, "%s in %s, %s is null!", obs_get_status_name(status), __FUNCTION__,
+				SYMBOL_NAME_STR(params->bucketContext.secret_access_key));
+			break;
+		}
+	} while (0);
+	return status;
+}
+
 void request_perform(const request_params *params)
 {
-    COMMLOG(OBS_LOGWARN, "enter request perform!!!");
+    COMMLOG(OBS_LOGINFO, "enter request perform!!!");
     http_request *request = NULL;
     obs_status status = OBS_STATUS_OK;
     int is_true = 0;
     int retry = RETRY_NUM;
-    COMMLOG(OBS_LOGINFO, "Ente request_perform object key= %s\n!", params->key);
+    COMMLOG(OBS_LOGINFO, "Enter request_perform object key= %s\n!", params->key);
+	if ((status = checkParameters(params)) != OBS_STATUS_OK) {
+		return_status(status);
+	}
     request_computed_values computed;
     memset_s(&computed, sizeof(request_computed_values), 0, sizeof(request_computed_values));
-    char *errorBuffer = (char*)malloc(CURL_ERROR_SIZE*sizeof(char));
-    if(errorBuffer == NULL){
-        COMMLOG(OBS_LOGERROR, "malloc failed in function: %s, line: %d", __FUNCTION__, __LINE__);
-        return;
-    }
-    int ret = memset_s(errorBuffer, CURL_ERROR_SIZE, 0, CURL_ERROR_SIZE);
-    if(ret != 0){
-        COMMLOG(OBS_LOGERROR, "memset_s failed in function: %s, line: %d", __FUNCTION__, __LINE__);
-        CHECK_NULL_FREE(errorBuffer);
-        return;
-    }
     char authTmpParams[1024] = { 0 };
     char authTmpActualHeaders[1024] = { 0 };
     temp_auth_info stTempInfo;
-    ret = memset_s(&stTempInfo, sizeof(temp_auth_info), 0, sizeof(temp_auth_info));
-    if(ret != 0){
-        COMMLOG(OBS_LOGERROR, "memset_s failed in function: %s, line: %d", __FUNCTION__, __LINE__);
-        CHECK_NULL_FREE(errorBuffer);
-        return;
+	int ret = memset_s(&stTempInfo, sizeof(temp_auth_info), 0, sizeof(temp_auth_info));
+    if(checkIfErrorAndLogStrError(SYMBOL_NAME_STR(memset_s), __FUNCTION__, __LINE__, ret)){
+		return_status(OBS_STATUS_Security_Function_Failed);
     }
     stTempInfo.temp_auth_headers = authTmpActualHeaders;
     stTempInfo.tempAuthParams = authTmpParams;
 
-
     if ((status = compose_headers(params, &computed)) != OBS_STATUS_OK){
         COMMLOG(OBS_LOGERROR, "compose_headers failed in function: %s, line: %d", __FUNCTION__, __LINE__);
-        CHECK_NULL_FREE(errorBuffer);
-        return;
+		return_status(status);
     }
-        
 
     COMMLOG(OBS_LOGINFO, "Enter request_perform object computed key= %s\n!", computed.urlEncodedKey);
     canonicalize_obs_headers(&computed, params->use_api);
@@ -1231,18 +1299,15 @@ void request_perform(const request_params *params)
     if (params->temp_auth)
     {
         if ((status = compose_temp_header(params, &computed, &stTempInfo)) != OBS_STATUS_OK) {
-            CHECK_NULL_FREE(errorBuffer);
             return_status(status);
         }
     }
     else if ((status = compose_auth_header(params, &computed, signbuf, signbuf_len)) != OBS_STATUS_OK)
     {
-        CHECK_NULL_FREE(errorBuffer);
         return_status(status);
     }
 
     if ((status = request_get(params, &computed, &request, &stTempInfo)) != OBS_STATUS_OK) {
-        CHECK_NULL_FREE(errorBuffer);
         return_status(status);
     }
     is_true = ((params->temp_auth) && (params->temp_auth->temp_auth_callback != NULL));
@@ -1253,13 +1318,23 @@ void request_perform(const request_params *params)
             sizeof(authTmpActualHeaders),
             params->temp_auth->callback_data);
         request_release(&request);
-        CHECK_NULL_FREE(errorBuffer);
         return_status(status);
     }
-    CURLcode setoptResult = curl_easy_setopt(request->curl, CURLOPT_ERRORBUFFER, errorBuffer);
-    if (setoptResult != CURLE_OK) {
-        COMMLOG(OBS_LOGWARN, "%s curl_easy_setopt failed! CURLcode = %d", __FUNCTION__, setoptResult);
-    }
+
+	size_t errorBufferSize = CURL_ERROR_SIZE * sizeof(char);
+	char *errorBuffer = (char*)malloc(errorBufferSize);
+	if (errorBuffer == NULL) {
+		COMMLOG(OBS_LOGERROR, "malloc failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+		return_status(OBS_STATUS_OutOfMemory);
+		return;
+	}
+	ret = memset_s(errorBuffer, errorBufferSize, 0, errorBufferSize);
+	if (ret != 0) {
+		COMMLOG(OBS_LOGERROR, "memset_s failed in function: %s, line: %d", __FUNCTION__, __LINE__);
+		CHECK_NULL_FREE(errorBuffer);
+		return_status(OBS_STATUS_Security_Function_Failed);
+	}
+    setCurlErrorBuffer(request->curl, errorBuffer, errorBufferSize);
 
     request_set_opt_for_progress(request);
 
@@ -1271,16 +1346,17 @@ void request_perform(const request_params *params)
     char* urlPrefix = params->bucketContext.protocol == OBS_PROTOCOL_HTTPS ? "https" : "http";
     COMMLOG(OBS_LOGINFO, "%s OBS SDK Version= %s; Endpoint = %s://%s; Access Mode = %s", __FUNCTION__, OBS_SDK_VERSION,
 		urlPrefix, params->bucketContext.host_name, accessmode);
-    COMMLOG(OBS_LOGINFO, "%s start curl_easy_perform now", __FUNCTION__);
     while (retry > 0)
     {
+		COMMLOG(OBS_LOGINFO, "%s start curl_easy_perform now", __FUNCTION__);
         CURLcode code = curl_easy_perform(request->curl);
+		COMMLOG(OBS_LOGINFO, "%s end curl_easy_perform.", __FUNCTION__);
         is_true = ((code != CURLE_OK) && (request->status == OBS_STATUS_OK));
         if (is_true) {
             request->status = request_curl_code_to_status(code);
             char *proxyBuf = strstr(errorBuffer, "proxy:");
             if (NULL != proxyBuf) {
-                errno_t err = strcpy_s(proxyBuf, CURL_ERROR_SIZE - (proxyBuf - errorBuffer), "proxy: *****");
+                errno_t err = strcpy_s(proxyBuf, errorBufferSize - (proxyBuf - errorBuffer), "proxy: *****");
                 CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
             }
             COMMLOG(OBS_LOGERROR, "In function :(%s) curl_easy_perform failed, CURLcode = %d"
@@ -1348,13 +1424,14 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
 
     CURL *curl = NULL;
     long httpResponseCode = 0;
-    char *errorBuffer = (char*)malloc(sizeof(char)*CURL_ERROR_SIZE);
+    size_t errorBufferSize = sizeof(char)*CURL_ERROR_SIZE;
+    char *errorBuffer = (char*)malloc(errorBufferSize);
     if(errorBuffer == NULL){
         CHECK_NULL_FREE(uri);
         COMMLOG(OBS_LOGERROR, "malloc failed in function: %s, line: %d", __FUNCTION__, __LINE__);
         return status;
     }else{
-        int ret = memset_s(errorBuffer, CURL_ERROR_SIZE, 0, CURL_ERROR_SIZE);
+        int ret = memset_s(errorBuffer, errorBufferSize, 0, errorBufferSize);
         if (ret != 0) {
             CHECK_NULL_FREE(uri);
             CHECK_NULL_FREE(errorBuffer);
@@ -1414,11 +1491,11 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
     if (request_options->forbid_reuse_tcp) {
         easy_setopt_safe(CURLOPT_FORBID_REUSE, 1);
     }
-    CURLcode setoptResult =  curl_easy_setopt(curl,CURLOPT_ERRORBUFFER,errorBuffer);
+	if (request_options->curl_max_connects >= 0) {
+		easy_setopt_safe(CURLOPT_MAXCONNECTS, request_options->curl_max_connects);
+	}
+    setCurlErrorBuffer(curl, errorBuffer, errorBufferSize);
     COMMLOG(OBS_LOGWARN, "curl_easy_setopt curl path= %s",uri);
-    if (setoptResult != CURLE_OK){
-        COMMLOG(OBS_LOGWARN, "%s curl_easy_setopt failed! CURLcode = %d", __FUNCTION__,setoptResult);
-    }
     CURLcode code = curl_easy_perform(curl);
     if (code != CURLE_OK) {
         status = request_curl_code_to_status(code);
@@ -1507,6 +1584,22 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
         *use_api_temp = OBS_USE_API_S3;
         return;
     }
+
+    if (!CheckAndLogNULL(options->bucket_options.bucket_name, SYMBOL_NAME_STR(options->bucket_options.bucket_name), 
+        __FUNCTION__, __FUNCTION__, __LINE__)) {
+        *use_api_temp = OBS_USE_API_OBS;
+	    COMMLOG(OBS_LOGERROR, "In function %s line %d, use_api_temp is set to OBS_USE_API_OBS "
+            "due to NULL options->bucket_options.bucket_name", __FUNCTION__, __LINE__);
+        return;
+    }
+
+	if (!CheckAndLogNULL(options->bucket_options.host_name, SYMBOL_NAME_STR(options->bucket_options.host_name),
+		__FUNCTION__, __FUNCTION__, __LINE__)) {
+		*use_api_temp = OBS_USE_API_OBS;
+		COMMLOG(OBS_LOGERROR, "In function %s line %d, use_api_temp is set to OBS_USE_API_OBS "
+			"due to NULL options->bucket_options.host_name", __FUNCTION__, __LINE__);
+		return;
+	}
 	
     int index = -1;
 #if defined __GNUC__ || defined LINUX

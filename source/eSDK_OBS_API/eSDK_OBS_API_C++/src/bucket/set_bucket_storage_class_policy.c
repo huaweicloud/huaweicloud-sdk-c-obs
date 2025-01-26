@@ -24,7 +24,7 @@ obs_status generate_storage_class_xml_document(obs_storage_class storage_class_p
     obs_status ret = OBS_STATUS_OK;
 
     if (use_api == OBS_USE_API_S3) {
-        char *storage_class_list[] = { "STANDARD","STANDARD_IA","GLACIER","DEEP_ARCHIVE" };
+        char *storage_class_list[] = { "STANDARD","STANDARD_IA","GLACIER","DEEP_ARCHIVE","HIGH_PERFORMANCE" };
 
         ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
             "%s", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
@@ -36,7 +36,7 @@ obs_status generate_storage_class_xml_document(obs_storage_class storage_class_p
             "%s", "</DefaultStorageClass></StoragePolicy>");
     }
     else {
-        char *storage_class_list[] = { "STANDARD","WARM","COLD","DEEP_ARCHIVE" };
+        char *storage_class_list[] = { "STANDARD","WARM","COLD","DEEP_ARCHIVE","HIGH_PERFORMANCE" };
 
         ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
             "%s", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
@@ -64,7 +64,7 @@ void set_bucket_storage_class_policy(const obs_options *options,
     if (storage_class_policy >= OBS_STORAGE_CLASS_BUTT)
     {
         COMMLOG(OBS_LOGERROR, "storage_class_policy invalid!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidParameter, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidParameter, 0, callback_data);
         return;
     }
 
@@ -72,7 +72,7 @@ void set_bucket_storage_class_policy(const obs_options *options,
     if (!common_data)
     {
         COMMLOG(OBS_LOGERROR, "Malloc set_stoarge_policy_data failed!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         return;
     }
     memset_s(common_data, sizeof(set_common_data), 0, sizeof(set_common_data));
@@ -85,7 +85,7 @@ void set_bucket_storage_class_policy(const obs_options *options,
     {
         free(common_data);
         common_data = NULL;
-        (void)(*(handler->complete_callback))(status, 0, 0);
+        (void)(*(handler->complete_callback))(status, 0, callback_data);
         return;
     }
     common_data->response_properties_callback = handler->properties_callback;

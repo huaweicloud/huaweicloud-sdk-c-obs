@@ -231,7 +231,7 @@ static set_lifecycle_data* init_set_lifecycle_data(obs_lifecycle_conf* bucket_li
     sblcData = (set_lifecycle_data *)malloc(sizeof(set_lifecycle_data));
     if (!sblcData)
     {
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         COMMLOG(OBS_LOGERROR, "Malloc set_lifecycle_data failed.");
         return NULL;
     }
@@ -246,7 +246,7 @@ static set_lifecycle_data* init_set_lifecycle_data(obs_lifecycle_conf* bucket_li
     obs_status ret_status = set_lifecycle_request_xml(sblcData, bucket_lifecycle_conf, blcc_number, use_api);
     if (OBS_STATUS_OK != ret_status || sblcData->docLen < 0)
     {
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         free(sblcData);
         sblcData = NULL;
         return NULL;
@@ -272,7 +272,7 @@ void set_bucket_lifecycle_configuration(const obs_options *options,
     COMMLOG(OBS_LOGINFO, "set_bucket_lifecycle_configuration start !");
     if (!options->bucket_options.bucket_name) {
         COMMLOG(OBS_LOGERROR, "bucket_name is NULL.");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
         return;
     }
 
@@ -280,14 +280,14 @@ void set_bucket_lifecycle_configuration(const obs_options *options,
     {
         COMMLOG(OBS_LOGERROR, "bucket_lifecycle_conf(%p) or blcc_number(%d) is invalid.",
             bucket_lifecycle_conf, blcc_number);
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidParameter, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidParameter, 0, callback_data);
         return;
     }
 
     sblcData = init_set_lifecycle_data(bucket_lifecycle_conf, blcc_number, handler, callback_data, use_api);
     if (!sblcData)
     {
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         COMMLOG(OBS_LOGERROR, "malloc set_lifecycle_data failed.");
         return;
     }

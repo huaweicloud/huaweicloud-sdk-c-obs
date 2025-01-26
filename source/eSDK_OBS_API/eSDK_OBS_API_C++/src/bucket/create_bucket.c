@@ -103,7 +103,8 @@ void create_bucket(const obs_options *options, obs_canned_acl canned_acl,
     if (!bucket_data)
     {
         COMMLOG(OBS_LOGERROR, "Malloc update_bucket_common_data failed!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+		check_before_complete(handler->complete_callback,
+			OBS_STATUS_OutOfMemory, 0, callback_data, __FUNCTION__, __LINE__);
         return;
     }
     prepare_create_bucket_data(bucket_data, handler, callback_data);
@@ -141,7 +142,8 @@ void create_bucket_with_params(const obs_options *options, const obs_create_buck
     if (!bucket_data)
     {
         COMMLOG(OBS_LOGERROR, "Malloc update_bucket_common_data failed!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+		check_before_complete(handler->complete_callback,
+			OBS_STATUS_OutOfMemory, 0, callback_data, __FUNCTION__, __LINE__);
         return;
     }
     prepare_create_bucket_data(bucket_data, handler, callback_data);
@@ -186,7 +188,6 @@ void create_pfs_bucket(const obs_options *options, obs_canned_acl canned_acl,
 
     prepare_create_bucket_params(&params, options, &properties, bucket_data, use_api);
     params.bucketContext.bucket_type = OBS_BUCKET_PFS;
-
     request_perform(&params);
     COMMLOG(OBS_LOGINFO, "create pfs bucket finish!");
 

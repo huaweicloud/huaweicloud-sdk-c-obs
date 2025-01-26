@@ -94,19 +94,22 @@ void get_bucket_storage_info(const obs_options *options, int capacity_length, ch
     COMMLOG(OBS_LOGINFO, "get_bucket_storage_info start.");
     if (!options->bucket_options.bucket_name) {
         COMMLOG(OBS_LOGERROR, "bucket_name is NULL.");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
+		check_before_complete(handler->complete_callback,
+			OBS_STATUS_InvalidBucketName, 0, callback_data, __FUNCTION__, __LINE__);
         return;
     }
     if (NULL == capacity || NULL == object_number)
     {
         COMMLOG(OBS_LOGERROR, "capacity(%p) or object_number(%p) is invalid.", capacity, object_number);
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidParameter, 0, 0);
+		check_before_complete(handler->complete_callback, 
+			OBS_STATUS_InvalidParameter, 0, callback_data, __FUNCTION__, __LINE__);
         return;
     }
 
     gbsiData = (get_bucket_storageInfo_data *)malloc(sizeof(get_bucket_storageInfo_data));
     if (!gbsiData) {
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+		check_before_complete(handler->complete_callback,
+			OBS_STATUS_OutOfMemory, 0, callback_data, __FUNCTION__, __LINE__);
         COMMLOG(OBS_LOGERROR, "Malloc GetBucketStorageInfoData failed.");
         return;
     }

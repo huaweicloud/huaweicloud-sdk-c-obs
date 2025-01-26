@@ -26,7 +26,8 @@ void set_bucket_policy(const obs_options *options, const char *policy, obs_respo
     update_bucket_common_data *policy_data = (update_bucket_common_data*)malloc(sizeof(update_bucket_common_data));
     if (!policy_data)
     {
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+		check_before_complete(handler->complete_callback,
+			OBS_STATUS_OutOfMemory, 0, callback_data, __FUNCTION__, __LINE__);
         COMMLOG(OBS_LOGERROR, "malloc set_policy_data failed !");
         return;
     }

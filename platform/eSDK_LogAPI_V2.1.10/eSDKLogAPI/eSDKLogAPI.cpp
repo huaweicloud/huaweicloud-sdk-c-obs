@@ -20,6 +20,7 @@
 #include "eSDKLog.h"
 #include "./vos/vos.h"
 #include "eSDKLogAPI.h"
+#include "ConfigMgr.h"
 
 #if defined __GNUC__ || defined LINUX
 #include "securec.h"
@@ -35,23 +36,10 @@ using namespace eSDK;
 #if defined __GNUC__ || defined LINUX
 # define SNPRINTF_S  vsnprintf_s
 #endif
-
-#ifndef USE_OBS_STATIC_LIB
-#ifndef WIN64
-// 导出接口预处理
-#pragma comment(linker, "/EXPORT:LogFini=_LogFini@4")
-#pragma comment(linker, "/EXPORT:LogInit=_LogInit_W@16")
-#pragma comment(linker, "/EXPORT:Log_Run_Debug=_Log_Run_Debug@12")
-#pragma comment(linker, "/EXPORT:Log_Run_Error=_Log_Run_Error@12")
-#pragma comment(linker, "/EXPORT:Log_Run_Info=_Log_Run_Info@12")
-#pragma comment(linker, "/EXPORT:Log_Run_Warn=_Log_Run_Warn@12")
-// 导出接口预处理
-#endif
-#endif // !USE_OBS_STATIC_LIB
  
 // 安卓读取无法读取ini文件，故直接传送ini文件内容
 #if defined ANDROID
-int _STD_CALL_ LogInitForAndroid(const char* product, const char* iniInfo, unsigned int logLevel[LOG_CATEGORY], const char* logPath)
+int _STD_CALL_ LogInitForAndroid(const char* product, const char* iniInfo, unsigned int logLevel[LOG_CATEGORY], int logLevelLength, const char* logPath)
 {
 	CheckPointerReturnCode(product,RET_NULL_POINTER);
 	CheckPointerReturnCode(iniInfo,RET_NULL_POINTER);
@@ -66,7 +54,7 @@ int _STD_CALL_ LogInitForAndroid(const char* product, const char* iniInfo, unsig
 }
 // 安卓读取无法读取ini文件，故直接传送ini文件内容
 #elif defined WIN32
-int _STD_CALL_ LogInit_W(const char* product, const wchar_t* iniFile, unsigned int logLevel[LOG_CATEGORY], const wchar_t* logPath) {
+int _STD_CALL_ LogInit_W(const char* product, const wchar_t* iniFile, unsigned int logLevel[LOG_CATEGORY], int logLevelLength, const wchar_t* logPath) {
 
 	CheckPointerReturnCode(product, RET_NULL_POINTER);
 	CheckPointerReturnCode(iniFile, RET_NULL_POINTER);
@@ -81,7 +69,7 @@ int _STD_CALL_ LogInit_W(const char* product, const wchar_t* iniFile, unsigned i
 }
 #else
 
-int _STD_CALL_ LogInit(const char* product, const char* iniFile, unsigned int logLevel[LOG_CATEGORY], const char* logPath)
+int _STD_CALL_ LogInit(const char* product, const char* iniFile, unsigned int logLevel[LOG_CATEGORY], int logLevelLength, const char* logPath)
 {
 	
 	CheckPointerReturnCode(product,RET_NULL_POINTER);
@@ -430,6 +418,11 @@ void _STD_CALL_ Log_Run_Error(const char* product, const char* param, size_t par
 	strErrorContent = "|" + strErrorContent;
 
 	(void)LOGMGRINSTANE().printRunlog(product,ERROR_LEVEL,strErrorContent);
+}
+
+unsigned int _STD_CALL_ GetRunLogLevel(void)
+{
+	return ConfigMgrInstance().GetLogLevel_Run();
 }
 
 // 移动端ISV初始化接口

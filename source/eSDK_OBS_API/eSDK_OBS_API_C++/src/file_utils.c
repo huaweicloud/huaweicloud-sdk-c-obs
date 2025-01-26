@@ -28,8 +28,6 @@
 #define TEMP_RANDOM_NAME_LEN 4
 
 static file_path_code file_path_code_schemes = ANSI_CODE;
-void checkAndLogStrError(const char* failedFuncName, const char* funcName, int lineNum);
-#define ERROR_MESSAGE_BUFFER_SIZE 256
 #if defined (WIN32)
 int file_sopen_s(int* pfh, const char *filename, int oflag, int shflag, int pmode)
 {
@@ -51,7 +49,7 @@ int file_sopen_s(int* pfh, const char *filename, int oflag, int shflag, int pmod
 		return -1;
 	}
 	if (ret != 0) {
-		checkAndLogStrError(openFunc, __FUNCTION__, __LINE__);
+		checkIfErrorAndLogStrError(openFunc, __FUNCTION__, __LINE__, ret);
 	}
 	return ret;
 }
@@ -77,7 +75,7 @@ int file_stati64(const char *path, struct __stat64 *buffer)
 	}
 
 	if (ret != 0) {
-		checkAndLogStrError(statFunc, __FUNCTION__, __LINE__);
+		checkIfErrorAndLogStrError(statFunc, __FUNCTION__, __LINE__, ret);
 	}
 	return ret;
 }
@@ -137,37 +135,6 @@ wchar_t *GetWcharFromChar(const char *char_str)
 
 #endif
 
-int needCheckStrError = true;
-void checkAndLogStrError(const char* failedFuncName, const char* funcName, int lineNum) {
-	int err = errno;
-	if (needCheckStrError && err != EOK) {
-		char errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE] = { 0 };
-		char* errorMsg = "default error";
-#if defined (WIN32)
-		(void)strerror_s(errorMsgBuffer, ERROR_MESSAGE_BUFFER_SIZE, err);
-		errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
-		errorMsg = errorMsgBuffer;
-#define STRERRORFUNCNAME "strerror_s"
-#elif (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !_GNU_SOURCE
-		(void)strerror_r(err, errorMsgBuffer, ERROR_MESSAGE_BUFFER_SIZE);
-		errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
-		errorMsg = errorMsgBuffer;
-#define STRERRORFUNCNAME "strerror_r(XSI-compliant version)"
-#else
-		errorMsg = strerror_r(err, errorMsgBuffer, ERROR_MESSAGE_BUFFER_SIZE);
-		if(errorMsg == NULL || errorMsgBuffer[0] != '\0'){
-			errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
-			errorMsg = errorMsgBuffer;
-		}
-#define STRERRORFUNCNAME "strerror_r(GNU-specific version)"
-#endif
-		COMMLOG(OBS_LOGERROR, 
-			"Function :%s failed in function %s, line %d"
-			", errno is : %d, %s is : %s.", failedFuncName,
-			funcName, lineNum, err, STRERRORFUNCNAME, errorMsg);
-	}
-}
-
 char* file_path_fgets(char* _Buffer, int _MaxCount, FILE* _Stream) {
 	char* fgets_ret = NULL;
 	char* fgetsName = "default fgets";
@@ -222,12 +189,13 @@ int file_fopen_s(FILE** _Stream, const char *filename, const char *mode) {
 		return -2;
 	}
 #else
+	errno = EOK;
 	*_Stream = fopen(filename, mode);
 	fopenFuncName = SYMBOL_NAME_STR(fopen);
 	ret = errno;
 #endif // WIN32
 	if (ret != 0) {
-		checkAndLogStrError(fopenFuncName, __FUNCTION__, __LINE__);
+		checkIfErrorAndLogStrError(fopenFuncName, __FUNCTION__, __LINE__, ret);
 	}
 	return ret;
 }
@@ -274,7 +242,7 @@ int remove_file(const char* filename)
 		return -1;
 	}
 	if (ret != 0) {
-		checkAndLogStrError(removeFunc, __FUNCTION__, __LINE__);
+		checkIfErrorAndLogStrError(removeFunc, __FUNCTION__, __LINE__, ret);
 	}
 	return ret;
 }

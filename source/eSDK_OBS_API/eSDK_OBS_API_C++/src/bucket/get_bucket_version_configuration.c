@@ -88,7 +88,8 @@ void get_bucket_version_configuration(const obs_options *options, int status_ret
     get_bucket_common_data *version_data = (get_bucket_common_data*)malloc(sizeof(get_bucket_common_data));
     if (!version_data)
     {
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+		check_before_complete(handler->complete_callback,
+			OBS_STATUS_OutOfMemory, 0, callback_data, __FUNCTION__, __LINE__);
         COMMLOG(OBS_LOGERROR, "malloc version data failed !");
         return;
     }

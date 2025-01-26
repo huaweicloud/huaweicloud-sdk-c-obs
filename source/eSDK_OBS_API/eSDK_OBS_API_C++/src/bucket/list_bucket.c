@@ -231,7 +231,6 @@ void list_bucket(const obs_options *options, obs_list_service_handler *handler, 
     params.storageClassFormat = no_need_storage_class;
     params.temp_auth = options->temp_auth;
     params.use_api = use_api;
-
     request_perform(&params);
     COMMLOG(OBS_LOGINFO, "Leave list_bucket successfully !");
 }
@@ -304,7 +303,6 @@ void list_bucket_obs(const obs_options *options, obs_list_service_obs_handler *h
     params.storageClassFormat = no_need_storage_class;
     params.temp_auth = options->temp_auth;
     params.use_api = use_api;
-
     request_perform(&params);
     COMMLOG(OBS_LOGINFO, "Leave list_bucket_obs successfully !");
 }

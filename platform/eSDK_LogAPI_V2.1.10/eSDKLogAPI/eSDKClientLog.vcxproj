@@ -95,13 +95,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;eSDK_LOGAPI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\..\open_src\zlib-1.2.8\include;..\output\include;$(SolutionDir)..\..\..\build\script\Provider\build\arm\spdlog-1.9.2\include;..\log4cpp;..\;$(SolutionDir)..\..\huaweisecurec\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\..\open_src\zlib-1.2.8\include;..\output\include;$(SolutionDir)..\..\..\build\script\Provider\build\arm\spdlog-1.9.2\include;..\log4cpp;..\;$(SolutionDir)..\..\libboundscheck\include</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\C\debug</AdditionalLibraryDirectories>
-      <AdditionalDependencies>spdlog.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\C\debug;$(ProjectDir)..\..\..\source\eSDK_OBS_API\eSDK_OBS_API_C++\lib\win32_x86_msvc\release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>spdlog.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libboundscheck.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -111,13 +112,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;eSDK_LOGAPI_EXPORTS;WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\..\open_src\zlib-1.2.8\include;..\output\include;$(SolutionDir)..\..\..\build\script\Provider\build\arm\spdlog-1.9.2\include;..\log4cpp;..\;$(SolutionDir)..\..\huaweisecurec\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\..\open_src\zlib-1.2.8\include;..\output\include;$(SolutionDir)..\..\..\build\script\Provider\build\arm\spdlog-1.9.2\include;..\log4cpp;..\;$(SolutionDir)..\..\libboundscheck\include</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\C\debug_x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>spdlog.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\C\debug_x64;$(ProjectDir)..\..\..\source\eSDK_OBS_API\eSDK_OBS_API_C++\lib\win64_x64_msvc\release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>spdlog.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libboundscheck.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -129,15 +131,15 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;eSDK_LOGAPI_EXPORTS;HUAWEISECUREC_WXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\..\open_src\zlib-1.2.8\include;..\output\include;$(SolutionDir)..\..\..\build\script\Provider\build\arm\spdlog-1.9.2\include;..\log4cpp;..\;$(SolutionDir)..\..\huaweisecurec\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\..\open_src\zlib-1.2.8\include;..\output\include;$(SolutionDir)..\..\..\build\script\Provider\build\arm\spdlog-1.9.2\include;..\log4cpp;..\;$(SolutionDir)..\..\libboundscheck\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\C\debug</AdditionalLibraryDirectories>
-      <AdditionalDependencies>spdlog.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\C\debug;$(ProjectDir)..\..\..\source\eSDK_OBS_API\eSDK_OBS_API_C++\lib\win32_x86_msvc\release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>spdlog.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libboundscheck.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -149,20 +151,18 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;eSDK_LOGAPI_EXPORTS;WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\..\..\build\script\Provider\build\arm\spdlog-1.9.2\include;..\output\include;..\;$(SolutionDir)..\..\huaweisecurec\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\..\..\build\script\Provider\build\arm\spdlog-1.9.2\include;..\output\include;..\;$(SolutionDir)..\..\libboundscheck\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(ProjectDir)..\C\debug_x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>spdlog.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\C\debug_x64;$(ProjectDir)..\..\..\source\eSDK_OBS_API\eSDK_OBS_API_C++\lib\win64_x64_msvc\release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>spdlog.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libboundscheck.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\platform\huaweisecurec\include\securec.h" />
-    <ClInclude Include="..\..\..\platform\huaweisecurec\include\securectype.h" />
     <ClInclude Include="..\vos\vos.h" />
     <ClInclude Include="..\vos\vos_basetype.h" />
     <ClInclude Include="..\vos\vos_common.h" />
@@ -184,7 +184,6 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\platform\huaweisecurec\src\memset_s.c" />
     <ClCompile Include="..\vos\vos_cond.cpp" />
     <ClCompile Include="..\vos\vos_mem.cpp" />
     <ClCompile Include="..\vos\vos_mutex.cpp" />

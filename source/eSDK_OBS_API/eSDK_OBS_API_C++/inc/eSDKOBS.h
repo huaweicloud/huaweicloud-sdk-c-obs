@@ -221,6 +221,10 @@ typedef enum
 	 OBS_STATUS_JSON_PARSE_ERROR,
 	 OBS_STATUS_JSON_CREATE_ERROR,
 	 OBS_STATUS_AccessLabelNotFound,
+	OBS_STATUS_NULL_HOSTNAME, 
+	OBS_STATUS_NULL_SECRETE_ACCESS_KEY,
+	OBS_STATUS_NoSuchTrashConfiguration,
+	OBS_STATUS_InvalidRequestBody,
     OBS_STATUS_BUTT
 } obs_status;
 
@@ -243,6 +247,7 @@ typedef enum
     OBS_STORAGE_CLASS_STANDARD_IA           = 1, /* STANDARD_IA */
     OBS_STORAGE_CLASS_GLACIER               = 2, /* GLACIER */
     OBS_STORAGE_CLASS_DEEP_ARCHIVE          = 3, /* DEEP_ARCHIVE*/
+	OBS_STORAGE_CLASS_HIGH_PERFORMANCE      = 4, /* HIGH_PERFORMANCE*/
     OBS_STORAGE_CLASS_BUTT
 } obs_storage_class;
 
@@ -596,6 +601,12 @@ typedef struct obs_response_properties
     const char *obs_head_epid;
 
 	const char *reserved_indicator;
+
+	const char *fs_file_interface;
+
+	const char *az_redundancy;
+
+	const char *location_clustergroup_id;
 } obs_response_properties;
 
 typedef struct obs_list_objects_content
@@ -1098,11 +1109,13 @@ typedef struct obs_http_request_option
     char *proxy_auth;
     char *ssl_cipher_list;
     bool forbid_reuse_tcp;
+    long curl_max_connects;
     obs_http2_switch http2_switch;
     obs_bbr_switch   bbr_switch;
 	obs_auth_switch  auth_switch;
     long buffer_size;
     char* server_cert_path;
+	bool curl_log_verbose;
 } obs_http_request_option;
 
 typedef struct temp_auth_configure
@@ -1254,6 +1267,10 @@ typedef struct Access_label_data {
 	obs_status status;
 
 }Access_label_data;
+
+typedef struct bucket_trash_configuration {
+    int reserved_days;
+}bucket_trash_configuration;
 
 /****************************init handle *****************************************************/
 eSDK_OBS_API obs_status obs_initialize(int win32_flags);
@@ -1570,6 +1587,14 @@ eSDK_OBS_API void get_access_label(const obs_options *options,
 eSDK_OBS_API void delete_access_label(const obs_options *options, char* key,
 	obs_response_handler *handler,
 	void* callback_data);
+eSDK_OBS_API void set_bucket_trash_configuration(const obs_options *options, 
+    bucket_trash_configuration* obs_trash_configuration,
+    obs_response_handler *handler, void *callback_data);
+eSDK_OBS_API void get_bucket_trash_configuration(const obs_options *options,
+	bucket_trash_configuration* obs_trash_configuration_return,
+	obs_response_handler *handler, void *callback_data); 
+eSDK_OBS_API void delete_bucket_trash_configuration(const obs_options *options
+	, obs_response_handler *handler, void *callback_data);
 #ifdef __cplusplus
 }
 #endif

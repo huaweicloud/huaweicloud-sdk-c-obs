@@ -2195,7 +2195,7 @@ static void test_get_object(char *bucket_name, char *key)
     }
     else
     {
-        printf("get %s object faied(%s).\n", bucket_name, obs_get_status_name(data.ret_status));
+        printf("get %s object failed(%s).\n", bucket_name, obs_get_status_name(data.ret_status));
     }
     fclose(data.outfile);
 }
@@ -2240,7 +2240,7 @@ static void test_get_object_by_kms_encrypt(char *bucket_name, char *key)
     }
     else
     {
-        printf("get object %s by_kms faied(%s).\n", key, obs_get_status_name(data.ret_status));
+        printf("get object %s by_kms failed(%s).\n", key, obs_get_status_name(data.ret_status));
     }
     fclose(data.outfile);
 }
@@ -2292,7 +2292,7 @@ static void test_get_object_by_aes_encrypt(char *bucket_name, char *key)
     }
     else
     {
-        printf("get object %s by_aes faied(%s).\n", key, obs_get_status_name(data.ret_status));
+        printf("get object %s by_aes failed(%s).\n", key, obs_get_status_name(data.ret_status));
     }
     fclose(data.outfile);
 }
@@ -2367,7 +2367,7 @@ static void test_batch_delete_objects(char *bucket_name, char *key1, char *key2)
     }
     else
     {
-        printf("test batch_delete_objects %s %s faied(%s).\n", key1, key2, obs_get_status_name(ret_status));
+        printf("test batch_delete_objects %s %s failed(%s).\n", key1, key2, obs_get_status_name(ret_status));
     }
 }
 
@@ -2446,7 +2446,7 @@ static void test_restore_object(char *key, char *versionid, char *days, char *bu
     }
     else
     {
-        printf("restore object %s faied(%s).\n", key, obs_get_status_name(ret_status));
+        printf("restore object %s failed(%s).\n", key, obs_get_status_name(ret_status));
         return;
     }
 }
@@ -2662,7 +2662,7 @@ static void test_init_upload_part(char *bucket_name, char *key)
     }
     else
     {
-        printf("test init upload part %s faied(%s).\n", key, obs_get_status_name(ret_status));
+        printf("test init upload part %s failed(%s).\n", key, obs_get_status_name(ret_status));
     }
 }
 
@@ -2712,7 +2712,7 @@ static void test_upload_part(char *filename, char *bucket_name, char *key)
     }
     else
     {
-        printf("test upload part 1 %s faied(%s).\n", key, obs_get_status_name(data.ret_status));
+        printf("test upload part 1 %s failed(%s).\n", key, obs_get_status_name(data.ret_status));
         return ;
     }
     
@@ -2732,7 +2732,7 @@ static void test_upload_part(char *filename, char *bucket_name, char *key)
     }
     else
     {
-        printf("test upload part 2 %s faied(%s).\n", key, obs_get_status_name(data.ret_status));
+        printf("test upload part 2 %s failed(%s).\n", key, obs_get_status_name(data.ret_status));
     }
     fclose(data.infile);
 }
@@ -2774,7 +2774,7 @@ static void test_complete_upload(char *uploadId, char etag[][256], char *bucket_
     }
     else
     {
-        printf("test complete upload %s faied(%s).\n", key, obs_get_status_name(ret_status));
+        printf("test complete upload %s failed(%s).\n", key, obs_get_status_name(ret_status));
     }
 }
 
@@ -2972,7 +2972,7 @@ static void test_upload_file(char *bucket_name, char *filename, char *key)
 
     obs_upload_file_response_handler Handler =
     { 
-        {&response_properties_callback, &response_complete_callback_for_multi_task},
+        {&response_properties_callback, &response_complete_callback},
         &uploadFileResultCallback
     };
 
@@ -2982,7 +2982,7 @@ static void test_upload_file(char *bucket_name, char *filename, char *key)
     }
     else
     {
-        printf("test upload file  %s %s faied(%s).\n", filename, key, obs_get_status_name(ret_status));
+        printf("test upload file  %s %s failed(%s).\n", filename, key, obs_get_status_name(ret_status));
     }
     cJSON_Delete(body);
     cJSON_free(out);
@@ -3017,7 +3017,7 @@ static void test_download_file(char *bucket_name, char *filename, char *key)
 
     obs_download_file_response_handler Handler =
     { 
-        {&response_properties_callback, &response_complete_callback_for_multi_task },
+        {&response_properties_callback, &response_complete_callback },
         &downloadFileResultCallback
     };
 
@@ -3028,7 +3028,7 @@ static void test_download_file(char *bucket_name, char *filename, char *key)
     }
     else
     {
-        printf("test download file %s %s faied(%s).\n", filename, key, obs_get_status_name(ret_status));
+        printf("test download file %s %s failed(%s).\n", filename, key, obs_get_status_name(ret_status));
     }
 }
 
@@ -3057,7 +3057,7 @@ void *upload_thread_proc(void * thread_param)
     }
     else
     {
-        printf("test upload part %u faied(%s).\n",uploadPartInfo.part_number,
+        printf("test upload part %u failed(%s).\n",uploadPartInfo.part_number,
             obs_get_status_name(concurrent_temp->ret_status));
     }
     return NULL;
@@ -3174,7 +3174,7 @@ static void test_concurrent_upload_part(char *bucket_name, char *filename, char 
     }
     else
     {
-        printf("test init upload part faied(%s).\n", obs_get_status_name(ret_status));
+        printf("test init upload part failed(%s).\n", obs_get_status_name(ret_status));
     }
     
     //Concurrent upload
@@ -3203,7 +3203,7 @@ static void test_concurrent_upload_part(char *bucket_name, char *filename, char 
     }
     else
     {
-        printf("test complete upload %s %s faied(%s).\n", filename, key, obs_get_status_name(ret_status));
+        printf("test complete upload %s %s failed(%s).\n", filename, key, obs_get_status_name(ret_status));
     }
     deinit_uploadfilepool(uploadFilePool, data.part_num);
     uploadFilePool = NULL;
@@ -3450,7 +3450,7 @@ static void test_gen_signed_url_get_object(char *bucket_name, char *key, char *v
     }
     else
     {
-        printf("gen_signed_url %s get object faied(%s).\n", key, obs_get_status_name(data.ret_status));
+        printf("gen_signed_url %s get object failed(%s).\n", key, obs_get_status_name(data.ret_status));
     }
 }
 

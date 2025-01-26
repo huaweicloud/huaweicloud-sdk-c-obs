@@ -92,6 +92,20 @@ int set_obs_log_path(const char *log_path, bool only_set_log_conf)
 #endif
 }
 
+void LogError(const char* name, const char* funcName, unsigned long line, OBS_LOGLEVEL logLevel) {
+	COMMLOG(logLevel, "%s failed in function: %s, line (%ld)!", name, funcName, line);
+}
+int CheckAndLogNULL(const void* ptr, const char* ptrName, const char* name, const char* funcName, unsigned long line) {
+	if (ptr == NULL) {
+		COMMLOG(OBS_LOGERROR, "%s is NULL!", ptrName);
+		LogError(name, funcName, line, OBS_LOGERROR);
+		return 0;
+	}
+	else {
+		return 1;
+	}
+}
+
 #ifdef WIN32
 # pragma warning (disable:4127)
 #endif
@@ -112,7 +126,7 @@ int ReadModeleFile(FILE* fp , char* sPath,char* pTmpFullDir, char* pTmpModuleDir
 			continue;
 		}
 		pTmpModuleDir = strrchr(pTmpFullDir, '/');
-		if (pTmpModuleDir == pTmpFullDir)
+		if (pTmpModuleDir == pTmpFullDir || pTmpModuleDir == NULL)
 		{
 			break;
 		}
@@ -333,6 +347,9 @@ void GetIniSectionItem(const char* Section, const char* Item, const char* FileNa
     {
         *iniValue = '\0';
         CHECK_NULL_FREE(linebuf);
+		if (NULL != inifp) {
+			fclose(inifp);
+		}
         return;
     }
 
@@ -430,9 +447,16 @@ int copy_file(char *source, char *target)
 	file_fopen_s(&fp_tar, target, "w");
     if (fp_tar == NULL)
     {
+    	fclose(fp_src);
         return -1;
     }
     char* temp_arr = (char*)malloc(sizeof(char)*LOG_CONF_MESSAGELEN);
+    if (!CheckAndLogNULL(temp_arr, SYMBOL_NAME_STR(temp_arr), SYMBOL_NAME_STR(malloc), __FUNCTION__, __LINE__))
+    {
+    	fclose(fp_src);
+    	fclose(fp_tar);
+        return -1;
+    }
 
     while (fgets(temp_arr, LOG_CONF_MESSAGELEN, fp_src))
     {
@@ -461,6 +485,7 @@ int MoveConf(const char * buf)
 		CHECK_NULL_FREE(target_conf);
         return -1;
     }
+	char* strcat_name=SYMBOL_NAME_STR(strcat_s);
 #ifdef WIN32
 	if (get_file_path_code() == ANSI_CODE) {
 		GetModuleFileNameA(NULL, source_conf, MAX_MSG_SIZE - 1);
@@ -481,6 +506,7 @@ int MoveConf(const char * buf)
 		ret = _snwprintf_s((wchar_t*)target_conf, MAX_MSG_SIZE, MAX_MSG_SIZE - 1, L"%s\\OBS.ini", (wchar_t*)buf);
 		CheckAndLogNeg(ret, "_snwprintf_s", __FUNCTION__, __LINE__);
 		err = wcscat_s((wchar_t*)source_conf, MAX_MSG_SIZE, L"OBS.ini");
+		strcat_name=SYMBOL_NAME_STR(wcscat_s);
 	}
 	else {
 		return -1;
@@ -491,11 +517,16 @@ int MoveConf(const char * buf)
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     err = strcat_s(source_conf, MAX_MSG_SIZE, "/OBS.ini");
 #endif
-	CHECK_ERR_RETURN(err);
-    copy_file(source_conf, target_conf);
-	CHECK_NULL_FREE(source_conf);
-	CHECK_NULL_FREE(target_conf);
-    return 0;
+    if(checkIfErrorAndLogStrError(strcat_name, __FUNCTION__, __LINE__, err)) {
+		CHECK_NULL_FREE(source_conf);
+		CHECK_NULL_FREE(target_conf);
+		return -1;
+	} else {
+    	copy_file(source_conf, target_conf);
+		CHECK_NULL_FREE(source_conf);
+		CHECK_NULL_FREE(target_conf);
+    	return 0;
+	}
 }
 
 bool isUserSetLogPath() {
@@ -661,15 +692,10 @@ void LOG_LEVEL_INIT(unsigned int *logLevel, uint64_t logLevelLen)
     }
 }
 
-int LOG_INIT()
+int LOG_INIT(void)
 {
-    unsigned int *logLevel = (unsigned int*)malloc(sizeof(unsigned int)*LOG_CATEGORY);
-    if (NULL == logLevel)
-    {
-        return -1;
-    }else {
-		LOG_LEVEL_INIT(logLevel, LOG_CATEGORY);
-    }
+    unsigned int logLevel[LOG_CATEGORY] = { 0 };
+	LOG_LEVEL_INIT(logLevel, LOG_CATEGORY);
 
 	char* buf = getPathBuffer(MAX_MSG_SIZE);
 
@@ -680,12 +706,11 @@ int LOG_INIT()
     char* tempLogPath = getPathBuffer(MAX_MSG_SIZE);
 
     if (NULL == tempLogPath || NULL == buf 
-		|| NULL == confPath || NULL == logPath || NULL == logLevel)
+		|| NULL == confPath || NULL == logPath)
     {
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
         CHECK_NULL_FREE(logPath);
-        CHECK_NULL_FREE(logLevel);
         return -1;
     }
 
@@ -710,7 +735,6 @@ int LOG_INIT()
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
         CHECK_NULL_FREE(logPath);
-        CHECK_NULL_FREE(logLevel);
         CHECK_NULL_FREE(tempLogPath);
         return -1;
     }
@@ -728,7 +752,6 @@ int LOG_INIT()
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
         CHECK_NULL_FREE(logPath);
-        CHECK_NULL_FREE(logLevel);
         CHECK_NULL_FREE(tempLogPath);
         return -1;
     }
@@ -743,7 +766,6 @@ int LOG_INIT()
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
         CHECK_NULL_FREE(logPath);
-        CHECK_NULL_FREE(logLevel);
         CHECK_NULL_FREE(tempLogPath);
         CHECK_NULL_FREE(currentPath);
 		return ret;
@@ -755,7 +777,7 @@ int LOG_INIT()
   //  tempLogPath[0] = '\0';
   //  GetIniSectionItem("ProductConfig", "support_API", confPath, tempLogPath);
 #if defined ANDROID
-    int iRet = LogInitForAndroid(PRODUCT, confPath, logLevel, logPath);
+    int iRet = LogInitForAndroid(PRODUCT, confPath, logLevel, LOG_CATEGORY, logPath);
 #elif defined WIN32
 
 	int iRet = 0;
@@ -768,22 +790,21 @@ int LOG_INIT()
 			iRet = -1;
 		}
 		else {
-			iRet = LogInit_W(PRODUCT, confPathW, logLevel, logPathW);
+			iRet = LogInit_W(PRODUCT, confPathW, logLevel, LOG_CATEGORY, logPathW);
 			CHECK_NULL_FREE(confPathW);
 			CHECK_NULL_FREE(logPathW);
 		}
 		
 	}
 	else if (get_file_path_code() == UNICODE_CODE) {
-		iRet = LogInit_W(PRODUCT, (const wchar_t*)confPath, logLevel, (const wchar_t*)logPath);
+		iRet = LogInit_W(PRODUCT, (const wchar_t*)confPath, logLevel, LOG_CATEGORY, (const wchar_t*)logPath);
 	}
 #else
-    int iRet = LogInit(PRODUCT, confPath, logLevel, logPath);
+    int iRet = LogInit(PRODUCT, confPath, logLevel, LOG_CATEGORY, logPath);
 #endif
     CHECK_NULL_FREE(buf);
     CHECK_NULL_FREE(confPath);
     CHECK_NULL_FREE(logPath);
-    CHECK_NULL_FREE(logLevel);
     CHECK_NULL_FREE(tempLogPath);
 	
     if(iRet)
@@ -793,7 +814,7 @@ int LOG_INIT()
     return 0;
 }
 
-void LOG_EXIT()
+void LOG_EXIT(void)
 {
     LogFini(PRODUCT);
     return ;
@@ -897,13 +918,37 @@ void COMMLOG(OBS_LOGLEVEL level, const char *pszFormat, ...)
     }
 }
 
+static OBS_LOGLEVEL obsSdkLogLevel = OBS_LOGERROR;
+OBS_LOGLEVEL getRunLogLevel() {
+	return obsSdkLogLevel;
+}
+
+void setRunLogLevel(void) {
+	unsigned int level = GetRunLogLevel();
+	switch (level)
+	{
+	case 0:
+		obsSdkLogLevel = OBS_LOGDEBUG;
+		break;
+	case 1:
+		obsSdkLogLevel = OBS_LOGINFO;
+		break;
+	case 2:
+		obsSdkLogLevel = OBS_LOGWARN;
+		break;
+	case 3:
+		obsSdkLogLevel = OBS_LOGERROR;
+		break;
+	default:
+		obsSdkLogLevel = OBS_LOGERROR;
+		break;
+	}
+}
+
 void NULLLOG() {
     return;
 }
 
-void LogError(const char* name, const char* funcName, unsigned long line, OBS_LOGLEVEL logLevel) {
-	COMMLOG(logLevel, "%s failed in function: %s, line (%ld)!", name, funcName, line);
-}
 
 void CheckAndLogNoneZero(int ret, const char* name, const char* funcName, unsigned long line) {
     if (ret != 0) {
@@ -916,14 +961,51 @@ void CheckAndLogNeg(int ret, const char* name, const char* funcName, unsigned lo
 		LogError(name, funcName, line, OBS_LOGWARN);
     }
 }
-int CheckAndLogNULL(void* ptr, const char* ptrName, const char* name, const char* funcName, unsigned long line) {
-	if (ptr == NULL) {
-		COMMLOG(OBS_LOGERROR, "%s is NULL!", ptrName);
-		LogError(name, funcName, line, OBS_LOGERROR);
-		return 0;
-	}
-	else {
-		return 1;
-	}
+
+#define ERROR_MESSAGE_BUFFER_SIZE 256
+void checkAndLogStrError(const char* failedFuncName, const char* funcName, int lineNum) {
+	int err = errno;
+	checkIfErrorAndLogStrError(failedFuncName, funcName, lineNum, err);
 }
 
+bool checkIfErrorAndLogStrError(const char* failedFuncName, const char* funcName, int lineNum, int err) {
+	if (err != EOK) {
+		char errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE] = { 0 };
+		char* errorMsg = "default error";
+#if defined (WIN32)
+		(void)strerror_s(errorMsgBuffer, ERROR_MESSAGE_BUFFER_SIZE, err);
+		errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
+		errorMsg = errorMsgBuffer;
+#define STRERRORFUNCNAME "strerror_s"
+#elif (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !_GNU_SOURCE
+		(void)strerror_r(err, errorMsgBuffer, ERROR_MESSAGE_BUFFER_SIZE);
+		errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
+		errorMsg = errorMsgBuffer;
+#define STRERRORFUNCNAME "strerror_r(XSI-compliant version)"
+#else
+		errorMsg = strerror_r(err, errorMsgBuffer, ERROR_MESSAGE_BUFFER_SIZE);
+		if (errorMsg == NULL || errorMsgBuffer[0] != '\0') {
+			errorMsgBuffer[ERROR_MESSAGE_BUFFER_SIZE - 1] = '\0';
+			errorMsg = errorMsgBuffer;
+	}
+#define STRERRORFUNCNAME "strerror_r(GNU-specific version)"
+#endif
+		COMMLOG(OBS_LOGERROR,
+			"Function :%s failed in function %s, line %d"
+			", errno is : %d, %s is : %s.", failedFuncName,
+			funcName, lineNum, err, STRERRORFUNCNAME, errorMsg);
+		return true;
+	}
+	return false;
+}
+
+void check_before_complete(obs_response_complete_callback *complete_callback, const obs_status status,
+	const obs_error_details *error_details, void *callback_data, const char* function, int line) {
+	if (complete_callback == NULL) {
+		COMMLOG(OBS_LOGERROR, "failed to call %s cause it's NULL in %s, line:%d",
+			SYMBOL_NAME_STR(complete_callback), function, line);
+	}
+	else {
+		(void)(*(complete_callback))(status, error_details, callback_data);
+	}
+}

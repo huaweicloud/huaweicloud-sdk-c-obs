@@ -288,14 +288,14 @@ void get_bucket_lifecycle_configuration(const obs_options *options,
     COMMLOG(OBS_LOGINFO, "set_bucket_lifecycle_configuration start !");
     if (!options->bucket_options.bucket_name) {
         COMMLOG(OBS_LOGERROR, "bucket_name is NULL.");
-        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
+        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
         return;
     }
 
     gblcDataEx = init_get_lifecycle_data(handler, callback_data);
     if (NULL == gblcDataEx)
     {
-        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         return;
     }
     gblcDataEx->use_api = use_api;

@@ -31,14 +31,15 @@ static obs_status parse_dir_access_label_json(Access_label_data *data) {
 			cJSON_Delete(jsonRoot);
 			return OBS_STATUS_JSON_PARSE_ERROR;
 		}
-		strcpy_s(data->labels[i], MAX_LABEL_LENGTH, item->valuestring);
+		int ret = strcpy_s(data->labels[i], MAX_LABEL_LENGTH, item->valuestring);
+		CheckAndLogNoneZero(ret, SYMBOL_NAME_STR(strcpy_s), __FUNCTION__, __LINE__);
 	}
 	cJSON_Delete(jsonRoot);
 	return OBS_STATUS_OK;
 }
 
 #define MAX_LABEL_JSON_LENGTH (512 * 54 + 511 + 6 + 13 + 1)
-char* initialize_json() {
+char* initialize_json(void) {
 	char* json_str = (char*)malloc(sizeof(char)*MAX_LABEL_JSON_LENGTH);
 	if (!CheckAndLogNULL(json_str, SYMBOL_NAME_STR(json_str), SYMBOL_NAME_STR(malloc), __FUNCTION__, __LINE__)) {
 		return NULL;

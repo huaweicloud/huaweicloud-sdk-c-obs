@@ -382,6 +382,5 @@ void list_multipart_uploads(const obs_options *options, const char *prefix, cons
     params.temp_auth = options->temp_auth;
     params.use_api = use_api;
     request_perform(&params);
-
     COMMLOG(OBS_LOGINFO, "list_multipart_uploads finish!");
 }

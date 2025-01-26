@@ -216,7 +216,7 @@ void get_bucket_website_configuration(const obs_options *options,
         (obs_bucket_website_configuration_data*)malloc(sizeof(obs_bucket_website_configuration_data));
     if (!websiteconf_data)
     {
-        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         COMMLOG(OBS_LOGERROR, "malloc get websiteconf_datafailed !");
         return;
     }

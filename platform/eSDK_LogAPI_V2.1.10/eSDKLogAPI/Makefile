@@ -8,9 +8,9 @@ CXXFLAGS = -fPIC -fstack-protector-all -Wl,-z,relro,-z,now
 SHARED = -shared
 TARGET = libeSDKLogAPI.so
 ${warning spdlog_dir is ${spdlog_dir}}
-INCLUDEDIR = -I ../../../platform/huaweisecurec/include -I ../output/include -I ../ -I ../vos -I ../../../../${spdlog_dir}/include
+INCLUDEDIR = -I ../../../platform/libboundscheck/include -I ../output/include -I ../ -I ../vos -I ../../../../${spdlog_dir}/include
 
-../../../platform/huaweisecurec/src/%.o : ../../../platform/huaweisecurec/src/%.c
+../../../platform/libboundscheck/src/%.o : ../../../platform/libboundscheck/src/%.c
 	$(CXX) $(CXXFLAGS) $(INCLUDEDIR) -c -DENV_LINUX -DLOG4CPP_HAVE_SSTREAM $< -o $@ 
 
 .cpp.o:
@@ -18,7 +18,7 @@ INCLUDEDIR = -I ../../../platform/huaweisecurec/include -I ../output/include -I 
 
 SOURCES = $(wildcard *.cpp) $(wildcard ./../vos/*.cpp) 
 OBJS = $(patsubst %.cpp,%.o,$(SOURCES))
-SECUREC_SOURCES = $(wildcard ../../../platform/huaweisecurec/src/*.c)
+SECUREC_SOURCES = $(wildcard ../../../platform/libboundscheck/src/*.c)
 SECUREC_OBJS = $(patsubst %.c,%.o,$(SECUREC_SOURCES))
 OBJS += $(SECUREC_OBJS)
 

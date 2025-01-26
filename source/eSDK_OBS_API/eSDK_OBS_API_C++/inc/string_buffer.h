@@ -40,7 +40,8 @@
 
 #define string_buffer_append(sb, str, len, all_fit)                     \
     do {                                                                \
-        if(snprintf_s(&(sb[sb##Len]), sizeof(sb) - sb##Len , sizeof(sb) - sb##Len -1, "%.*s", (int) (len), str) > 0) \
+        if ((sb##Len >= 0) && (sb##Len < (int) (sizeof(sb))) &&         \
+            snprintf_s(&(sb[sb##Len]), sizeof(sb) - sb##Len , sizeof(sb) - sb##Len -1, "%.*s", (int) (len), str) > 0) \
         {                                                                \
             sb##Len += snprintf_s(&(sb[sb##Len]), sizeof(sb) - sb##Len ,  \
             sizeof(sb) - sb##Len -1 ,                                     \

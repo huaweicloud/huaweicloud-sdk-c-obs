@@ -34,7 +34,7 @@ static void handle_SIGPIPE(int signal, siginfo_t *siginfo, void *u_contxt)
 	}
 	return;
 }
-void set_sigaction_for_sigpipe(){
+void set_sigaction_for_sigpipe(void){
     struct sigaction sigact;
 	sigact.sa_sigaction = handle_SIGPIPE;
    	sigact.sa_flags = SA_SIGINFO;
@@ -44,7 +44,7 @@ void set_sigaction_for_sigpipe(){
     COMMLOG(OBS_LOGINFO,"Result of sigaction:%d", sigactionResult);
 }
 
-void unset_sigaction_for_sigpipe(){
+void unset_sigaction_for_sigpipe(void){
     struct sigaction sigact;
 	sigact.sa_sigaction = NULL;
    	sigact.sa_flags = SA_SIGINFO;
