@@ -25,7 +25,7 @@
 
 #ifdef WIN32
 #define LIBOBS_VER_MAJOR "3.24"
-#define LIBOBS_VER_MINOR "3"
+#define LIBOBS_VER_MINOR "12"
 #endif
 
 #if defined __GNUC__ || defined LINUX
@@ -38,8 +38,8 @@
 #define DOMAIN_LEN 254
 #define HEAD_CALLBACK_LEN 8192
 
-#define OBS_SDK_VERSION "3.24.3"
-#define USER_AGENT_VALUE  "obs-sdk-c-3.24.3" ;
+#define OBS_SDK_VERSION "3.24.12"
+#define USER_AGENT_VALUE  "obs-sdk-c-3.24.12";
 
 #define DEFAULT_LOW_SPEED_LIMIT    (1)
 #define DEFAULT_LOW_SPEED_TIME_S   (300)
@@ -47,6 +47,7 @@
 #define DEFAULT_TIMEOUT_S          (0)
 #define DEFAULT_TCP_KEEPIDLE       (120)
 #define DEFAULT_TCP_KEEPINVTL      (60)
+#define DEFAULT_MAXCONNECTS        (-1)
 #define RETRY_NUM                  (3)
 #define RETRY_BASE                 (50) //retry base tiem is 50ms
 #define LINUX_USTOMS               (1000) // us -> ms
@@ -69,7 +70,7 @@
 #define curl_easy_setopt_safe(opt, val)                                 \
                 if ((status = curl_easy_setopt                                      \
                      (request->curl, opt, val)) != CURLE_OK) {                      \
-                    COMMLOG(OBS_LOGWARN, "curl_easy_setopt_safe failed, status: %d", status);    \
+                    COMMLOG(OBS_LOGWARN, "curl_easy_setopt_safe failed, curl_ret_code: %d", status);    \
                     return OBS_STATUS_FailedToIInitializeRequest;                       \
                 }
                 
@@ -89,7 +90,7 @@
 
 #define return_status(status)                                           \
     (*(params->complete_callback))(status, 0, params->callback_data);     \
-    COMMLOG(OBS_LOGWARN, "%s status = %d", __FUNCTION__,status);\
+    COMMLOG(OBS_LOGWARN, "%s status = %d means %s", __FUNCTION__, status, obs_get_status_name(status));\
     return
 
 

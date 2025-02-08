@@ -172,10 +172,16 @@ obs_status generate_websiteconf_doc(update_bucket_common_data **data,
 
     char* psuffix = 0;
     mark = pcre_replace(set_bucket_website_conf->suffix, &psuffix);
-    tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
-        sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
-        "<IndexDocument><Suffix>%s</Suffix></IndexDocument>",
-        mark ? psuffix : set_bucket_website_conf->suffix);
+    if (website_data->docLen >= 0 && website_data->docLen < sizeof(website_data->doc)) {
+        tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
+            sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
+            "<IndexDocument><Suffix>%s</Suffix></IndexDocument>",
+            mark ? psuffix : set_bucket_website_conf->suffix);
+    } else {
+        tmplen = 0;
+            COMMLOG(OBS_LOGERROR, "website_data->docLen is not beetween 0 and sizeof(website_data->doc)"
+                "in function: %s, line: %d", __FUNCTION__, __LINE__);
+    }
     CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
     website_data->docLen += tmplen;
     free(psuffix);
@@ -184,11 +190,16 @@ obs_status generate_websiteconf_doc(update_bucket_common_data **data,
     {
         char*pkey = 0;
         mark = pcre_replace(set_bucket_website_conf->key, &pkey);
-
-        tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
-            sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
-            "<ErrorDocument><Key>%s</Key></ErrorDocument>",
-            mark ? pkey : set_bucket_website_conf->key);
+        if (website_data->docLen >= 0 && website_data->docLen < sizeof(website_data->doc)) {
+            tmplen = snprintf_s((website_data->doc) + (website_data->docLen),
+                sizeof(website_data->doc) - website_data->docLen, _TRUNCATE,
+                "<ErrorDocument><Key>%s</Key></ErrorDocument>",
+                mark ? pkey : set_bucket_website_conf->key);
+        } else {
+            tmplen = 0;
+            COMMLOG(OBS_LOGERROR, "website_data->docLen is not beetween 0 and sizeof(website_data->doc)"
+                "in function: %s, line: %d", __FUNCTION__, __LINE__);
+        }
         CheckAndLogNeg(tmplen, "snprintf_s", __FUNCTION__, __LINE__);
         website_data->docLen += tmplen;
         free(pkey);

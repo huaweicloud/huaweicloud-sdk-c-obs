@@ -109,7 +109,7 @@ void get_bucket_storage_class_policy(const obs_options *options,
         (get_bucket_storage_class_policy_data*)malloc(sizeof(get_bucket_storage_class_policy_data));
     if (!storage_class_data)
     {
-        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         COMMLOG(OBS_LOGERROR, "malloc get_storage_class_data failed !");
         return;
     }

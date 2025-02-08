@@ -94,7 +94,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\platform\huaweisecurec\include;..\..\eSDK_OBS_API_C++\inc;..\..\eSDK_OBS_API_C++\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\platform\libboundscheck\include;..\..\eSDK_OBS_API_C++\inc;..\..\eSDK_OBS_API_C++\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -103,7 +103,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\..\eSDK_OBS_API_C++\build\vc100\Debug;..\..\eSDK_OBS_API_C++\lib\win32_x86_msvc\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cjson.lib;libeSDKOBS.lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libeSDKOBS.lib;libboundscheck.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
       <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
     </Link>
@@ -115,16 +115,17 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\platform\huaweisecurec\include;..\..\eSDK_OBS_API_C++\inc;..\..\eSDK_OBS_API_C++\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\platform\libboundscheck\include;..\..\eSDK_OBS_API_C++\inc;..\..\eSDK_OBS_API_C++\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PreprocessToFile>false</PreprocessToFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\..\eSDK_OBS_API_C++\build\vc100\Debug;..\..\eSDK_OBS_API_C++\lib\win64_x64_msvc\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libeSDKOBS.lib;huaweisecurec.lib;cjson.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libeSDKOBS.lib;libboundscheck.lib;cjson.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
     </Link>
@@ -140,7 +141,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>..\..\..\..\platform\huaweisecurec\include;..\..\eSDK_OBS_API_C++\inc;..\..\eSDK_OBS_API_C++\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\platform\libboundscheck\include;..\..\eSDK_OBS_API_C++\inc;..\..\eSDK_OBS_API_C++\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -148,7 +149,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\eSDK_OBS_API_C++\build\vc100\Release;..\..\eSDK_OBS_API_C++\lib\win32_x86_msvc\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cjson.lib;libeSDKOBS.lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libeSDKOBS.lib;libboundscheck.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
     </Link>
   </ItemDefinitionGroup>
@@ -163,7 +164,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>..\..\..\..\platform\huaweisecurec\include;..\..\eSDK_OBS_API_C++\inc;..\..\eSDK_OBS_API_C++\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\platform\libboundscheck\include;..\..\eSDK_OBS_API_C++\inc;..\..\eSDK_OBS_API_C++\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -171,7 +172,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\eSDK_OBS_API_C++\build\vc100\Release;..\..\eSDK_OBS_API_C++\lib\win64_x64_msvc\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cjson.lib;libeSDKOBS.lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libeSDKOBS.lib;libboundscheck.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
   </ItemDefinitionGroup>

@@ -81,6 +81,9 @@ static char UPLOAD_ID[2048]={0};
 #define USE_SSEC "use_ssec="
 #define USE_SSEC_LEN (sizeof(USE_SSEC) - 1)
 
+#define SSEC_CUSTOMER_KEY "ssec_customer_key="
+#define SSEC_CUSTOMER_KEY_LEN (sizeof(SSEC_CUSTOMER_KEY) - 1)
+
 #define UPLOAD_SLICE_SIZE "upload_slice_size="
 #define UPLOAD_SLICE_SIZE_LEN (sizeof(UPLOAD_SLICE_SIZE) - 1)
 
@@ -401,7 +404,7 @@ static obs_canned_acl get_acl_from_argv(char *param)
 }
 static obs_storage_class get_storage_class_from_argv(char *param)
 {
-    obs_storage_class ret_storage_class = OBS_STORAGE_CLASS_STANDARD;
+    obs_storage_class ret_storage_class = OBS_STORAGE_CLASS_BUTT;
     char *val = &(param[STORAGE_CLASS_PREFIX_LEN]);
     printf("storage_class is: %s\n", val);
     if (!strcmp(val, "standard")) {
@@ -410,7 +413,12 @@ static obs_storage_class get_storage_class_from_argv(char *param)
         ret_storage_class = OBS_STORAGE_CLASS_STANDARD_IA;
     }else if (!strcmp(val, "glacier")) {
         ret_storage_class = OBS_STORAGE_CLASS_GLACIER;
-    }else {
+    }else if (!strcmp(val, "deep_archive")) {
+		ret_storage_class = OBS_STORAGE_CLASS_DEEP_ARCHIVE;
+	}else if (!strcmp(val, "high_performance")) {
+		ret_storage_class = OBS_STORAGE_CLASS_HIGH_PERFORMANCE;
+	}
+	else {
         fprintf(stderr, "ERROR: Unknown storage class: %s.\n", val);
     }
 
@@ -450,15 +458,6 @@ static obs_bucket_type get_bucket_type_from_argv(char *param)
 	return bucket_type;
 }
 
-static double g_progress = 0;
-void test_progress_callback(double progress, uint64_t uploadedSize, uint64_t fileTotalSize, void *callback_data)
-{
-	if (progress == 100 || (g_progress < progress && progress - g_progress > 2))
-	{
-		printf("test_progress_callback progress=%f%%  uploadedSize=%llu fileTotalSize=%llu  callback_data=%p\n", progress, uploadedSize, fileTotalSize, callback_data);
-		g_progress = progress;
-	}
-}
 static void printError()
 {
     if (statusG < OBS_STATUS_AccessDenied) {
@@ -485,8 +484,7 @@ FILE * write_to_file(char *localfile)
         if (!outfile) {
             fprintf(stderr, "\nERROR: Failed to open output file %s: ",
                     localfile);
-            perror(0);
-            exit(-1);
+            return outfile;
         }
     }
     else if (showResponsePropertiesG) {
@@ -524,14 +522,38 @@ static obs_status response_properties_callback(const obs_response_properties *pr
             printf("%s: %s\n", name, properties-> field);          \
         }                                                          \
     } while (0)
-    
-    print_nonnull("ETag", etag);
+
+	print_nonnull("request_id", request_id);
+	print_nonnull("request_id2", request_id2);
+	print_nonnull("content_type", content_type);
 	if (properties->content_length) {                                  
             printf("content_length: %llu\n", properties->content_length);          
-    }    
+    }
+	print_nonnull("server", server);
+	print_nonnull("ETag", etag);
     print_nonnull("expiration", expiration);
     print_nonnull("website_redirect_location", website_redirect_location);
     print_nonnull("version_id", version_id);
+	print_nonnull("allow_origin", allow_origin);
+	print_nonnull("allow_headers", allow_headers);
+	print_nonnull("max_age", max_age);
+	print_nonnull("allow_methods", allow_methods);
+	print_nonnull("expose_headers", expose_headers);
+	print_nonnull("storage_class", storage_class);
+	print_nonnull("server_side_encryption", server_side_encryption);
+	print_nonnull("kms_key_id", kms_key_id);
+	print_nonnull("customer_algorithm", customer_algorithm);
+	print_nonnull("customer_key_md5", customer_key_md5);
+	print_nonnull("bucket_location", bucket_location);
+	print_nonnull("obs_version", obs_version);
+	print_nonnull("restore", restore);
+	print_nonnull("obs_object_type", obs_object_type);
+	print_nonnull("obs_next_append_position", obs_next_append_position);
+	print_nonnull("obs_head_epid", obs_head_epid);
+	print_nonnull("reserved_indicator", reserved_indicator);
+	print_nonnull("fs_file_interface", fs_file_interface);
+	print_nonnull("az_redundancy", az_redundancy);
+	print_nonnull("location_clustergroup_id", location_clustergroup_id);
     if (properties->last_modified > 0) {
         char timebuf[256] = {0};
         time_t t = (time_t) properties->last_modified;
@@ -625,6 +647,53 @@ static uint64_t convertInt(const char *str, const char *paramName)
     return ret;
 }
 
+void common_error_handle(const obs_error_details *error)
+{
+	int len = 0;
+	if (error && error->message) {
+		printf("Error Message: \n	%s\n", error->message);
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1,
+			"  Message: %s\n", error->message);
+	}
+	if (error && error->resource) {
+		printf("Error Resource: \n	%s\n", error->resource);
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1,
+			"  Resource: %s\n", error->resource);
+	}
+	if (error && error->further_details) {
+		printf("Error further_details: \n	%s\n", error->further_details);
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1,
+			"  Further Details: %s\n", error->further_details);
+	}
+	if (error && error->extra_details_count) {
+		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1,
+			"%s", "  Extra Details:\n");
+		int i;
+		for (i = 0; i < error->extra_details_count; i++) {
+			printf("Error Extra Detail(%d):\n	%s:%s\n", i,
+				error->extra_details[i].name, error->extra_details[i].value);
+			len += snprintf_s(&(errorDetailsG[len]),
+				sizeof(errorDetailsG) - len, sizeof(errorDetailsG) - len - 1, "    %s: %s\n",
+				error->extra_details[i].name,
+				error->extra_details[i].value);
+		}
+	}
+
+	if (error && error->error_headers_count) {
+		len += snprintf_s(&(errorHeadersG[len]), sizeof(errorHeadersG) - len, _TRUNCATE,
+			"%s", "  Extra Details:\n");
+		int i;
+		for (i = 0; i < error->error_headers_count; i++) {
+			char* errorHeader = error->error_headers[i];
+			printf("Error Headers(%d):\n	%s\n", i,
+				errorHeader == NULL ? "NULL Header" : errorHeader);
+			len += snprintf_s(&(errorHeadersG[len]),
+				sizeof(errorHeadersG) - len, _TRUNCATE, "    %s\n",
+				errorHeader == NULL ? "NULL Header" : errorHeader);
+		}
+	}
+	return;
+}
 
 static void response_complete_callback(obs_status status,
                                      const obs_error_details *error, 
@@ -641,49 +710,7 @@ static void response_complete_callback(obs_status status,
     {
         statusG = status;
     }
-    int len = 0;
-    if (error && error->message) {
-		printf("Error Message: \n	%s\n", error->message);
-        len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-                        "  Message: %s\n", error->message);
-    }
-    if (error && error->resource) {
-		printf("Error Resource: \n	%s\n", error->resource);
-        len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-                        "  Resource: %s\n", error->resource);
-    }
-    if (error && error->further_details) {
-		printf("Error further_details: \n	%s\n", error->further_details);
-        len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-                        "  Further Details: %s\n", error->further_details);
-    }
-    if (error && error->extra_details_count) {
-        len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-                        "%s", "  Extra Details:\n");
-        int i;
-        for (i = 0; i < error->extra_details_count; i++) {
-			printf("Error Extra Detail(%d):\n	%s:%s\n", i, 
-				error->extra_details[i].name, error->extra_details[i].value);
-            len += snprintf_s(&(errorDetailsG[len]), 
-                            sizeof(errorDetailsG) - len,  _TRUNCATE, "    %s: %s\n", 
-                            error->extra_details[i].name,
-                            error->extra_details[i].value);
-        }
-    }
-
-	if (error && error->error_headers_count) {
-		len += snprintf_s(&(errorHeadersG[len]), sizeof(errorHeadersG) - len, _TRUNCATE,
-			"%s", "  Extra Details:\n");
-		int i;
-		for (i = 0; i < error->error_headers_count; i++) {
-			char* errorHeader = error->error_headers[i];
-			printf("Error Headers(%d):\n	%s\n", i,
-				errorHeader == NULL ? "NULL Header": errorHeader);
-			len += snprintf_s(&(errorHeadersG[len]),
-				sizeof(errorHeadersG) - len, _TRUNCATE, "    %s\n",
-				errorHeader == NULL ? "NULL Header" : errorHeader);
-		}
-	}
+	common_error_handle(error);
 }
 // head object ---------------------------------------------------------------
 static void test_head_object(int argc, char **argv, int optindex)
@@ -839,6 +866,79 @@ static void test_set_object_metadata(char* bucket_name, char * key, char *versio
 
 
 // get object metadata---------------------------------------------------------------
+static void test_get_object_metadata_from_args(int argc, char **argv, int optindex)
+{
+	char *bucketname = argv[optindex++];
+	char *key = argv[optindex++];
+	obs_status ret_status;
+	obs_options option;
+	init_obs_options(&option);
+	option.bucket_options.host_name = HOST_NAME;
+	option.bucket_options.bucket_name = bucketname;
+	option.bucket_options.access_key = ACCESS_KEY_ID;
+	option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+	obs_object_info objectinfo;
+	memset_s(&objectinfo, sizeof(objectinfo), 0, sizeof(objectinfo));
+	objectinfo.key = key;
+
+	server_side_encryption_params encryption_params;
+	memset_s(&encryption_params, sizeof(encryption_params), 0, sizeof(server_side_encryption_params));
+
+	while (optindex < argc) {
+		char *param = argv[optindex++];
+		if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+			option.bucket_options.protocol = get_protocol_from_argv(param);
+		}
+		else if (!strncmp(param, USE_OBS_AUTH, USE_OBS_AUTH_LEN)) {
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+		}
+		else if (!strncmp(param, USE_S3_AUTH, USE_S3_AUTH_LEN)) {
+			option.request_options.auth_switch = OBS_S3_TYPE;
+		}
+		else if (!strncmp(param, USE_KMS, USE_KMS_LEN)) {
+			encryption_params.encryption_type = OBS_ENCRYPTION_KMS;
+			encryption_params.kms_server_side_encryption = "kms";
+		}
+		else if (!strncmp(param, USE_SSEC, USE_SSEC_LEN)) {
+			encryption_params.encryption_type = OBS_ENCRYPTION_SSEC;
+			encryption_params.ssec_customer_algorithm = "AES256";
+		}
+		else if (!strncmp(param, SSEC_CUSTOMER_KEY, SSEC_CUSTOMER_KEY_LEN)) {
+			encryption_params.ssec_customer_key = &(param[SSEC_CUSTOMER_KEY_LEN]);
+		}
+		else {
+			fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
+		}
+	}
+
+	//must use https when using ssec
+	if (encryption_params.ssec_customer_algorithm != NULL
+		|| encryption_params.kms_server_side_encryption != NULL) {
+		option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+	}
+	// if use s3 protocal, you should use aws:kms
+	if (encryption_params.kms_server_side_encryption != NULL
+		&& option.request_options.auth_switch == OBS_S3_TYPE) {
+		encryption_params.kms_server_side_encryption = "aws:kms";
+	}
+
+
+	obs_response_handler response_handler =
+	{
+		&response_properties_callback,&response_complete_callback
+	};
+	get_object_metadata(&option, &objectinfo, &encryption_params, &response_handler, &ret_status);
+	if (OBS_STATUS_OK == ret_status)
+	{
+		printf("get object metadata successfully. \n");
+	}
+	else
+	{
+		printf("get object metadata failed, error code is %d\n", ret_status);
+	}
+
+}
 static void test_get_object_metadata(char * key, char *version_id)
 {
 
@@ -908,7 +1008,7 @@ void tempAuthCallBack_getResult(char *tempAuthUrl, uint64_t tempAuthUrlLen, char
             if(fpoutfile == NULL)
             {
                 fprintf(stderr, "open %s failed", cfileName);
-                exit(-1);
+                return;
             }
             fwrite("\n",1,1,fpoutfile);
             fwrite(ptrResult->tmpAuthUrl,strlen(ptrResult->tmpAuthUrl),1,fpoutfile);
@@ -941,7 +1041,7 @@ static void test_create_bucket(int argc, char **argv, int optindex)
     printf("Bucket's name is == %s \n", bucket_name);
 	
     init_obs_options(&option);
-
+	option.bucket_options.storage_class = OBS_STORAGE_CLASS_BUTT;
     while (optindex < argc) {
         char *param = argv[optindex++];
         if (!strncmp(param, LOCATION_PREFIX, LOCATION_PREFIX_LEN)) {
@@ -1320,7 +1420,7 @@ static void test_set_bucket_version(int argc, char **argv, int optindex)
     if (strcmp(status, OBS_VERSION_STATUS_ENABLED) && strcmp(status, OBS_VERSION_STATUS_SUSPENDED))
     {
         printf("Do not support %s\n", status);
-        exit(-1);
+        return;
     }
 
     option.bucket_options.host_name = HOST_NAME;
@@ -1998,9 +2098,9 @@ manager_acl_info* malloc_acl_info()
     memset_s(aclinfo->acl_grants, sizeof(obs_acl_grant)*100, 0, sizeof(obs_acl_grant)*100);
     aclinfo->acl_grant_count_return = (int*)malloc(sizeof(int));
     *(aclinfo->acl_grant_count_return) = 100;
-
-    aclinfo->owner_id = (char *)malloc(100);
-    memset_s(aclinfo->owner_id,100,0,100);
+	size_t owner_id_size = (OBS_MAX_GRANTEE_USER_ID_SIZE + 1) * sizeof(char);
+    aclinfo->owner_id = (char *)malloc(owner_id_size);
+    memset_s(aclinfo->owner_id, owner_id_size,0, owner_id_size);
     aclinfo->owner_display_name = (char *)malloc(100);
     memset_s(aclinfo->owner_display_name,100,0,100);
     return aclinfo;
@@ -2301,7 +2401,6 @@ void test_set_object_acl(int argc, char** argv, int optindex)
     }
     deinitialize_acl_info(&aclinfo);
 }
-
 void test_get_object_acl(int argc, char** argv, int optindex)
 {
     char* bucket_name = argv[optindex++];
@@ -2568,6 +2667,47 @@ static void test_list_bucket_objects(int argc, char **argv, int optindex)
 
 }
 
+
+static void test_list_bucket_objects_all(int argc, char **argv, int optindex)
+{
+	obs_options option;
+	int maxkeys = 100;
+
+	init_obs_options(&option);
+
+	char *bucket_name = argv[optindex++];
+	printf("Bucket's name is == %s \n", bucket_name);
+
+	option.bucket_options.host_name = HOST_NAME;
+	option.bucket_options.bucket_name = bucket_name;
+	option.bucket_options.access_key = ACCESS_KEY_ID;
+	option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+
+	obs_list_objects_handler list_bucket_objects_handler =
+	{
+		{ &response_properties_callback, &listobjects_complete_callback },
+		&list_objects_callback
+	};
+
+	list_bucket_callback_data data;
+	do {
+		errno_t ret = memset_s(&data, sizeof(data), 0, sizeof(list_bucket_callback_data));
+		if (ret != EOK) {
+			printf("list bucket objects failed ,cause memset_s failed with(%d).\n", ret);
+		}
+		list_bucket_objects(&option, NULL, data.next_marker, NULL, maxkeys, &list_bucket_objects_handler, &data);
+	} while (data.is_truncated);
+	if (OBS_STATUS_OK == data.ret_status) {
+		printf("list bucket objects successfully. \n");
+	}
+	else
+	{
+		printf("list bucket objects failed(%s).\n", obs_get_status_name(data.ret_status));
+	}
+
+}
+
 /*****************************list versions********************************************/
 typedef struct list_versions_callback_data
 {
@@ -2797,7 +2937,19 @@ static void test_get_bucket_storage_info(int argc, char **argv, int optindex)
 {
     obs_options option; 
     char capacity[OBS_COMMON_LEN_256] = {0};
-    char obj_num[OBS_COMMON_LEN_256] = {0};
+	const int object_number_buffer_length = 257;
+	const int object_number_buffer_size = object_number_buffer_length * sizeof(char);
+	char* object_number_buffer = (char*)malloc(object_number_buffer_size);
+	if (object_number_buffer == NULL) {
+		printf("out of memory in %s", __FUNCTION__);
+	}
+	errno_t ret = memset_s(object_number_buffer, object_number_buffer_size, 0, object_number_buffer_size);
+	if (ret != EOK) {
+		printf("out of memory in %s", __FUNCTION__);
+		printf("memset_s failed (return code:%d) in %s, line: %d", ret, __FUNCTION__, __LINE__);
+		free(object_number_buffer);
+		return;
+	}
     obs_status ret_status = OBS_STATUS_BUTT;
     
     init_obs_options(&option);
@@ -2827,12 +2979,12 @@ static void test_get_bucket_storage_info(int argc, char **argv, int optindex)
         &response_complete_callback
     };
     
-    get_bucket_storage_info(&option, OBS_COMMON_LEN_256, capacity, OBS_COMMON_LEN_256, obj_num, 
+    get_bucket_storage_info(&option, OBS_COMMON_LEN_256, capacity, object_number_buffer_length, object_number_buffer,
         &response_handler, &ret_status); 
     
     if (ret_status == OBS_STATUS_OK) {
          printf("get_bucket_storage_info success,bucket=%s objNum=%s capacity=%s\n", 
-            bucket_name, obj_num, capacity);
+            bucket_name, object_number_buffer, capacity);
     }
     else
     {
@@ -3405,6 +3557,7 @@ static void put_buffer_complete_callback(obs_status status,
 {
     put_buffer_object_callback_data *data = (put_buffer_object_callback_data *)callback_data;
     data->ret_status = status;
+	common_error_handle(error);
 }
 
 
@@ -3468,8 +3621,7 @@ uint64_t open_file_and_get_length(char *localfile, put_file_object_callback_data
         {
             fprintf(stderr, "\nERROR: Failed to stat file %s: ",
             localfile);
-            perror(0);
-            exit(-1);
+            return 0;
         }
         content_length = statbuf.st_size;
 		printf("content_length 1 = %llu\n",content_length);
@@ -3478,8 +3630,7 @@ uint64_t open_file_and_get_length(char *localfile, put_file_object_callback_data
     {
         fprintf(stderr, "\nERROR: Failed to open input file %s: ",
         localfile);
-        perror(0);
-        exit(-1);
+        return 0;
     }    
     data->content_length = content_length;
     return content_length;
@@ -3630,10 +3781,10 @@ static void test_put_object_from_file(int argc, char **argv, int optindex)
     /*SSE-KMS encryption*/
     server_side_encryption_params encryption_params;
     memset_s(&encryption_params, sizeof(encryption_params),0, sizeof(server_side_encryption_params));
-    //encryption_params.use_kms = '1';
+    //encryption_params.encryption_type = OBS_ENCRYPTION_KMS;
     //encryption_params.kms_server_side_encryption = "kms";
-    //Do not set the system will generate a default encryption key
-    //encryption_params.kms_key_id = "sichuan:domainiddomainiddomainiddoma0001:key/xxxxxxxxxxxxxxxxxx";
+    ////Do not set the system will generate a default encryption key
+    //encryption_params.kms_key_id = "";
 
     /*SSE-C*/
     /*char* buffer = "xxxxxxxxxxxxx";
@@ -3664,6 +3815,9 @@ static void test_put_object_from_file(int argc, char **argv, int optindex)
         printf("put object failed(%s).\n",  
                obs_get_status_name(data.ret_status));
     }
+	if (data.infile != NULL) {
+		fclose(data.infile);
+	}
 }
 
 
@@ -3683,7 +3837,7 @@ static void test_put_object_from_buffer(int argc, char **argv, int optindex)
     char *buffer = argv[optindex++];
     printf("buffer's name is == %s \n", buffer);
     // Length of the buffer to be uploaded
-	int buffer_size = buffer == NULL ? 0 : strlen(buffer);
+    int buffer_size = buffer == NULL ? 0 : strlen(buffer);
 
     // Initialize option
     obs_options option;
@@ -3698,7 +3852,7 @@ static void test_put_object_from_buffer(int argc, char **argv, int optindex)
     temp_auth_configure tempauth;
     tempAuthResult  ptrResult;
     memset_s(&ptrResult,sizeof(ptrResult),0,sizeof(tempAuthResult));
-
+	option.bucket_options.storage_class = OBS_STORAGE_CLASS_BUTT;
     while (optindex < argc){
         char *param = argv[optindex++];
         if (!strncmp(param, TMP_AUTH_EXPIRES_PREFIX,TMP_AUTH_EXPIRES_PREFIX_LEN)){
@@ -3711,8 +3865,6 @@ static void test_put_object_from_buffer(int argc, char **argv, int optindex)
             option.bucket_options.protocol = get_protocol_from_argv(param);
         }else if (!strncmp(param, CANNED_ACL_PREFIX, CANNED_ACL_PREFIX_LEN)) {
             canned_acl = get_acl_from_argv(param);
-        }else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
-            option.bucket_options.protocol = get_protocol_from_argv(param);
         }else if (!strncmp(param, CONTENT_ENCODING_PREFIX, CONTENT_ENCODING_PREFIX_LEN)) {
             content_encoding = &(param[CONTENT_ENCODING_PREFIX_LEN]);
         }else if (!strncmp(param, EXPIRES_PREFIX, EXPIRES_PREFIX_LEN)){
@@ -3859,14 +4011,22 @@ static void test_get_object(int argc, char **argv, int optindex)
     get_object_callback_data data;
     data.ret_status = OBS_STATUS_BUTT;
     data.outfile = write_to_file(file_name);
+    if (!data.outfile) {
+        fprintf(stderr, "\nERROR: Failed to open output file %s: ",
+                file_name);
+        printf("get object failed.\n");
+        return;
+    }
 
     obs_get_conditions getcondition;
     memset_s(&getcondition, sizeof(getcondition),0, sizeof(obs_get_conditions));
     init_get_properties(&getcondition);
-    // The starting position of the reading
-    getcondition.start_byte = 0;
-    // Read length, default 0: read to the end of the object
-    getcondition.byte_count = 100;
+    // getcondition.start_byte is The starting position of the reading
+    // getcondition.start_byte = 0;
+    // getcondition.byte_count is Read length, default 0: read to the end of the object
+    // getcondition.byte_count = 100;
+
+    // if you didn't set getcondition.byte_count and getcondition.start_byte, sdk will get the whole object
     obs_get_object_handler get_object_handler =
     { 
         { &response_properties_callback,
@@ -3880,7 +4040,7 @@ static void test_get_object(int argc, char **argv, int optindex)
     }
     else
     {
-        printf("get object faied(%s).\n", obs_get_status_name(data.ret_status));
+        printf("get object failed(%s).\n", obs_get_status_name(data.ret_status));
     }
     fclose(data.outfile);
 }
@@ -3987,10 +4147,57 @@ static void test_batch_delete_objects(int argc, char **argv, int optindex)
     }
     else
     {
-        printf("test batch_delete_objects faied(%s).\n", obs_get_status_name(ret_status));
+        printf("test batch_delete_objects failed(%s).\n", obs_get_status_name(ret_status));
     }
 }
 
+
+static void test_rename_object(int argc, char **argv, int optindex)
+{
+
+	char *source_bucket = argv[optindex++];
+	printf("bucket's name is == %s \n", source_bucket);
+
+	char *source_key = argv[optindex++];
+	printf("old_key is == %s \n", source_key);
+
+	char *target_key = argv[optindex++];
+	printf("new_key is == %s \n", target_key);
+
+	char *version_id = NULL;
+
+	obs_options option;
+	init_obs_options(&option);
+
+	obs_status ret_status = OBS_STATUS_BUTT;
+	char eTag[OBS_COMMON_LEN_256] = { 0 };
+	int64_t lastModified;
+
+
+	option.bucket_options.host_name = HOST_NAME;
+	option.bucket_options.bucket_name = source_bucket;
+	option.bucket_options.access_key = ACCESS_KEY_ID;
+	option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+	option.bucket_options.protocol = OBS_PROTOCOL_HTTP;
+
+	obs_response_handler responseHandler =
+	{
+		&response_properties_callback,
+		&response_complete_callback
+	};
+	rename_object(&option, source_key, target_key, &responseHandler, &ret_status);
+
+	if (OBS_STATUS_OK == ret_status) {
+		printf("test_rename_object  successfully. \n");
+
+	}
+	else
+	{
+		printf("test_rename_object failed(%s).\n", obs_get_status_name(ret_status));
+	}
+
+}
 
 static void test_copy_object(int argc, char **argv, int optindex)
 {
@@ -4159,7 +4366,7 @@ static void test_restore_object(int argc, char **argv, int optindex)
     }
     else
     {
-        printf("restore object faied(%s).\n", obs_get_status_name(ret_status));
+        printf("restore object failed(%s).\n", obs_get_status_name(ret_status));
         return;
     }
     // download file
@@ -4167,6 +4374,12 @@ static void test_restore_object(int argc, char **argv, int optindex)
     get_object_callback_data data;
     data.ret_status = OBS_STATUS_BUTT;
     data.outfile = write_to_file(file_name);
+    if (!data.outfile) {
+        fprintf(stderr, "\nERROR: Failed to open output file %s: ",
+                file_name);
+        printf("get object failed.\n");
+        return;
+    }
 
     obs_get_object_handler getobjectHandler =
     { 
@@ -4181,7 +4394,7 @@ static void test_restore_object(int argc, char **argv, int optindex)
     }
     else
     {
-        printf("get object faied.\n");
+        printf("get object failed.\n");
         printError();
     }
 }
@@ -4268,11 +4481,11 @@ static void test_list_bucket(int argc, char **argv, int optindex)
     
     list_service_data data;
     memset_s(&data, sizeof(data),0, sizeof(list_service_data));
-    
+	data.allDetails = 1;
     obs_list_service_handler listHandler =
     { 
         {&response_properties_callback,
-        &list_bucket_complete_callback },
+        &list_bucket_complete_callback},
         &listServiceCallback
     };
 
@@ -4351,7 +4564,6 @@ static void test_head_bucket(int argc, char **argv, int optindex)
     option.bucket_options.bucket_name = bucket_name;
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
-
 
     obs_response_handler response_handler =
     { 
@@ -4437,7 +4649,7 @@ static void test_init_upload_part(char *key)
     }
     else
     {
-        printf("test init upload part faied(%s).\n", obs_get_status_name(ret_status));
+        printf("test init upload part failed(%s).\n", obs_get_status_name(ret_status));
     }
 }
 
@@ -4483,8 +4695,7 @@ uint64_t get_file_info(char *localfile, test_upload_file_callback_data *data)
         {
             fprintf(stderr, "\nERROR: Failed to stat file %s: ",
             localfile);
-            perror(0);
-            exit(-1);
+            return 0;
         }
         content_length = statbuf.st_size;
     }
@@ -4492,8 +4703,7 @@ uint64_t get_file_info(char *localfile, test_upload_file_callback_data *data)
     {
         fprintf(stderr, "\nERROR: Failed to open input file %s: ",
         localfile);
-        perror(0);
-        exit(-1);
+        return 0;
     }    
     return content_length;
 }
@@ -4539,13 +4749,17 @@ static void test_upload_part(char *filename, char *key)
     uploadPartInfo.upload_id=UPLOAD_ID;
     data.start_byte  = 0;
     upload_part(&option, key, &uploadPartInfo,uploadSize,&putProperties,0,&Handler,&data);
-    
+
+	if (data.infile != NULL) {
+		fclose(data.infile);
+	}
+	data.infile = NULL;
     if (statusG == OBS_STATUS_OK) {
         printf("test upload part 1 successfully. \n");
     }
     else
     {
-        printf("test upload part 1 faied.\n");
+        printf("test upload part 1 failed.\n");
         printError();
         return ;
     }
@@ -4560,13 +4774,17 @@ static void test_upload_part(char *filename, char *key)
     
    // fseek(data.infile, data.start_byte, SEEK_SET);
     upload_part(&option,key,&uploadPartInfo,uploadSize, &putProperties,0,&Handler,&data);
-    
+
+	if (data.infile != NULL) {
+		fclose(data.infile);
+		data.infile = NULL;
+	}
     if (statusG == OBS_STATUS_OK) {
         printf("test upload part 2 successfully. \n");
     }
     else
     {
-        printf("test upload part 2 faied.\n");
+        printf("test upload part 2 failed.\n");
         printError();
         return ;
     }
@@ -4619,7 +4837,7 @@ static void test_complete_upload(char *filename, char *key)
     }
     else
     {
-        printf("test complete upload faied.\n");
+        printf("test complete upload failed.\n");
         printError();
     }
 }
@@ -4955,6 +5173,8 @@ static void test_upload_file(int argc, char **argv, int optindex)
     uploadFileInfo.task_num = 1;
     uploadFileInfo.upload_file = filename;
     uploadFileInfo.pause_upload_flag = &pause_upload_flag;
+	server_side_encryption_params encryption_params;
+	memset_s(&encryption_params, sizeof(encryption_params), 0, sizeof(server_side_encryption_params));
 
     while (optindex < argc){
         char *param = argv[optindex++];
@@ -4963,11 +5183,7 @@ static void test_upload_file(int argc, char **argv, int optindex)
         }else if(!strncmp(param, THREAD_NUM_PREFIX, THREAD_NUM_PREFIX_LEN)){
             char* thread_num = &(param[THREAD_NUM_PREFIX_LEN]);
             uploadFileInfo.task_num = atoi(thread_num);
-        }else if (!strncmp(param, CUSTOM_DOMAIN_PREFIX, CUSTOM_DOMAIN_PREFIX_LEN))
-		{
-			option.bucket_options.host_name = getCustomDomain(param);
-			option.bucket_options.useCname = true;
-		}else if (!strncmp(param, CHECK_POINT, CHECK_POINT_LEN))
+        }else if (!strncmp(param, CHECK_POINT, CHECK_POINT_LEN))
         {
             char* check_point = &(param[CHECK_POINT_LEN]);
             uploadFileInfo.enable_check_point = atoi(check_point);            
@@ -4975,6 +5191,26 @@ static void test_upload_file(int argc, char **argv, int optindex)
         {
             uploadFileInfo.part_size = convertInt(&(param[UPLOAD_SLICE_SIZE_LEN]), "uploadSliceSize");
         }
+		else if (!strncmp(param, USE_OBS_AUTH, USE_OBS_AUTH_LEN)) {
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+		}
+		else if (!strncmp(param, USE_S3_AUTH, USE_S3_AUTH_LEN)) {
+			option.request_options.auth_switch = OBS_S3_TYPE;
+		}
+		else if (!strncmp(param, USE_KMS, USE_KMS_LEN)) {
+			encryption_params.encryption_type = OBS_ENCRYPTION_KMS;
+			encryption_params.kms_server_side_encryption = "kms";
+		}
+		else if (!strncmp(param, USE_SSEC, USE_SSEC_LEN)) {
+			encryption_params.encryption_type = OBS_ENCRYPTION_SSEC;
+			encryption_params.ssec_customer_algorithm = "AES256";
+		}
+		else if (!strncmp(param, SSEC_CUSTOMER_KEY, SSEC_CUSTOMER_KEY_LEN)) {
+			encryption_params.ssec_customer_key = &(param[SSEC_CUSTOMER_KEY_LEN]);
+		}
+		else {
+			fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
+		}
 
     }
     obs_upload_file_server_callback server_callback;
@@ -4988,11 +5224,10 @@ static void test_upload_file(int argc, char **argv, int optindex)
     cJSON_AddStringToObject(body, "etag", "test_etag");
     out = cJSON_PrintUnformatted(body);
 
-	//uncomment those following four lines if you want use server callback
-    //server_callback.callback_url = "http://xxxxxx";
-    //server_callback.callback_host = NULL;
-    //server_callback.callback_body = out;
-    //server_callback.callback_body_type = "application/json";
+    server_callback.callback_url = "http://xxxxxx";
+    server_callback.callback_host = NULL;
+    server_callback.callback_body = out;
+    server_callback.callback_body_type = "application/json";
 
 
 
@@ -5000,20 +5235,19 @@ static void test_upload_file(int argc, char **argv, int optindex)
     { 
         {&response_properties_callback,
         &response_complete_callback_for_multi_task},
-        &uploadFileResultCallback,
-		&test_progress_callback
+        &uploadFileResultCallback
     };
     cJSON_Delete(body);
     cJSON_free(out);
 	initialize_break_point_lock();
-    upload_file(&option, key, 0, &uploadFileInfo, server_callback, &Handler, 0);
+    upload_file(&option, key, &encryption_params, &uploadFileInfo, server_callback, &Handler, 0);
 	deinitialize_break_point_lock();
     if (statusG == OBS_STATUS_OK) {
         printf("test upload file successfully. \n");
     }
     else
     {
-    printf("test upload file faied.\n");
+    printf("test upload file failed.\n");
     printError();
     return ;
     }
@@ -5077,11 +5311,6 @@ static void test_download_file(int argc, char **argv, int optindex)
 		else if (!strncmp(param, DOWNLOAD_SLICE_SIZE, DOWNLOAD_SLICE_SIZE_LEN)) {
 			downloadSliceSize = convertInt(&(param[DOWNLOAD_SLICE_SIZE_LEN]), "download_slice_size");
 		}
-		else if (!strncmp(param, CUSTOM_DOMAIN_PREFIX, CUSTOM_DOMAIN_PREFIX_LEN))
-		{
-			option.bucket_options.host_name = getCustomDomain(param);
-			option.bucket_options.useCname = true;
-		}
 		else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
 			option.bucket_options.protocol = get_protocol_from_argv(param);
 		}
@@ -5127,7 +5356,7 @@ static void test_download_file(int argc, char **argv, int optindex)
 	}
 	else
 	{
-		printf("test download file faied(%s).\n", obs_get_status_name(ret_status));
+		printf("test download file failed(%s).\n", obs_get_status_name(ret_status));
 	}
 }
 
@@ -5237,7 +5466,7 @@ void upload_thread_proc(void * thread_param)
     }
     else
     {
-        printf("test upload part %u faied.\n",uploadPartInfo.part_number);
+        printf("test upload part %u failed.\n",uploadPartInfo.part_number);
         printError();
         return ;
     }
@@ -5284,10 +5513,15 @@ static void start_upload_threads(test_upload_file_callback_data data,
      }
 
 	 printf("partCount=%d\n",partCount);
-	 for(i = 0; i <partCount;i++)
-     {
- 		FindClose(arrHandle[i]);
+	 DWORD flags;
+	 for (i = 0; i < partCount; i++)
+	 {
+		 // 关闭句柄需要先判断句柄是否有效
+		 if (arrHandle[i] != NULL && GetHandleInformation(arrHandle[i], &flags)) {
+			 FindClose(arrHandle[i]);
+		 }
 	 }
+
      if(arrHandle)
      {
         free(arrHandle);
@@ -5373,7 +5607,7 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     }
     else
     {
-        printf("test init upload part faied.\n");
+        printf("test init upload part failed.\n");
         printError();
     }
     //Concurrent upload segment
@@ -5386,6 +5620,10 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     }
     test_concurrent_upload_part_callback_data *concurrent_upload_file_complete = concurrent_upload_file;
     start_upload_threads(data, concurrent_upload_id,filesize,key, option, concurrent_upload_file_complete);
+	if (data.infile != NULL) {
+		fclose(data.infile);
+	}
+	data.infile = NULL;
 
     // Merging segment
     obs_complete_upload_Info *upload_Info=(obs_complete_upload_Info *)malloc(sizeof(obs_complete_upload_Info)*(data.part_num));
@@ -5405,7 +5643,7 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
     }
     else
     {
-        printf("test complete upload faied.\n");
+        printf("test complete upload failed.\n");
         printError();
     }
     if(concurrent_upload_file)
@@ -5456,6 +5694,9 @@ static void test_append_object_from_file(char *key, char *file_name, char * posi
     {
         printf("append object failed(%s).\n", obs_get_status_name(data.ret_status));
     }
+	if (data.infile != NULL) {
+		fclose(data.infile);
+	}
 }
 
 static void test_append_object_from_buffer(int argc, char **argv, int optindex)
@@ -5627,7 +5868,9 @@ static void test_gen_signed_url_put_object()
         printf("gen put object url failed(%s).\n",  
                obs_get_status_name(data.ret_status));
     }
-
+	if (data.infile != NULL) {
+		fclose(data.infile);
+	}
 }
 
 static void test_gen_signed_url_get_object(char *key, char *versionid)
@@ -5651,6 +5894,12 @@ static void test_gen_signed_url_get_object(char *key, char *versionid)
     get_object_callback_data data;
     data.ret_status = OBS_STATUS_BUTT;
     data.outfile = write_to_file(file_name);
+    if (!data.outfile) {
+        fprintf(stderr, "\nERROR: Failed to open output file %s: ",
+                file_name);
+        printf("get object failed.\n");
+        return;
+    }
 
     obs_get_conditions getcondition;
     memset_s(&getcondition, sizeof(getcondition),0, sizeof(obs_get_conditions));
@@ -5687,13 +5936,20 @@ static void test_gen_signed_url_get_object(char *key, char *versionid)
     }
     else
     {
-        printf("get object faied.\n");
+        printf("get object failed.\n");
         printError();
     }
 
 
 }
 
+static double g_progress = 0;
+void test_progress_callback(double progress, uint64_t uploadedSize, uint64_t fileTotalSize, void *callback_data) {
+	if (progress == 100 || (g_progress < progress && progress - g_progress > 2)) {
+		printf("test_progress_callback progress=%f  uploadedSize=%llu fileTotalSize=%llu  callback_data=%p\n", progress, uploadedSize, fileTotalSize, callback_data);
+		g_progress = progress;
+	}
+}
 typedef struct pause_concurrent_upload_file
 {
     char *bucket;
@@ -5750,7 +6006,7 @@ unsigned int __stdcall test_pause_concurrent_upload_file(void *param)
     }
     else
     {
-        printf("test upload file faied(%s).\n", obs_get_status_name(ret_status));
+        printf("test upload file failed(%s).\n", obs_get_status_name(ret_status));
     }
     return ret_status;
 }
@@ -5822,7 +6078,7 @@ static void test_set_access_label(int argc, char ** argv, int optindex) {
 	char *bucket_name = argv[optindex++];
 	printf("bucket name is: %s\n", bucket_name);
 	char *key = argv[optindex++];
-	printf("dir name is: %s\n", key);
+	printf("dir name is: %s", key);
 	obs_options option;
 	init_obs_options(&option);
 	obs_put_properties putProperties = { 0 };
@@ -5866,6 +6122,23 @@ static void test_set_access_label(int argc, char ** argv, int optindex) {
 		else {
 			fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
 		}
+	}
+	access_labels_len = 0;
+	errno_t ret = strcpy_s(dir_access_label_datas.labels[access_labels_len++], 53, "testlabel1");
+	if (ret != EOK) {
+		printf("strcpy_s failed, length of ACCESS_LABEL should be less than %d", MAX_LABEL_LENGTH);
+	}
+	ret = strcpy_s(dir_access_label_datas.labels[access_labels_len++], 53, "testlabel2");
+	if (ret != EOK) {
+		printf("strcpy_s failed, length of ACCESS_LABEL should be less than %d", MAX_LABEL_LENGTH);
+	}
+	ret = strcpy_s(dir_access_label_datas.labels[access_labels_len++], 53, "testlabel3");
+	if (ret != EOK) {
+		printf("strcpy_s failed, length of ACCESS_LABEL should be less than %d", MAX_LABEL_LENGTH);
+	}
+	ret = strcpy_s(dir_access_label_datas.labels[access_labels_len++], 53, "te01234567890123456789012345678901234567890123456789");
+	if (ret != EOK) {
+		printf("strcpy_s failed, length of ACCESS_LABEL should be less than %d", MAX_LABEL_LENGTH);
 	}
 	dir_access_label_datas.labels_len = access_labels_len;
 	put_access_label_handler handler = {
@@ -5929,9 +6202,12 @@ static void test_get_access_label(int argc, char ** argv, int optindex) {
 		get_dir_access_label_json_callback
 	};
 	get_access_label(&option, key, &handler, &dir_access_label_datas);
-	printf("test_get_access_label's obs_status is %s, dir_access_label_json is %s", 
+	printf("test_get_access_label's obs_status is %s, dir_access_label_json is %s\n", 
 		obs_get_status_name(dir_access_label_datas.status), 
 		dir_access_label_datas.json_str);
+	for (int i = 0; i < dir_access_label_datas.labels_len; ++i) {
+		printf("access_label[%d] is %s\n", i + 1, dir_access_label_datas.labels[i]);
+	}
 }
 static void test_delete_access_label(int argc, char ** argv, int optindex) {
 	char *bucket_name = argv[optindex++];
@@ -5974,27 +6250,153 @@ static void test_delete_access_label(int argc, char ** argv, int optindex) {
 	printf("test_delete_access_label's obs_status is %s", obs_get_status_name(status));
 }
 
+static void test_set_bucket_trash(int argc, char ** argv, int optindex) {
+
+	char *bucket_name = argv[optindex++];
+	printf("pfs bucket name is: %s\n", bucket_name);
+	char *reservedDaysString = argv[optindex++];
+	printf("reservedDaysString is: %s. ", reservedDaysString);
+	int reservedDays = atoi(reservedDaysString);
+	printf("reservedDaysInt is: %d\n", reservedDays);
+	obs_options option;
+	init_obs_options(&option);
+	obs_put_properties putProperties = { 0 };
+	init_put_properties(&putProperties);
+
+	option.bucket_options.host_name = HOST_NAME;
+	option.bucket_options.bucket_name = bucket_name;
+	option.bucket_options.access_key = ACCESS_KEY_ID;
+	option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+	option.request_options.auth_switch = OBS_OBS_TYPE;
+	option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+
+	bucket_trash_configuration trash_configuration = { 0 };
+	trash_configuration.reserved_days = reservedDays;
+	while (optindex < argc) {
+		char *param = argv[optindex++];
+		if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+			option.bucket_options.protocol = get_protocol_from_argv(param);
+		}
+		else if (!strncmp(param, USE_OBS_AUTH, USE_OBS_AUTH_LEN)) {
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+		}
+		else if (!strncmp(param, USE_S3_AUTH, USE_S3_AUTH_LEN)) {
+			option.request_options.auth_switch = OBS_S3_TYPE;
+		}
+		else {
+			fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
+		}
+	}
+	obs_response_handler handler = {
+		response_properties_callback,
+		response_complete_callback
+	};
+	obs_status ret_status = OBS_STATUS_BUTT;
+	set_bucket_trash_configuration(&option, &trash_configuration, &handler, &ret_status);
+	if (OBS_STATUS_OK == ret_status) {
+		printf("test_set_bucket_trash successfully. \n");
+	}
+	else
+	{
+		printf("test_set_bucket_trash failed(%s).\n", obs_get_status_name(ret_status));
+	}
+}
+static void test_get_bucket_trash(int argc, char ** argv, int optindex) {
+
+	char *bucket_name = argv[optindex++];
+	printf("pfs bucket name is: %s\n", bucket_name);
+	obs_options option;
+	init_obs_options(&option);
+	obs_put_properties putProperties = { 0 };
+	init_put_properties(&putProperties);
+
+	option.bucket_options.host_name = HOST_NAME;
+	option.bucket_options.bucket_name = bucket_name;
+	option.bucket_options.access_key = ACCESS_KEY_ID;
+	option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+	option.request_options.auth_switch = OBS_OBS_TYPE;
+	option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+
+	int invalid_reserved_days = -1;
+	bucket_trash_configuration trash_configuration = { 0 };
+	trash_configuration.reserved_days = invalid_reserved_days;
+	while (optindex < argc) {
+		char *param = argv[optindex++];
+		if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+			option.bucket_options.protocol = get_protocol_from_argv(param);
+		}
+		else if (!strncmp(param, USE_OBS_AUTH, USE_OBS_AUTH_LEN)) {
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+		}
+		else if (!strncmp(param, USE_S3_AUTH, USE_S3_AUTH_LEN)) {
+			option.request_options.auth_switch = OBS_S3_TYPE;
+		}
+		else {
+			fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
+		}
+	}
+	obs_response_handler handler = {
+		response_properties_callback,
+		response_complete_callback
+	};
+	obs_status ret_status = OBS_STATUS_BUTT;
+	get_bucket_trash_configuration(&option, &trash_configuration, &handler, &ret_status);
+	if (OBS_STATUS_OK == ret_status && invalid_reserved_days != trash_configuration.reserved_days) {
+		printf("test_get_bucket_trash successfully, trash_configuration.reserved_days is %d.\n", 
+			trash_configuration.reserved_days);
+	}
+	else
+	{
+		printf("test_get_bucket_trash failed(%s).\n", obs_get_status_name(ret_status));
+	}
+}
+static void test_delete_bucket_trash(int argc, char ** argv, int optindex) {
+	char *bucket_name = argv[optindex++];
+	printf("pfs bucket name is: %s\n", bucket_name);
+	obs_options option;
+	init_obs_options(&option);
+	option.bucket_options.host_name = HOST_NAME;
+	option.bucket_options.bucket_name = bucket_name;
+	option.bucket_options.access_key = ACCESS_KEY_ID;
+	option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+	option.request_options.auth_switch = OBS_OBS_TYPE;
+	option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+
+	while (optindex < argc) {
+		char *param = argv[optindex++];
+		if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+			option.bucket_options.protocol = get_protocol_from_argv(param);
+		}
+		else if (!strncmp(param, USE_OBS_AUTH, USE_OBS_AUTH_LEN)) {
+			option.request_options.auth_switch = OBS_OBS_TYPE;
+		}
+		else if (!strncmp(param, USE_S3_AUTH, USE_S3_AUTH_LEN)) {
+			option.request_options.auth_switch = OBS_S3_TYPE;
+		}
+		else {
+			fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
+		}
+	}
+	obs_response_handler handler = {
+		response_properties_callback,
+		response_complete_callback
+	};
+	obs_status ret_status = OBS_STATUS_BUTT;
+	delete_bucket_trash_configuration(&option, &handler, &ret_status);
+	if (OBS_STATUS_OK == ret_status) {
+		printf("test_delete_bucket_trash successfully.\n");
+	}
+	else
+	{
+		printf("test_delete_bucket_trash failed(%s).\n", obs_get_status_name(ret_status));
+	}
+}
 int main(int argc, char **argv)
 {
     int optind =1;
 	char* access_key_id_from_env = getenv("ACCESS_KEY_ID");
 	char* secret_access_key_id_from_env = getenv("SECRET_ACCESS_KEY_ID");
 	char* host_from_env = getenv("ENDPOINT_NO_PREFIX");
-	if (access_key_id_from_env == NULL)
-	{
-		printf("please set environment variable \"ACCESS_KEY_ID\" first\n\n\n\n");
-		return 0;
-	}
-	if (secret_access_key_id_from_env == NULL)
-	{
-		printf("please set environment variable \"SECRET_ACCESS_KEY_ID\" first\n\n\n\n");
-		return 0;
-	}
-	if (host_from_env == NULL)
-	{
-		printf("please set environment variable \"ENDPOINT_NO_PREFIX\" first\n\n\n\n");
-		return 0;
-	}
     strcpy_s(ACCESS_KEY_ID,sizeof(ACCESS_KEY_ID), access_key_id_from_env);
     strcpy_s(SECRET_ACCESS_KEY,sizeof(SECRET_ACCESS_KEY), secret_access_key_id_from_env);
     strcpy_s(HOST_NAME,sizeof(HOST_NAME), host_from_env);
@@ -6008,11 +6410,9 @@ int main(int argc, char **argv)
     const char *command = argv[optind++];
     printf("command = %s\n", command);
 
-	set_obs_log_path("D:\\log", false);                   //此行代码用于示例设置日志文件路径功能，在实际使用中请注释该行
+	set_obs_log_path("D:\\log\\", false);                   //此行代码用于示例设置日志文件路径功能，在实际使用中请注释该行
 	//setUserCustomLog(OBSLogPrintf); // set user custom log callback, you can define your own log callback which will be called asynchronously
-	set_file_path_code(UNICODE_CODE);
 	obs_initialize(OBS_INIT_ALL);
-
 	if (!strcmp(command, "create_bucket")) {
        test_create_bucket(argc, argv, optind);
     }
@@ -6038,8 +6438,12 @@ int main(int argc, char **argv)
     }
 
     if (!strcmp(command, "get_object")) {
-       test_get_object(argc, argv, optind);
+       test_get_object(argc, argv, optind); 
     }
+
+	if (!strcmp(command, "get_object_metadata")) {
+		test_get_object_metadata_from_args(argc, argv, optind);
+	}
 
     if (!strcmp(command, "delete_object")) {
         test_delete_object(argc, argv, optind);
@@ -6049,6 +6453,10 @@ int main(int argc, char **argv)
         test_copy_object(argc, argv, optind);
     }
 
+	if (!strcmp(command, "rename_object")) {
+		test_rename_object(argc, argv, optind);
+	}
+
     if (!strcmp(command, "restore_object")) {
         test_restore_object(argc, argv, optind);
     }
@@ -6056,6 +6464,10 @@ int main(int argc, char **argv)
     if (!strcmp(command, "list_bucket_object")) {
         test_list_bucket_objects(argc, argv, optind);
     }
+
+	if (!strcmp(command, "list_bucket_object_all")) {
+		test_list_bucket_objects_all(argc, argv, optind);
+	}
 
     if (!strcmp(command, "concurrent_upload_part")) {
         test_concurrent_upload_part(argc, argv, optind);
@@ -6170,6 +6582,18 @@ int main(int argc, char **argv)
 
 	if (!strcmp(command, "delete_access_label")) {
 		test_delete_access_label(argc, argv, optind);
+	}
+
+	if (!strcmp(command, "set_bucket_trash")) {
+		test_set_bucket_trash(argc, argv, optind);
+	}
+
+	if (!strcmp(command, "get_bucket_trash")) {
+		test_get_bucket_trash(argc, argv, optind);
+	}
+
+	if (!strcmp(command, "delete_bucket_trash")) {
+		test_delete_bucket_trash(argc, argv, optind);
 	}
 
     obs_deinitialize();

@@ -45,14 +45,22 @@ static void saxStartElement(void *user_data, const xmlChar *nameUtf8,
         return;
     }
 
-    if (simpleXml->elementPathLen) {
+    if (0 < simpleXml->elementPathLen && simpleXml->elementPathLen < sizeof(simpleXml->elementPath)) {
         simpleXml->elementPath[simpleXml->elementPathLen++] = '/';
+    } else {
+        COMMLOG(OBS_LOGWARN, "%s(%d): simpleXml->elementPathLen is 0 or "
+            "is not less than sizeof(simpleXml->elementPath)", __FUNCTION__, __LINE__);
     }
-    errno_t err = strcpy_s(&(simpleXml->elementPath[simpleXml->elementPathLen]),
-    sizeof(simpleXml->elementPath)-simpleXml->elementPathLen, name);
-    if (err != EOK)
-    {
-        COMMLOG(OBS_LOGWARN, "%s(%d): strcpy_s failed!(%d)", __FUNCTION__, __LINE__, err);
+    if (0 <= simpleXml->elementPathLen && simpleXml->elementPathLen < sizeof(simpleXml->elementPath)) {
+        errno_t err = strcpy_s(&(simpleXml->elementPath[simpleXml->elementPathLen]),
+        sizeof(simpleXml->elementPath)-simpleXml->elementPathLen, name);
+        if (err != EOK)
+        {
+            COMMLOG(OBS_LOGWARN, "%s(%d): strcpy_s failed!(%d)", __FUNCTION__, __LINE__, err);
+        }
+    } else {
+        COMMLOG(OBS_LOGWARN, "%s(%d): strcpy_s failed! simpleXml->elementPathLen "
+            "is not less than sizeof(simpleXml->elementPath)", __FUNCTION__, __LINE__);
     }
     simpleXml->elementPathLen += len;
 }

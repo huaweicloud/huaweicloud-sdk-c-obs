@@ -25,9 +25,6 @@
     <Filter Include="source\LoggerMgr">
       <UniqueIdentifier>{92e2ca92-0c32-4943-a568-894c6f711692}</UniqueIdentifier>
     </Filter>
-    <Filter Include="huaweisecurec">
-      <UniqueIdentifier>{08257a5b-85a6-4755-bef9-49e1397fb017}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="targetver.h">
@@ -87,12 +84,6 @@
     <ClInclude Include="eSDKLogDataType.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\platform\huaweisecurec\include\securec.h">
-      <Filter>huaweisecurec</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\platform\huaweisecurec\include\securectype.h">
-      <Filter>huaweisecurec</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -133,9 +124,6 @@
     </ClCompile>
     <ClCompile Include="..\vos\vos_time.cpp">
       <Filter>source\vos</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\platform\huaweisecurec\src\memset_s.c">
-      <Filter>huaweisecurec</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

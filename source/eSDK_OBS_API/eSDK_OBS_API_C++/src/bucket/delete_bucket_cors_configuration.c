@@ -14,15 +14,18 @@
 */
 #include "bucket.h"
 #include "request_util.h"
-#include <openssl/md5.h> 
+#include "bucket_trash_configuration.h"
 
-void delete_bucket_cors_configuration(const obs_options *options, obs_response_handler *handler,
+void delete_bucket_trash_configuration(const obs_options *options, obs_response_handler *handler,
     void *callback_data)
 {
     request_params params;
     COMMLOG(OBS_LOGINFO, "%s start!", __FUNCTION__);
     obs_use_api use_api = OBS_USE_API_S3;
 
+	if (OBS_STATUS_OK != check_options_and_handler_params(__FUNCTION__, options, handler, callback_data)) {
+		return;
+	}
 	if (OBS_STATUS_OK != copy_options_and_init_params(options, &params, &use_api, handler, callback_data)) {
 		return;
 	}
@@ -31,7 +34,7 @@ void delete_bucket_cors_configuration(const obs_options *options, obs_response_h
     params.complete_callback = handler->complete_callback;
     params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = no_need_storage_class;
-    params.subResource = "cors";
+    params.subResource = get_bucket_trash_configuration_sub_resource(use_api);;
     params.temp_auth = options->temp_auth;
     params.callback_data = callback_data;
     params.use_api = use_api;

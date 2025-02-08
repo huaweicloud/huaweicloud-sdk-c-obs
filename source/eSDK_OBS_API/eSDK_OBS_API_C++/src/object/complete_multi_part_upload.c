@@ -177,7 +177,7 @@ static obs_status complete_multi_part_upload_data_from_obs_callback(int buffer_s
             COMMLOG(OBS_LOGERROR, "malloc failed in function: %s,line %d", __FUNCTION__, __LINE__);
             return OBS_STATUS_OutOfMemory;
         }
-        errno_t ret = memset_s(server_callback_buf, server_callback_buf_size, 0, buffer_size);
+        errno_t ret = memset_s(server_callback_buf, server_callback_buf_size, 0, server_callback_buf_size);
         if(ret != EOK){
             if(ret == ERANGE){
                 COMMLOG(OBS_LOGWARN, "memset_s failed in function: %s, return_value: ERANGE", __FUNCTION__);
@@ -191,24 +191,11 @@ static obs_status complete_multi_part_upload_data_from_obs_callback(int buffer_s
             CHECK_NULL_FREE(server_callback_buf);
             return OBS_STATUS_InternalError;
         }
-        ret = strcpy_s(server_callback_buf, server_callback_buf_size, buffer);
-        if(ret != EOK){
-            if(ret == EOVERLAP_AND_RESET){
-                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: EOVERLAP_AND_RESET", __FUNCTION__);
-            }else if(ret == ERANGE){
-                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: ERANGE", __FUNCTION__);
-            }else if(ret == EINVAL){
-                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: EINVAL", __FUNCTION__);
-            }else if(ret == EINVAL_AND_RESET){
-                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: EINVAL_AND_RESET", __FUNCTION__);
-            }else if(ret == ERANGE_AND_RESET){
-                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: ERANGE_AND_RESET", __FUNCTION__);
-            }else {
-                COMMLOG(OBS_LOGWARN, "strcpy_s failed in function: %s, return_value: %d", __FUNCTION__, ret);
-            }
-            CHECK_NULL_FREE(server_callback_buf);
-            return OBS_STATUS_InternalError;
-        }
+		ret = memcpy_s(server_callback_buf, server_callback_buf_size, buffer, buffer_size);
+		if (checkIfErrorAndLogStrError(SYMBOL_NAME_STR(memcpy_s), __FUNCTION__, __LINE__, ret)) {
+			CHECK_NULL_FREE(server_callback_buf);
+			return OBS_STATUS_Security_Function_Failed;
+		}
         server_callback_data.buffer = server_callback_buf;
         server_callback_data.buffer_len = buffer_size;
         cmuData->callback_data = (void *)(&server_callback_data);

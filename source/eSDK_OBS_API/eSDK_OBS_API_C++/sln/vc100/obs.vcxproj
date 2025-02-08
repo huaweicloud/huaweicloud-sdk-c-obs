@@ -20,13 +20,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\inc\access_label.h" />
+    <ClInclude Include="..\..\inc\bucket_trash_configuration.h" />
+    <ClInclude Include="..\..\inc\common.h" />
     <ClInclude Include="..\..\inc\error_parser.h" />
     <ClInclude Include="..\..\inc\eSDKOBS.h" />
     <ClInclude Include="..\..\inc\file_utils.h" />
+    <ClInclude Include="..\..\inc\getopt.h" />
     <ClInclude Include="..\..\inc\log.h" />
+    <ClInclude Include="..\..\inc\obs_time_util.h" />
     <ClInclude Include="..\..\inc\request.h" />
     <ClInclude Include="..\..\inc\request_context.h" />
     <ClInclude Include="..\..\inc\response_headers_handler.h" />
+    <ClInclude Include="..\..\inc\signal_handle.h" />
     <ClInclude Include="..\..\inc\simplexml.h" />
     <ClInclude Include="..\..\inc\string_buffer.h" />
     <ClInclude Include="..\..\inc\util.h" />
@@ -43,6 +48,7 @@
     <ClCompile Include="..\..\src\bucket\delete_bucket_lifecycle_configuration.c" />
     <ClCompile Include="..\..\src\bucket\delete_bucket_policy.c" />
     <ClCompile Include="..\..\src\bucket\delete_bucket_tagging.c" />
+    <ClCompile Include="..\..\src\bucket\delete_bucket_trash_configuration.c" />
     <ClCompile Include="..\..\src\bucket\delete_bucket_website_configuration.c" />
     <ClCompile Include="..\..\src\bucket\get_bucket_cors_configuration.c" />
     <ClCompile Include="..\..\src\bucket\get_bucket_lifecycle_configuration.c" />
@@ -53,6 +59,7 @@
     <ClCompile Include="..\..\src\bucket\get_bucket_storage_class_policy.c" />
     <ClCompile Include="..\..\src\bucket\get_bucket_storage_info.c" />
     <ClCompile Include="..\..\src\bucket\get_bucket_tagging.c" />
+    <ClCompile Include="..\..\src\bucket\get_bucket_trash_configuration.c" />
     <ClCompile Include="..\..\src\bucket\get_bucket_version_configuration.c" />
     <ClCompile Include="..\..\src\bucket\get_bucket_website_configuration.c" />
     <ClCompile Include="..\..\src\bucket\get_notification_configuration.c" />
@@ -69,6 +76,7 @@
     <ClCompile Include="..\..\src\bucket\set_bucket_quota.c" />
     <ClCompile Include="..\..\src\bucket\set_bucket_storage_class_policy.c" />
     <ClCompile Include="..\..\src\bucket\set_bucket_tagging.c" />
+    <ClCompile Include="..\..\src\bucket\set_bucket_trash_configuration.c" />
     <ClCompile Include="..\..\src\bucket\set_bucket_version_configuration.c" />
     <ClCompile Include="..\..\src\bucket\set_bucket_website_configuration.c" />
     <ClCompile Include="..\..\src\bucket\set_notification_configuration.c" />
@@ -102,6 +110,7 @@
     <ClCompile Include="..\..\src\object\set_object_metadata.c" />
     <ClCompile Include="..\..\src\object\upload_file.c" />
     <ClCompile Include="..\..\src\object\upload_part.c" />
+    <ClCompile Include="..\..\src\obs_time_util.c" />
     <ClCompile Include="..\..\src\rename_object.c" />
     <ClCompile Include="..\..\src\request.c" />
     <ClCompile Include="..\..\src\request_context.c" />
@@ -198,7 +207,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;OBS_EXPORTS;_CRT_SECURE_NO_WARNINGS;HUAWEISECUREC_WXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\..\..\..\open_src\openssl-1.0.2k\include;..\..\..\..\..\open_src\curl-7.52.1\include;..\..\inc;..\..\include;..\..\..\..\..\open_src\libxml2-2.9.4\include;..\..\..\..\..\open_src\pcre-8.39\include;..\..\..\..\..\open_src\libxml2-2.9.4\source\os400\iconv;..\..\..\..\..\platform\huaweisecurec\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include;..\..\inc\mingw</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\..\..\..\open_src\openssl-1.0.2k\include;..\..\..\..\..\open_src\curl-7.52.1\include;..\..\inc;..\..\include;..\..\..\..\..\open_src\libxml2-2.9.4\include;..\..\..\..\..\open_src\pcre-8.39\include;..\..\..\..\..\open_src\libxml2-2.9.4\source\os400\iconv;..\..\..\..\..\platform\libboundscheck\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include;..\..\inc\mingw</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <CallingConvention>Cdecl</CallingConvention>
       <AdditionalOptions>/wd4430 %(AdditionalOptions)</AdditionalOptions>
@@ -218,7 +227,7 @@
       <AdditionalLibraryDirectories>..\..\..\..\..\open_src\curl-7.52.1\lib\windows\x86;..\..\..\..\..\open_src\openssl-1.0.2k\lib\windows\x86;..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug;..\..\..\..\..\open_src\pcre-8.39\lib\windows\x86;$(WindowsSdkDir)\Lib;..\..\..\..\..\open_src\libxml2-2.9.4\lib\windows\x86;..\..\build\vc100\Debug;..\..\lib\win32_x86_msvc\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>
       </IgnoreAllDefaultLibraries>
-      <AdditionalDependencies>cjson.lib;libcurl_imp.lib;libcrypto.lib;libssl.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libcurl_imp.lib;libcrypto.lib;libssl.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;libboundscheck.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
       <IgnoreSpecificDefaultLibraries>MSVCRT.lib</IgnoreSpecificDefaultLibraries>
     </Link>
@@ -229,7 +238,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;OBS_EXPORTS;_CRT_SECURE_NO_WARNINGS;HUAWEISECUREC_WXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\inc;..\..\inc\mingw;..\..\..\..\..\platform\huaweisecurec\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include;..\..\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\eSDKLogAPI;..\..\inc;..\..\inc\mingw;..\..\..\..\..\platform\libboundscheck\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include;..\..\include</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <CallingConvention>Cdecl</CallingConvention>
       <AdditionalOptions>/wd4430 %(AdditionalOptions)</AdditionalOptions>
@@ -249,7 +258,7 @@
       <AdditionalLibraryDirectories>..\..\..\..\..\open_src\curl-7.52.1\lib\windows\x86;..\..\..\..\..\open_src\openssl-1.0.2k\lib\windows\x86;..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug_x64;..\..\..\..\..\open_src\pcre-8.39\lib\windows\x86;$(WindowsSdkDir)\Lib;..\..\..\..\..\open_src\libxml2-2.9.4\lib\windows\x86;..\..\build\vc100\Debug;..\..\lib\win64_x64_msvc\release;..\..\build\vc100\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>
       </IgnoreAllDefaultLibraries>
-      <AdditionalDependencies>cjson.lib;libcurl.lib;libcrypto.lib;libssl.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libcurl-d_imp.lib;libcrypto.lib;libssl.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;libboundscheck.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <IgnoreSpecificDefaultLibraries>MSVCRT.lib</IgnoreSpecificDefaultLibraries>
     </Link>
@@ -262,7 +271,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;OBS_EXPORTS;_CRT_SECURE_NO_WARNINGS;HUAWEISECUREC_WXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\include;..\..\inc;..\..\inc\mingw;..\..\..\..\..\platform\huaweisecurec\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\include;..\..\inc;..\..\inc\mingw;..\..\..\..\..\platform\libboundscheck\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
@@ -275,7 +284,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\debug;$(WindowsSdkDir)\Lib;..\..\lib\win32_x86_msvc\release;..\..\build\vc100\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cjson.lib;libcurl_imp.lib;libcrypto.lib;libssl.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libcurl_imp.lib;libcrypto.lib;libssl.lib;eSDKLogAPI.lib;pcre.lib;libxml2.lib;WSock32.Lib;libboundscheck.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
     </Link>
   </ItemDefinitionGroup>
@@ -287,7 +296,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;OBS_EXPORTS;_CRT_SECURE_NO_WARNINGS;HUAWEISECUREC_WXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\include;..\..\inc;..\..\inc\mingw;..\..\..\..\..\platform\huaweisecurec\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\include;..\..\include;..\..\inc;..\..\inc\mingw;..\..\..\..\..\platform\libboundscheck\include;..\..\..\..\..\test\demo\eSDK_OBS_API_C++_Demo\getopt9\include</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
@@ -300,7 +309,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\..\..\..\platform\eSDK_LogAPI_V2.1.10\C\release_x64;$(WindowsSdkDir)\Lib\x64;..\..\build\vc100\Release;..\..\lib\win64_x64_msvc\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cjson.lib;libcurl.lib;libcrypto.lib;libssl.lib;eSDKLogAPI.lib;pcre.lib;libiconv.lib;libxml2.lib;WSock32.Lib;huaweisecurec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cjson.lib;libcurl.lib;libcrypto.lib;libssl.lib;eSDKLogAPI.lib;pcre.lib;libiconv.lib;libxml2.lib;WSock32.Lib;libboundscheck.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <AdditionalOptions>/SAFESEH:NO %(AdditionalOptions)</AdditionalOptions>
     </Link>

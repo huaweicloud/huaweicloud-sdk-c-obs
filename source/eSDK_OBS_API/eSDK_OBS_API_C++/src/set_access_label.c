@@ -82,20 +82,19 @@ char* get_access_label_subResource(obs_use_api use_api) {
 }
 
 void log_dir_access_label_data(Access_label_data * dir_access_label_datas) {
-	obs_status status = dir_access_label_datas->status;
 	OBS_LOGLEVEL logLevel = OBS_LOGERROR;
 	if (dir_access_label_datas == NULL) {
 		COMMLOG(OBS_LOGERROR, "failed to log json_str, because %s is NULL.", SYMBOL_NAME_STR(Access_label_data));
 		return;
 	}
-	else if (status == OBS_STATUS_OK) {
+	else if (dir_access_label_datas->status == OBS_STATUS_OK) {
 		logLevel = OBS_LOGDEBUG;
 	}
 	else {
 		logLevel = OBS_LOGERROR;
 	}
 	char* structName = SYMBOL_NAME_STR(Access_label_data);
-	COMMLOG(logLevel, "%s.obs_status is %s", structName, obs_get_status_name(status));
+	COMMLOG(logLevel, "%s.obs_status is %s", structName, obs_get_status_name(dir_access_label_datas->status));
 	COMMLOG(logLevel, "%s.json_str is %s", structName, dir_access_label_datas->json_str);
 	COMMLOG(logLevel, "%s.labels_len is %d", structName, dir_access_label_datas->labels_len);
 	int labels_len = dir_access_label_datas->labels_len;

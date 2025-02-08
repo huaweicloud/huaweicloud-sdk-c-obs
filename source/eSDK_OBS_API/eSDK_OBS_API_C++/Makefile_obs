@@ -13,7 +13,7 @@ endif
 EXTRA_LIB_DIR=-L../lib
 EXTRA_INCLUDE_DIR=-I../include
 
-LIB=-lcjson -leSDKOBS -lsecurec
+LIB=-lcjson -leSDKOBS -lboundscheck
 LINKOPT=$(EXTRA_LIB_DIR) $(LIB) $(SPEC_LIB)
 
 TARGET_DEMO=demo

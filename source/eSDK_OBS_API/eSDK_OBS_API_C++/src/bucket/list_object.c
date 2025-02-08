@@ -230,7 +230,7 @@ static obs_status list_objects_xml_callback(const char *element_path,
     const char *data, int data_len,
     void *callback_data)
 {
-    COMMLOG(OBS_LOGINFO, "Enter %s successfully !", __FUNCTION__);
+    COMMLOG(OBS_LOGDEBUG, "Enter %s successfully !", __FUNCTION__);
     list_objects_data *lbData = (list_objects_data *)callback_data;
 
     if (data) {

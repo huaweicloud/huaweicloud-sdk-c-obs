@@ -22,6 +22,7 @@
 #include <libxml/parser.h>
 #include <curl/curl.h>
 #include <openssl/md5.h> 
+#include "common.h"
 
 #if defined __GNUC__ || defined LINUX
 #include <pthread.h>
@@ -184,6 +185,10 @@ const char *obs_get_status_name(obs_status status)
 		handlecase(JSON_PARSE_ERROR);
 		handlecase(JSON_CREATE_ERROR);
 		handlecase(AccessLabelNotFound);
+		handlecase(NULL_HOSTNAME);
+		handlecase(NULL_SECRETE_ACCESS_KEY); 
+		handlecase(NoSuchTrashConfiguration);
+		handlecase(InvalidRequestBody);
         handlecase(BUTT);
     }
 
@@ -200,6 +205,7 @@ obs_status obs_initialize(int win32_flags)
     GetLocalTime(&reqTime);
     
     LOG_INIT();
+	setRunLogLevel();
     xmlInitParser();
     COMMLOG(OBS_LOGWARN, "%s OBS SDK Version= %s", __FUNCTION__, OBS_SDK_VERSION);
 #if defined __GNUC__ || defined LINUX
@@ -208,7 +214,7 @@ obs_status obs_initialize(int win32_flags)
     retCode = curl_global_init(CURL_GLOBAL_ALL);
     if (retCode != CURLE_OK)
     {
-        COMMLOG(OBS_LOGWARN, "%s curl_global_init failed retcode = %d", __FUNCTION__,retCode);
+        COMMLOG(OBS_LOGERROR, "%s curl_global_init failed retcode = %d", __FUNCTION__,retCode);
         return OBS_STATUS_InitCurlFailed;
     } 
     
@@ -238,6 +244,9 @@ void init_obs_options(obs_options *options)
 	options->request_options.auth_switch = OBS_NEGOTIATION_TYPE;
     options->request_options.buffer_size = 16 * 1024L;
     options->request_options.server_cert_path = NULL;
+	options->request_options.curl_log_verbose = false;
+    options->request_options.forbid_reuse_tcp = false;
+    options->request_options.curl_max_connects = DEFAULT_MAXCONNECTS;
         
     options->bucket_options.access_key = NULL;
     options->bucket_options.secret_access_key =NULL;
@@ -410,7 +419,7 @@ void init_server_callback(obs_upload_file_server_callback * server_callback)
     server_callback->callback_body_type = NULL;
 }
 
-void obs_deinitialize()
+void obs_deinitialize(void)
 {
     LOG_EXIT();
     request_api_deinitialize();
@@ -464,4 +473,21 @@ obs_status set_online_request_max_count(uint32_t online_request_max)
     return OBS_STATUS_OK;
 }
 
+obs_status check_options_and_handler_params(const char* function,
+	const obs_options *options, obs_response_handler *handler, void *callback_data) {
 
+	if (!CheckAndLogNULL(handler, SYMBOL_NAME_STR(handler),
+		__FUNCTION__, function, __LINE__))
+	{
+		return OBS_STATUS_InvalidArgument;
+	}
+
+	if (!CheckAndLogNULL(options, SYMBOL_NAME_STR(options),
+		__FUNCTION__, function, __LINE__))
+	{
+		check_before_complete(handler->complete_callback,
+			OBS_STATUS_InvalidArgument, 0, callback_data, __FUNCTION__, __LINE__);
+		return OBS_STATUS_InvalidArgument;
+	}
+	return OBS_STATUS_OK;
+}

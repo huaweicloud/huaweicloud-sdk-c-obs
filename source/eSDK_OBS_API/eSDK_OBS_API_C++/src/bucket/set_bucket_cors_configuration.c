@@ -211,21 +211,21 @@ void set_bucket_cors_configuration(const obs_options *options, obs_bucket_cors_c
 
     if (!options->bucket_options.bucket_name) {
         COMMLOG(OBS_LOGERROR, "bucket_name is NULL.");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
         return;
     }
 
     if (conf_num <= 0 || conf_num > 100)
     {
-        COMMLOG(OBS_LOGERROR, "set_bucket_cors faied, conf_num(%d) is invalid.", conf_num);
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidParameter, 0, 0);
+        COMMLOG(OBS_LOGERROR, "set_bucket_cors failed, conf_num(%d) is invalid.", conf_num);
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidParameter, 0, callback_data);
         return;
     }
 
     sbccData = init_cors_data(obs_cors_conf_info, conf_num, handler, callback_data);
     if (!sbccData)
     {
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         COMMLOG(OBS_LOGERROR, "malloc sbccData failed.");
         return;
     }

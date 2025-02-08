@@ -72,6 +72,17 @@ void update_bucket_common_complete_callback(obs_status status,
     return;
 }
 
+void update_bucket_common_complete_callback_no_free(obs_status status,
+    const obs_error_details *error_details,
+    void *callback_data)
+{
+    COMMLOG(OBS_LOGDEBUG, "Enter %s successfully !", __FUNCTION__);
+    update_bucket_common_data *bucket_data = (update_bucket_common_data *)callback_data;
+	check_before_complete(bucket_data->complete_callback,
+		status, error_details, bucket_data->callback_data, __FUNCTION__, __LINE__);
+    return;
+}
+
 obs_status append_xml_document(int *xml_document_len_return, char *xml_document,
     int xml_document_buffer_size, char *fmt, ...)
 {

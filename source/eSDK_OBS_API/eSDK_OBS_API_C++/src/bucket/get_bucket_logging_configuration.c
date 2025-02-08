@@ -304,7 +304,8 @@ void get_bucket_logging_configuration(const obs_options *options, obs_response_h
         (get_bucket_logging_data*)malloc(sizeof(get_bucket_logging_data));
     if (!logging_data)
     {
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+		check_before_complete(handler->complete_callback,
+			OBS_STATUS_OutOfMemory, 0, callback_data, __FUNCTION__, __LINE__);
         COMMLOG(OBS_LOGERROR, "malloc get logging_datafailed !");
         return;
     }

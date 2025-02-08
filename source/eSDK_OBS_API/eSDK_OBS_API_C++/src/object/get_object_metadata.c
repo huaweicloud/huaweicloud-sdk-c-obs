@@ -30,12 +30,12 @@ void get_object_metadata(const obs_options *options, obs_object_info *object_inf
     COMMLOG(OBS_LOGINFO, "Enter get_object_metadata successfully !");
     if (NULL == object_info->key || !strlen(object_info->key)) {
         COMMLOG(OBS_LOGERROR, "key is NULL!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidKey, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidKey, 0, callback_data);
         return;
     }
     if (!options->bucket_options.bucket_name) {
         COMMLOG(OBS_LOGERROR, "bucket_name is NULL!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
         return;
     }
     string_buffer(queryParams, QUERY_STRING_LEN);
@@ -68,5 +68,5 @@ void get_object_metadata(const obs_options *options, obs_object_info *object_inf
     params.use_api = use_api;
 
     request_perform(&params);
-
+	COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
 }

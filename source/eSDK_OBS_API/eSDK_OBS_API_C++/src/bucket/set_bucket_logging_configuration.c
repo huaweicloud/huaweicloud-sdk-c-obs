@@ -167,7 +167,7 @@ void set_bucket_logging_configuration_common(const obs_options *options, char *t
     if (!bucket_logging_data)
     {
         COMMLOG(OBS_LOGERROR, "malloc set bucket_logging_data failed!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         return;
     }
     memset_s(bucket_logging_data, sizeof(set_common_data), 0, sizeof(set_common_data));
@@ -180,7 +180,7 @@ void set_bucket_logging_configuration_common(const obs_options *options, char *t
     {
         free(bucket_logging_data);
         bucket_logging_data = NULL;
-        (void)(*(handler->complete_callback))(status, 0, 0);
+        (void)(*(handler->complete_callback))(status, 0, callback_data);
         COMMLOG(OBS_LOGERROR, "generate_storage_class_xml_document failed !");
         return;
     }

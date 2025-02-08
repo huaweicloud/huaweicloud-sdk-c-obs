@@ -149,7 +149,6 @@ void initiate_multi_part_upload(const obs_options *options, char *key, int uploa
     params.isCheckCA = is_check_ca(options);
     params.storageClassFormat = storage_class;
     params.use_api = use_api;
-
     request_perform(&params);
     COMMLOG(OBS_LOGINFO, "Leave initiate_multi_part_upload successfully !");
 }

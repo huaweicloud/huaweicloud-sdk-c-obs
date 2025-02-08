@@ -105,8 +105,6 @@ FILE * write_to_file(char *localfile)
         if (!outfile) {
             fprintf(stderr, "\nERROR: Failed to open output file %s: ",
                     localfile);
-            perror(0);
-            exit(-1);
         }
     }
     else if (showResponsePropertiesG) {
@@ -123,6 +121,10 @@ void create_and_write_file(char *filename, unsigned int file_size)
     unsigned int i = 0;
     truncate(filename, 0);
     FILE *write_file_test =  write_to_file(filename);
+    if (write_file_test == NULL) {
+        fprintf(stderr, "\nwrite_to_file failed,filename:%s\n");
+        return;
+    }
     for (i = 0; i < file_size; i++)
     {
          fwrite("1", 1, 1, write_file_test);
@@ -160,11 +162,37 @@ obs_status response_properties_callback(const obs_response_properties *propertie
         }                                                          \
     } while (0)
     
-    print_nonnull("ETag", etag);
+	print_nonnull("request_id", request_id);
+	print_nonnull("request_id2", request_id2);
+	print_nonnull("content_type", content_type);
+	if (properties->content_length) {                                  
+            printf("content_length: %llu\n", properties->content_length);          
+    }
+	print_nonnull("server", server);
+	print_nonnull("ETag", etag);
     print_nonnull("expiration", expiration);
     print_nonnull("website_redirect_location", website_redirect_location);
     print_nonnull("version_id", version_id);
-    print_nonnull("storage_class", storage_class);
+	print_nonnull("allow_origin", allow_origin);
+	print_nonnull("allow_headers", allow_headers);
+	print_nonnull("max_age", max_age);
+	print_nonnull("allow_methods", allow_methods);
+	print_nonnull("expose_headers", expose_headers);
+	print_nonnull("storage_class", storage_class);
+	print_nonnull("server_side_encryption", server_side_encryption);
+	print_nonnull("kms_key_id", kms_key_id);
+	print_nonnull("customer_algorithm", customer_algorithm);
+	print_nonnull("customer_key_md5", customer_key_md5);
+	print_nonnull("bucket_location", bucket_location);
+	print_nonnull("obs_version", obs_version);
+	print_nonnull("restore", restore);
+	print_nonnull("obs_object_type", obs_object_type);
+	print_nonnull("obs_next_append_position", obs_next_append_position);
+	print_nonnull("obs_head_epid", obs_head_epid);
+	print_nonnull("reserved_indicator", reserved_indicator);
+	print_nonnull("fs_file_interface", fs_file_interface);
+	print_nonnull("az_redundancy", az_redundancy);
+	print_nonnull("location_clustergroup_id", location_clustergroup_id);
     if (properties->last_modified > 0) {
         char timebuf[256] = {0};
         time_t t = (time_t) properties->last_modified;
@@ -910,8 +938,7 @@ uint64_t open_file_and_get_length(char *localfile, put_file_object_callback_data
         {
             fprintf(stderr, "\nERROR: Failed to stat file %s: ",
             localfile);
-            perror(0);
-            exit(-1);
+            return 0;
         }
         content_length = statbuf.st_size;
     }
@@ -919,8 +946,7 @@ uint64_t open_file_and_get_length(char *localfile, put_file_object_callback_data
     {
         fprintf(stderr, "\nERROR: Failed to open input file %s: ",
         localfile);
-        perror(0);
-        exit(-1);
+        return 0;
     }    
     data->content_length = content_length;
     return content_length;
@@ -1189,8 +1215,7 @@ uint64_t get_file_info(char *localfile, test_upload_file_callback_data *data)
         {
             fprintf(stderr, "\nERROR: Failed to stat file %s: ",
             localfile);
-            perror(0);
-            exit(-1);
+            return 0;
         }
         content_length = statbuf.st_size;
     }
@@ -1198,8 +1223,7 @@ uint64_t get_file_info(char *localfile, test_upload_file_callback_data *data)
     {
         fprintf(stderr, "\nERROR: Failed to open input file %s: ",
         localfile);
-        perror(0);
-        exit(-1);
+        return 0;
     }    
     return content_length;
 }
@@ -1523,7 +1547,7 @@ void tempAuthCallBack_getResult(char *tempAuthUrl, uint64_t tempAuthUrlLen, char
             if(fpoutfile == NULL)
             {
                 fprintf(stderr, "open %s failed", cfileName);
-                exit(-1);
+                return;
             }
             fwrite("\n",1,1,fpoutfile);
             fwrite(ptrResult->tmpAuthUrl,strlen(ptrResult->tmpAuthUrl),1,fpoutfile);
@@ -1576,8 +1600,7 @@ FILE** init_uploadfilepool(FILE **fd, uint64_t part_num, char *filename)
         if (!(fd[i] = fopen(filename, "rb")))
         {
             fprintf(stderr, "\nERROR: Failed to open input file %s: ", filename);
-            perror(0);
-            exit(-1);
+            return NULL;
         }
     }
     return fd;
@@ -1638,49 +1661,7 @@ void dir_access_label_response_complete_callback(obs_status status,
 	{
 		statusG = status;
 	}
-	int len = 0;
-	if (error && error->message) {
-		printf("Error Message: \n	%s\n", error->message);
-		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-			"  Message: %s\n", error->message);
-	}
-	if (error && error->resource) {
-		printf("Error Resource: \n	%s\n", error->resource);
-		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-			"  Resource: %s\n", error->resource);
-	}
-	if (error && error->further_details) {
-		printf("Error further_details: \n	%s\n", error->further_details);
-		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-			"  Further Details: %s\n", error->further_details);
-	}
-	if (error && error->extra_details_count) {
-		len += snprintf_s(&(errorDetailsG[len]), sizeof(errorDetailsG) - len, _TRUNCATE,
-			"%s", "  Extra Details:\n");
-		int i;
-		for (i = 0; i < error->extra_details_count; i++) {
-			printf("Error Extra Detail(%d):\n	%s:%s\n", i,
-				error->extra_details[i].name, error->extra_details[i].value);
-			len += snprintf_s(&(errorDetailsG[len]),
-				sizeof(errorDetailsG) - len, _TRUNCATE, "    %s: %s\n",
-				error->extra_details[i].name,
-				error->extra_details[i].value);
-		}
-	}
-
-	if (error && error->error_headers_count) {
-		len += snprintf_s(&(errorHeadersG[len]), sizeof(errorHeadersG) - len, _TRUNCATE,
-			"%s", "  Extra Details:\n");
-		int i;
-		for (i = 0; i < error->error_headers_count; i++) {
-			char* errorHeader = error->error_headers[i];
-			printf("Error Headers(%d):\n	%s\n", i,
-				errorHeader == NULL ? "NULL Header" : errorHeader);
-			len += snprintf_s(&(errorHeadersG[len]),
-				sizeof(errorHeadersG) - len, _TRUNCATE, "    %s\n",
-				errorHeader == NULL ? "NULL Header" : errorHeader);
-		}
-	}
+    common_error_handle(error);
 }
 
 

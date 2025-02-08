@@ -252,7 +252,7 @@ void changeTimeFormat(const char* strInTime, char* strOutTime)
     return;
 }
 
-int getTimeZone()
+int getTimeZone(void)
 {
 #ifdef WIN32
     SYSTEMTIME localTime;
@@ -469,6 +469,11 @@ uint64_t parseUnsignedInt(const char *str)
 
 int base64Encode(const unsigned char *in, int inLen, char *out)
 {
+    if (out == NULL)
+    {
+        COMMLOG(OBS_LOGWARN, "%s failed in line %d: %s is NULL !", __FUNCTION__, __LINE__, SYMBOL_NAME_STR(out));
+        return 0;
+    }
 	BIO * bmem = NULL;
 	BIO * b64 = NULL;
 	BUF_MEM * bptr = NULL;

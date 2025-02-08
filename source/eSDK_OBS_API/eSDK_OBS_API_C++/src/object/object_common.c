@@ -80,7 +80,6 @@ xmlNodePtr get_xmlnode_from_file(const char * file_name, xmlDocPtr *doc)
     if (NULL == curNode)
     {
         COMMLOG(OBS_LOGERROR, "empty document");
-        xmlFreeDoc(*doc);
         return NULL;
     }
 
@@ -112,6 +111,13 @@ int updataCheckPointFindNode(xmlNodePtr *curNode, unsigned int strNum, char(*str
     return i;
 }
 
+void checkAndXmlFreeDoc(xmlDocPtr* doc) {
+
+	if (doc != NULL && *doc != NULL) {
+		xmlFreeDoc(*doc);
+		*doc = NULL;
+	}
+}
 
 int updateCheckPoint(char * elementPath, const char * content, const char * file_name)
 {
@@ -134,13 +140,14 @@ int updateCheckPoint(char * elementPath, const char * content, const char * file
     if (NULL == curNode)
     {
         COMMLOG(OBS_LOGERROR, "empty document");
+		checkAndXmlFreeDoc(&doc);
         return -1;
     }
 
     if (xmlStrcmp(curNode->name, BAD_CAST strArry[0]))
     {
         COMMLOG(OBS_LOGERROR, "document of the wrong type, root node != strArry[0]");
-        xmlFreeDoc(doc);
+		checkAndXmlFreeDoc(&doc);
         return -1;
     }
 
@@ -154,11 +161,12 @@ int updateCheckPoint(char * elementPath, const char * content, const char * file
     }
     else
     {
-        xmlFreeDoc(doc);
+		checkAndXmlFreeDoc(&doc);
         return -1;
     }
 
-    xmlFreeDoc(doc);
+
+	checkAndXmlFreeDoc(&doc);
     return 0;
 }
 

@@ -74,7 +74,7 @@ extern "C"
 	*@attention android使用本API前先初始化。iniInfo为空字符串时，请调用setLogPropertyEx设置日志属性
 	*@par 无
 	**/
-	eSDK_LOG_API int _STD_CALL_ LogInitForAndroid(const char* sdkname, const char* iniInfo, unsigned int logLevel[LOG_CATEGORY], const char* logPath);
+	eSDK_LOG_API int _STD_CALL_ LogInitForAndroid(const char* sdkname, const char* iniInfo, unsigned int logLevel[LOG_CATEGORY], int logLevelLength, const char* logPath);
 
 
 #else
@@ -92,10 +92,10 @@ extern "C"
 	*@attention 使用本API前先初始化。移动端：iniFile为空字符串时，请调用setLogPropertyEx设置日志属性
 	*@par 无
 	**/
-	eSDK_LOG_API int _STD_CALL_ LogInit(const char* sdkname, const char* iniFile, unsigned int logLevel[LOG_CATEGORY], const char* logPath);
+	eSDK_LOG_API int _STD_CALL_ LogInit(const char* sdkname, const char* iniFile, unsigned int logLevel[LOG_CATEGORY], int logLevelLength, const char* logPath);
 #endif
 #if defined WIN32
-	eSDK_LOG_API int _STD_CALL_ LogInit_W(const char* sdkname, const wchar_t* iniFile, unsigned int logLevel[LOG_CATEGORY], const wchar_t* logPath);
+	eSDK_LOG_API int _STD_CALL_ LogInit_W(const char* sdkname, const wchar_t* iniFile, unsigned int logLevel[LOG_CATEGORY], int logLevelLength, const wchar_t* logPath);
 #endif
 	/**
 	*去初始化
@@ -336,6 +336,17 @@ extern "C"
 	*@par 无
 	**/
 	eSDK_LOG_API void _STD_CALL_ Log_Run_Error(const char* sdkname, const char* param, size_t paramLen);//运行类日志接口
+	/**
+	*运行类日志接口
+	* 
+	*该函数用于获取run下的日志级别
+	*
+	*@param[in] sdkname 使用日志模块的产品名字，同进程中的唯一标示
+	*@param[in] param 
+	*@attention 调用前先调用LogInit
+	*@par 无
+	**/
+	eSDK_LOG_API unsigned int _STD_CALL_ GetRunLogLevel(void);//运行类日志接口
 
 
 	// 移动端ISV初始化接口

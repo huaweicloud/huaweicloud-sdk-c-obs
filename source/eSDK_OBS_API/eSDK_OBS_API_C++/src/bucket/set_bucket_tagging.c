@@ -61,7 +61,7 @@ void set_bucket_tagging(const obs_options *options, obs_name_value * tagging_lis
     if (!tagging_data)
     {
         COMMLOG(OBS_LOGERROR, "Malloc set bucket tagging_data failed!");
-        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
+        (void)(*(handler->complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
         return;
     }
     memset_s(tagging_data, sizeof(set_common_data), 0, sizeof(set_common_data));
@@ -73,7 +73,7 @@ void set_bucket_tagging(const obs_options *options, obs_name_value * tagging_lis
     {
         free(tagging_data);
         tagging_data = NULL;
-        (void)(*(handler->complete_callback))(status, 0, 0);
+        (void)(*(handler->complete_callback))(status, 0, callback_data);
         COMMLOG(OBS_LOGERROR, "tagging: generate storage_class_xml_document failed !");
         return;
     }

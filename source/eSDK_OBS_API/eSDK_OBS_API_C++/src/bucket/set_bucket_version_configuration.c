@@ -78,7 +78,7 @@ void set_bucket_version_configuration(const obs_options *options, const char *ve
     if (status != OBS_STATUS_OK)
     {
         COMMLOG(OBS_LOGERROR, "init set version data failed!");
-        (void)(*(handler->complete_callback))(status, 0, 0);
+        (void)(*(handler->complete_callback))(status, 0, callback_data);
         return;
     }
     version_data->complete_callback = handler->complete_callback;

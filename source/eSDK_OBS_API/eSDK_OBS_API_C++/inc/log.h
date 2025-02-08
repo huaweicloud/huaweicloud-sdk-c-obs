@@ -133,6 +133,18 @@ void LOG_EXIT();
 ss.
  **/
 void COMMLOG(OBS_LOGLEVEL level, const char *pszFormat, ...);
+
+/**
+ * get log level
+ *
+ **/
+OBS_LOGLEVEL getRunLogLevel();
+
+/**
+ * set log level
+ *
+ **/
+void setRunLogLevel();
 /**
  * get current thread id
  *
@@ -194,10 +206,14 @@ void itoa(int i, char*string);
 }
 #endif
 
+#define SYMBOL_NAME_STR(x) #x
 void NULLLOG();
 void CheckAndLogNoneZero(int, const char*, const char*, unsigned long);
 void CheckAndLogNeg(int, const char*, const char*, unsigned long);
-int CheckAndLogNULL(void* ptr, const char* ptrName, const char* name, const char* funcName, unsigned long line);
-
+int CheckAndLogNULL(const void* ptr, const char* ptrName, const char* name, const char* funcName, unsigned long line);
+void checkAndLogStrError(const char* failedFuncName, const char* funcName, int lineNum);
+bool checkIfErrorAndLogStrError(const char* failedFuncName, const char* funcName, int lineNum, int err);
+void check_before_complete(obs_response_complete_callback *complete_callback, const obs_status status,
+	const obs_error_details *error_details, void *callback_data, const char* function, int line);
 
 #endif

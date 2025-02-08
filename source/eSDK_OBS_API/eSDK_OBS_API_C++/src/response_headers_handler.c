@@ -149,7 +149,7 @@ void parse_xml_header(response_headers_handler *handler, char *header,
 			valuelen, fit);
 		responseProperties->use_server_side_encryption = 1;
 	}
-	else_if (prefix_cmp(header, "x-amz-server-side-encryption-aws-kms-key-id", namelen)||prefix_cmp(header, "x-obs-server-side-encryption-aws-kms-key-id", namelen)) {
+	else_if (prefix_cmp(header, "x-amz-server-side-encryption-aws-kms-key-id", namelen)||prefix_cmp(header, "x-obs-server-side-encryption-kms-key-id", namelen)) {
 		responseProperties->kms_key_id= 
 			string_multibuffer_current(handler->responsePropertyStrings);
 		string_multibuffer_add(handler->responsePropertyStrings, c, 
@@ -209,6 +209,30 @@ void parse_xml_header(response_headers_handler *handler, char *header,
 	}
 	else_if (prefix_cmp(header, "x-obs-epid", namelen)) {
 		responseProperties->obs_head_epid  =
+			string_multibuffer_current(handler->responsePropertyStrings);
+		string_multibuffer_add(handler->responsePropertyStrings, c,
+			valuelen, fit);
+	}
+	else_if(prefix_cmp(header, "x-obs-fs-file-interface", namelen)) {
+		responseProperties->fs_file_interface =
+			string_multibuffer_current(handler->responsePropertyStrings);
+		string_multibuffer_add(handler->responsePropertyStrings, c,
+			valuelen, fit);
+	}
+	else_if(prefix_cmp(header, "x-obs-az-redundancy", namelen)) {
+		responseProperties->az_redundancy =
+			string_multibuffer_current(handler->responsePropertyStrings);
+		string_multibuffer_add(handler->responsePropertyStrings, c,
+			valuelen, fit);
+	}
+	else_if(prefix_cmp(header, "x-amz-location-clustergroup-id", namelen)) {
+		responseProperties->location_clustergroup_id =
+			string_multibuffer_current(handler->responsePropertyStrings);
+		string_multibuffer_add(handler->responsePropertyStrings, c,
+			valuelen, fit);
+	}
+	else_if(prefix_cmp(header, "x-obs-location-clustergroup-id", namelen)) {
+		responseProperties->location_clustergroup_id =
 			string_multibuffer_current(handler->responsePropertyStrings);
 		string_multibuffer_add(handler->responsePropertyStrings, c,
 			valuelen, fit);

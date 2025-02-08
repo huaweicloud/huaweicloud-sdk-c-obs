@@ -281,7 +281,7 @@ void batch_delete_objects(const obs_options *options, obs_object_info *object_in
     if (!options->bucket_options.bucket_name)
     {
         COMMLOG(OBS_LOGERROR, "bucket_name is NULL!");
-        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidBucketName, 0, 0);
+        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
         return;
     }
     delete_object_data* doData = (delete_object_data *)malloc(sizeof(delete_object_data));
