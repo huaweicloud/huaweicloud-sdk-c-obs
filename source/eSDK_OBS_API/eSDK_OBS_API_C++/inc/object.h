@@ -63,30 +63,6 @@
 
 #define MAX_NUM_TAGGING 10
 
-static char * g_uploadStatus[STATUS_BUTT] = 
-{
-    "UPLOAD_NOTSTART",
-    "UPLOADING",
-    "UPLOAD_FAILED",
-    "UPLOAD_SUCCESS"
-};
-
-static char * g_storageClass[OBS_STORAGE_CLASS_BUTT] = 
-{
-    "STANDARD",
-    "STANDARD_IA",
-    "GLACIER"
-};
-
-static char * g_downloadStatus[DOWN_STATUS_BUTT] = 
-{
-    "DOWNLOAD_NOTSTART",
-    "DOWNLOADING",
-    "DOWNLOAD_FAILED",
-    "DOWNLOAD_SUCCESS",
-    "COMBINE_SUCCESS"
-};
-
 typedef enum
 {
     UPLOAD_FILE_INFO,
@@ -427,7 +403,7 @@ int check_file_is_valid(char *file_name);
 
 xmlNodePtr get_xmlnode_from_file(const char * file_name, xmlDocPtr *doc);
 
-int updataCheckPointFindNode(xmlNodePtr *curNode, unsigned int strNum, char(*strArry)[32]);
+unsigned int updataCheckPointFindNode(xmlNodePtr *curNode, unsigned int strNum, char(*strArry)[32]);
 
 int updateCheckPoint(char * elementPath, const char * content, const char * file_name);
 

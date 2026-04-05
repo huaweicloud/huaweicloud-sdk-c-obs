@@ -193,7 +193,15 @@ typedef enum
     OBS_STATUS_NoSuchCORSConfiguration,
     OBS_STATUS_InArrearOrInsufficientBalance,
     OBS_STATUS_NoSuchTagSet,
+    OBS_STATUS_InvalidCustomDomain,
+    OBS_STATUS_InvalidDomainName,
+    OBS_STATUS_NoCertName,
+    OBS_STATUS_CertNotExist,
+    OBS_STATUS_CertPKNotExist,
+    OBS_STATUS_InvalidCertNameLen,
+    OBS_STATUS_InvalidCertIdLen,
     OBS_STATUS_ErrorUnknown,
+    
     /*
     * The following are HTTP errors returned by obs without enough detail to
     * distinguish any of the above OBS_STATUS_error conditions
@@ -204,28 +212,43 @@ typedef enum
     OBS_STATUS_HttpErrorNotFound,
     OBS_STATUS_HttpErrorConflict,
     OBS_STATUS_HttpErrorUnknown,
+    OBS_STATUS_HttpNotSecure,
+    OBS_STATUS_SecureConnectionRequiredForCustomDomainCertificate,
 
     /*
     * posix new add errors
     */
-     OBS_STATUS_QuotaTooSmall,
-
+    OBS_STATUS_QuotaTooSmall,
     /*
     * obs-meta errors
     */
-     OBS_STATUS_MetadataNameDuplicate,
-     OBS_STATUS_GET_UPLOAD_ID_FAILED,
-	 OBS_STATUS_Security_Function_Failed,
-	 OBS_STATUS_BadAccessLabel,
-	 OBS_STATUS_FsNotSupport,
-	 OBS_STATUS_JSON_PARSE_ERROR,
-	 OBS_STATUS_JSON_CREATE_ERROR,
-	 OBS_STATUS_AccessLabelNotFound,
+    OBS_STATUS_MetadataNameDuplicate,
+    OBS_STATUS_GET_UPLOAD_ID_FAILED,
+    OBS_STATUS_Security_Function_Failed,
+    OBS_STATUS_BadAccessLabel,
+    OBS_STATUS_FsNotSupport,
+    OBS_STATUS_JSON_PARSE_ERROR,
+    OBS_STATUS_JSON_CREATE_ERROR,
+    OBS_STATUS_AccessLabelNotFound,
 	OBS_STATUS_NULL_HOSTNAME, 
 	OBS_STATUS_NULL_SECRETE_ACCESS_KEY,
 	OBS_STATUS_NoSuchTrashConfiguration,
 	OBS_STATUS_InvalidRequestBody,
-    OBS_STATUS_BUTT
+
+    OBS_STATUS_SSL_MissingBothCertAndKey,
+    OBS_STATUS_SSL_CertNotFound,
+    OBS_STATUS_SSL_KeyNotFound,
+    OBS_STATUS_SSL_CipherConfigError,
+    OBS_STATUS_SSL_VersionConfigError,
+    OBS_STATUS_SSL_PasswordCallbackError,
+    OBS_STATUS_SSL_PasswordConfigError,
+
+    OBS_STATUS_GM_TongsuoNotSupported,
+    OBS_STATUS_GM_UnsupportedSSLVersion,
+    OBS_STATUS_GM_MissingDualCertPath,
+    OBS_STATUS_GM_CipherConfigError,
+    OBS_STATUS_GM_VersionConfigError,
+    OBS_STATUS_BUTT,
 } obs_status;
 
 
@@ -620,6 +643,12 @@ typedef struct obs_list_objects_content
     const char *storage_class;
     const char *type;
 } obs_list_objects_content;
+    typedef struct obs_domain_response
+    {
+        const char* domain_name;
+        const char* create_time;
+        const char* certificate_id;
+    } obs_domain_response;
 
 typedef struct obs_version
 {
@@ -713,6 +742,21 @@ typedef struct obs_bucket_cors_conf
     unsigned int expose_header_number;
 }obs_bucket_cors_conf;
 
+    typedef struct custom_domain_certificate_config
+    {
+        char* name;
+        char* certificate_id;
+        char* certificate;
+        char* certificate_chain;
+        char* private_key;
+    }custom_domain_certificate_config;
+
+    typedef struct obs_custom_domain
+    {
+        char* bucket_name;
+        char* domain_name;
+        custom_domain_certificate_config* custom_domain_certificate_config;
+    }obs_custom_domain;
 typedef struct obs_uploaded_parts_total_info
 {
     int  is_truncated;
@@ -1096,6 +1140,35 @@ typedef enum
 	OBS_REPLACE_NEW                            =2
 }metadata_action_indicator;
 
+// 客户端证书认证开关
+typedef enum
+{
+    OBS_CLIENT_AUTH_CLOSE = 0,
+    OBS_CLIENT_AUTH_OPEN = 1
+} obs_client_auth_switch;
+
+// 国密功能开关
+typedef enum
+{
+    OBS_GM_MODE_CLOSE = 0,  // 非国密模式（标准TLS）
+    OBS_GM_MODE_OPEN = 1     // 国密模式（支持SM2/SM3/SM4）
+} obs_gm_mode_switch;
+
+// SSL/TLS 主机名验证模式
+typedef enum
+{
+    OBS_SSL_VERIFYHOST_CLOSE = 0,  // 不验证主机名
+    OBS_SSL_VERIFYHOST_OPEN = 2     // 验证证书中的主机名与请求的的主机名是否匹配
+} obs_ssl_verifyhost_mode;
+
+typedef enum
+{
+    OBS_SSL_VERIFYPEER_CLOSE = 0,   // 不校验服务端的证书链
+    OBS_SSL_VERIFYPEER_OPEN = 1     // 校验服务端的证书链
+} obs_ssl_verifypeer_mode;
+
+typedef int (*obs_password_cb_t)(void *context, char *buf, int buf_len);
+
 typedef struct obs_http_request_option
 {
     int speed_limit;
@@ -1116,6 +1189,20 @@ typedef struct obs_http_request_option
     long buffer_size;
     char* server_cert_path;
 	bool curl_log_verbose;
+    
+    obs_ssl_verifyhost_mode ssl_verify_host;
+    obs_ssl_verifypeer_mode ssl_verify_peer;
+    int ssl_version;
+    // 双向证书认证配置
+    obs_client_auth_switch client_auth_switch;
+    char* client_sign_cert_path;
+    char* client_sign_key_path;
+    void *password_callback_context;  // 用户上下文
+    obs_password_cb_t password_callback; // 回调函数指针
+    // 国密相关配置
+    obs_gm_mode_switch gm_mode_switch;
+    char* client_enc_cert_path;
+    char* client_enc_key_path;
 } obs_http_request_option;
 
 typedef struct temp_auth_configure
@@ -1229,6 +1316,14 @@ typedef struct obs_get_bucket_tagging_handler
     obs_response_handler response_handler;
     obs_get_bucket_tagging_callback *get_bucket_tagging_callback;
 }obs_get_bucket_tagging_handler;
+    typedef obs_status(obs_get_bucket_custom_domain_callback)(int domains_count,
+        obs_domain_response* domains_list, void* callback_data);
+
+    typedef struct obs_get_bucket_custom_domain_handler
+    {
+        obs_response_handler response_handler;
+        obs_get_bucket_custom_domain_callback* get_bucket_custom_domain_callback;
+    }obs_get_bucket_custom_domain_handler;
 
 typedef struct obs_list_service_handler
 {
@@ -1379,10 +1474,10 @@ eSDK_OBS_API void delete_bucket_website_configuration(const obs_options *options
 eSDK_OBS_API void get_bucket_storage_info(const obs_options *options, int capacity_length, char *capacity,
                     int object_number_length, char *object_number,
                     obs_response_handler *handler, void *callback_data);
- 
- eSDK_OBS_API void list_multipart_uploads(const obs_options *options, const char *prefix, const char *marker, const char *delimiter,
-                    const char* uploadid_marke, int max_uploads, obs_list_multipart_uploads_handler *handler, 
-                    void *callback_data);
+
+eSDK_OBS_API void list_multipart_uploads(const obs_options *options, const char *prefix, const char *marker,
+                                         const char *delimiter, const char *uploadid_marker, int max_uploads,
+                                         obs_list_multipart_uploads_handler *handler, void *callback_data);
 
 eSDK_OBS_API void set_bucket_lifecycle_configuration(const obs_options *options, 
            obs_lifecycle_conf* bucket_lifecycle_conf, unsigned int blcc_number, 
@@ -1403,6 +1498,15 @@ eSDK_OBS_API void get_bucket_cors_configuration(const obs_options *options, obs_
             void *callback_data);
 // only object bucket can use
 eSDK_OBS_API void delete_bucket_cors_configuration(const obs_options *options, 
+        obs_response_handler* handler, void* callback_data);
+
+    eSDK_OBS_API void get_bucket_custom_domain(const obs_options* options,
+        obs_get_bucket_custom_domain_handler* handler, void* callback_data);
+
+    eSDK_OBS_API void set_bucket_custom_domain(const obs_options* options, obs_custom_domain* custom_domain,
+        obs_response_handler* handler, void* callback_data);
+
+    eSDK_OBS_API obs_status delete_bucket_custom_domain(const obs_options* options, obs_custom_domain* custom_domain,
             obs_response_handler *handler, void *callback_data);
 
 eSDK_OBS_API void set_notification_configuration(const obs_options *options, 

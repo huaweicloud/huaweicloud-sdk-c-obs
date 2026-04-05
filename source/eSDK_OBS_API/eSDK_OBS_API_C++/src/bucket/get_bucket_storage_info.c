@@ -100,7 +100,7 @@ void get_bucket_storage_info(const obs_options *options, int capacity_length, ch
     }
     if (NULL == capacity || NULL == object_number)
     {
-        COMMLOG(OBS_LOGERROR, "capacity(%p) or object_number(%p) is invalid.", capacity, object_number);
+        COMMLOG(OBS_LOGERROR, "capacity or object_number is invalid.");
 		check_before_complete(handler->complete_callback, 
 			OBS_STATUS_InvalidParameter, 0, callback_data, __FUNCTION__, __LINE__);
         return;

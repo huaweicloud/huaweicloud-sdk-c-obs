@@ -164,7 +164,7 @@ size_t curl_header_func(void *ptr, size_t size, size_t nmemb,
 {
     http_request *request = (http_request *) data;
 
-    int64_t len = (int64_t)size * nmemb;
+    int64_t len = (int64_t)(size * nmemb);
 	if (OBS_LOGDEBUG >= getRunLogLevel()) {
 		COMMLOG(OBS_LOGDEBUG, "response header{%s}", ptr);
 	}
@@ -197,10 +197,10 @@ void record_request_error_header(http_request *request, char* header) {
 	if (request->errorParser.errorHeadersNamesValuesSize < sizeof(request->errorParser.errorHeadersNamesValues)) {
 		char *bufferedHeader = string_multibuffer_current
 		(request->errorParser.errorHeadersNamesValues);
-		int ret = 0;
+		int result = 0;
 		string_multibuffer_add(request->errorParser.errorHeadersNamesValues,
-			header, headerLen, ret);
-		if (0 == ret) {
+			header, headerLen, result);
+		if (0 == result) {
 			COMMLOG(OBS_LOGERROR, "Failed to write error headers to %s , errorHeadersNamesValues is full in line %d !",
 				SYMBOL_NAME_STR(request->errorParser.errorHeadersNamesValues), __LINE__);
 			return;
@@ -218,7 +218,7 @@ size_t curl_read_func(void *ptr, size_t size, size_t nmemb, void *data)
     http_request *request = (http_request *) data;
 
 
-    int64_t len = (int64_t)size * nmemb;
+    int64_t len = (int64_t)(size * nmemb);
     if (request->status != OBS_STATUS_OK) {
         return CURL_READFUNC_ABORT;
     }
@@ -248,7 +248,7 @@ size_t curl_write_func(void *ptr, size_t size, size_t nmemb,
 {
     http_request *request = (http_request *) data;
 
-    int64_t len = (int64_t)size * nmemb;
+    int64_t len = (int64_t)(size * nmemb);
 
     request_headers_done(request);
 
@@ -297,42 +297,23 @@ CURLcode sslctx_function(CURL *curl, const void *sslctx, void *parm)
 obs_status headers_append(int *len, request_computed_values *values, int isNewHeader,
     const char *format, const char *chstr1, const char *chstr2 )
 {
-    if (isNewHeader) 
-    {                                              
+    if (isNewHeader) {
         values->amzHeaders[values->amzHeadersCount++] = &(values->amzHeadersRaw[*len]);                          
     }
-    if(chstr2)
-    {
-        if (snprintf_s(&(values->amzHeadersRaw[*len]), sizeof(values->amzHeadersRaw) - (*len),
-                    _TRUNCATE, format, chstr1, chstr2) > 0) 
-        {
-            int ret = snprintf_s(&(values->amzHeadersRaw[*len]),
-            sizeof(values->amzHeadersRaw) - (*len),_TRUNCATE, format, chstr1, chstr2);
-            if(ret < 0){
-                COMMLOG(OBS_LOGWARN, "snprintf_s failed in function: %s", __FUNCTION__);
-            }
-            else {
-                
-            }
-            (*len) += ret;                              
-        }
+
+    int ret = 0;
+    if (chstr2) {
+        ret = snprintf_s(&(values->amzHeadersRaw[*len]),
+        sizeof(values->amzHeadersRaw) - (*len),_TRUNCATE, format, chstr1, chstr2);                             
     }
-    else{
-        if (snprintf_s(&(values->amzHeadersRaw[*len]), sizeof(values->amzHeadersRaw) - (*len),
-            _TRUNCATE, format, chstr1) > 0) 
-        {
-            int ret = snprintf_s(&(values->amzHeadersRaw[*len]),
-            sizeof(values->amzHeadersRaw) - (*len), _TRUNCATE, format, chstr1);   
-            if(ret < 0){
-                COMMLOG(OBS_LOGWARN, "snprintf_s failed in function: %s", __FUNCTION__);
-            }
-            else {
-                
-            }
-            (*len) += ret;                           
-        }
+    else {
+        ret = snprintf_s(&(values->amzHeadersRaw[*len]),
+        sizeof(values->amzHeadersRaw) - (*len), _TRUNCATE, format, chstr1);                       
     }
-    if (*len >= (int) sizeof(values->amzHeadersRaw)) {               
+
+    CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
+    (*len) += ret;
+    if (*len >= (int) sizeof(values->amzHeadersRaw)) {
         return OBS_STATUS_MetadataHeadersTooLong;                      
     }                                                               
     while ((*len > 0) && (values->amzHeadersRaw[*len - 1] == ' ')) {  
@@ -1215,7 +1196,7 @@ obs_status httpcopy_s3(request_computed_values *values, const request_params *pa
 {
 	obs_status status = OBS_STATUS_OK;
 	if (params->copySourceBucketName && params->copySourceBucketName[0] &&
-		params->copySourceKey && params->copySourceKey[0])
+		values->urlEncodedSrcKey && values->urlEncodedSrcKey[0])
 	{
 		status = headers_append(len, values, 1, "x-amz-copy-source: /%s/%s",
 			params->copySourceBucketName, values->urlEncodedSrcKey);
@@ -1240,7 +1221,7 @@ obs_status httpcopy_obs(request_computed_values *values, const request_params *p
 {
 	obs_status status = OBS_STATUS_OK;
 	if (params->copySourceBucketName && params->copySourceBucketName[0] &&
-		params->copySourceKey && params->copySourceKey[0])
+		values->urlEncodedSrcKey && values->urlEncodedSrcKey[0])
 	{
 		status = headers_append(len, values, 1, "x-obs-copy-source: /%s/%s",
 			params->copySourceBucketName, values->urlEncodedSrcKey);
@@ -1603,6 +1584,9 @@ obs_status basecode_callback_header(const request_params *params,
     obs_status status = OBS_STATUS_OK;
     size_t outLen = sizeof(char) * HEAD_CALLBACK_LEN;
     char *out = (char *)malloc(outLen);
+    if (!CheckAndLogNULL(out, SYMBOL_NAME_STR(out), SYMBOL_NAME_STR(malloc), __FUNCTION__, __LINE__)) {
+        return OBS_STATUS_OutOfMemory;
+    }
     memset_s(out, outLen, 0, outLen);
     base64Encode((const unsigned char *)callback_str, callback_len, out);
     add_callback_header(params, values, out, outLen, len);
@@ -2014,9 +1998,7 @@ int debug_libcurl_callback(CURL *handle,
 	switch (type) {
 	case CURLINFO_TEXT:
 		COMMLOG(OBS_LOGDEBUG, "== Curl Info data:%s size: %zu\n", data, size);
-	default: /* in case a new one is introduced to shock us */
-		return 0;
-
+        return 0;
 	case CURLINFO_HEADER_OUT:
 		text = "=> Send header";
 		break;
@@ -2038,6 +2020,8 @@ int debug_libcurl_callback(CURL *handle,
 	case CURLINFO_END:
 		text = "<= CURLINFO_END";
 		break;
+	default: /* in case a new one is introduced to shock us */
+		return 0;
 	}
 
 	COMMLOG(OBS_LOGDEBUG, "%s libcurl is doing: %s\n data size is:%zu\n", __FUNCTION__, text, size);

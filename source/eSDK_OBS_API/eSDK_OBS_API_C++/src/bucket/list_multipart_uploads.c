@@ -327,7 +327,7 @@ static void list_multipart_uploads_complete_callback(obs_status requestStatus,
 
 
 void list_multipart_uploads(const obs_options *options, const char *prefix, const char *marker, const char *delimiter,
-    const char* uploadid_marke, int max_uploads, obs_list_multipart_uploads_handler *handler,
+    const char* uploadid_marker, int max_uploads, obs_list_multipart_uploads_handler *handler,
     void *callback_data)
 {
     request_params params;
@@ -336,7 +336,7 @@ void list_multipart_uploads(const obs_options *options, const char *prefix, cons
     set_use_api_switch(options, &use_api);
     COMMLOG(OBS_LOGINFO, "list_multipart_uploads start !");
 
-    obs_status ret_status = set_multipart_query_params(prefix, marker, delimiter, uploadid_marke,
+    obs_status ret_status = set_multipart_query_params(prefix, marker, delimiter, uploadid_marker,
         max_uploads, queryParams);
     if (OBS_STATUS_OK != ret_status)
     {

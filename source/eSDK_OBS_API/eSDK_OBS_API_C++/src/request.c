@@ -29,7 +29,7 @@
 #include <pthread.h>
 #endif
 #define countof(array) (sizeof(array)/sizeof(array[0]))
-#define REQUEST_STACK_SIZE 100
+#define REQUEST_STACK_SIZE 200
 #define ARRAY_LENGTH_1024 1024
 
 int API_STACK_SIZE = 100;
@@ -83,7 +83,6 @@ void request_destroy(http_request *request)
     request_deinitialize(request);
     curl_easy_cleanup(request->curl);
     free(request);
-    request = NULL;
 }
 void set_openssl_callback(obs_openssl_switch switch_flag)
 {
@@ -186,7 +185,7 @@ obs_status request_api_initialize(unsigned int flags)
     }
     use_api_index = -1;
     int ret = snprintf_s(userAgentG, sizeof(userAgentG),_TRUNCATE,
-    "%s%s%s.%s",PRODUCT, "/",LIBOBS_VER_MAJOR, LIBOBS_VER_MINOR);
+    "%s/%s", PRODUCT, OBS_SDK_VERSION);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
     return OBS_STATUS_OK;
@@ -455,38 +454,381 @@ obs_status set_curl_easy_setopt_safe(http_request *request, const request_params
     return OBS_STATUS_OK;
 }
 
-obs_status setup_CA(http_request *request,
-    const request_params *params,
-    const request_computed_values *values)
+/* ============================================================================
+ * SSL/TLS Configuration Helper Functions
+ * Helper functions for setup_mtls to improve readability and maintainability
+ * ============================================================================ */
+
+/**
+ * @brief Validate client certificate configuration integrity
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if validation passes, other values indicate failure
+ *
+ * Scenarios:
+ * - When mutual SSL is enabled, both client certificate and key must be provided
+ * - Checks for missing certificate/key and returns different error codes for easier troubleshooting
+ */
+static obs_status validate_client_cert_config(const obs_http_request_option *request_options)
 {
-    CURLcode status = CURLE_OK;
-    curl_easy_setopt_safe(CURLOPT_SSL_VERIFYPEER, 1);
-    curl_easy_setopt_safe(CURLOPT_SSL_VERIFYHOST, 0);
-    if (params->bucketContext.certificate_info)
-    {
-        curl_easy_setopt_safe(CURLOPT_SSL_CTX_DATA, (void *)params->bucketContext.certificate_info);
-        curl_easy_setopt_safe(CURLOPT_SSL_CTX_FUNCTION, *sslctx_function);
+    // Key scenario: Mutual SSL enabled but both certificate and key missing
+    if (!request_options->client_sign_cert_path && !request_options->client_sign_key_path) {
+        COMMLOG(OBS_LOGERROR, "%s Mutual SSL enabled but both client certificate and key not provided", __FUNCTION__);
+        return OBS_STATUS_SSL_MissingBothCertAndKey;
     }
-    if (params->request_option.server_cert_path)
-    {
-        curl_easy_setopt_safe(CURLOPT_CAINFO, params->request_option.server_cert_path);
+
+    // Key scenario: Certificate provided but key missing
+    if (!request_options->client_sign_cert_path) {
+        COMMLOG(OBS_LOGERROR, "%s Mutual SSL enabled but client certificate not provided", __FUNCTION__);
+        return OBS_STATUS_SSL_CertNotFound;
     }
+
+    // Key scenario: Key provided but certificate missing
+    if (!request_options->client_sign_key_path) {
+        COMMLOG(OBS_LOGERROR, "%s Mutual SSL enabled but client key not provided", __FUNCTION__);
+        return OBS_STATUS_SSL_KeyNotFound;
+    }
+
     return OBS_STATUS_OK;
 }
 
-
-obs_status setup_CheckCA(http_request *request,
-    const request_params *params,
-    const request_computed_values *values)
+/**
+ * @brief Configure GM dual certificate mode
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if configuration succeeds, other values indicate failure
+ *
+ * Scenarios:
+ * - GM mode requires separate signing and encryption certificates (dual certificate mechanism)
+ * - Signing certificate is used for identity authentication during communication
+ * - Encryption certificate is used for data encryption transmission
+ */
+static obs_status configure_gm_dual_cert(CURL *curl, const obs_http_request_option *request_options)
 {
-    CURLcode status = CURLE_OK;
-    if (params->isCheckCA) {
-        return setup_CA(request, params, values);
+#ifndef CURL_SSLVERSION_NTLSv1_1
+    // Key scenario: GM feature not supported at compile time
+    COMMLOG(OBS_LOGERROR, "%s GM mode requires Tongsuo libcurl. "
+                "Please ensure libcurl is built with Tongsuo support.", __FUNCTION__);
+    return OBS_STATUS_GM_TongsuoNotSupported;
+#else
+    // Key scenario: GM dual certificate mode check
+    if (!request_options->client_enc_cert_path || !request_options->client_enc_key_path) {
+        COMMLOG(OBS_LOGERROR, "%s GM mode requires explicit encryption certificate configuration. "
+                    "Please set client_enc_cert_path and client_enc_key_path.", __FUNCTION__);
+        return OBS_STATUS_GM_MissingDualCertPath;
     }
-    else {
-        curl_easy_setopt_safe(CURLOPT_SSL_VERIFYPEER, 0);
-        curl_easy_setopt_safe(CURLOPT_SSL_VERIFYHOST, 0);
+
+    // Set signing certificate (GM-specific option)
+    obs_status status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLSIGNCERT, request_options->client_sign_cert_path, OBS_STATUS_GM_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
     }
+    COMMLOG(OBS_LOGINFO, "%s [GM mode] Signing certificate path: %s", __FUNCTION__, request_options->client_sign_cert_path);
+
+    // Set signing private key
+    status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLSIGNKEY, request_options->client_sign_key_path, OBS_STATUS_GM_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGINFO, "%s [GM mode] Signing key path: %s", __FUNCTION__, request_options->client_sign_key_path);
+
+    // Set encryption certificate (GM-specific option)
+    status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLENCCERT, request_options->client_enc_cert_path, OBS_STATUS_GM_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGINFO, "%s [GM mode] Encryption certificate path: %s", __FUNCTION__, request_options->client_enc_cert_path);
+
+    // Set encryption private key
+    status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLENCKEY, request_options->client_enc_key_path, OBS_STATUS_GM_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGINFO, "%s [GM mode] Encryption key path: %s", __FUNCTION__, request_options->client_enc_key_path);
+
+    return OBS_STATUS_OK;
+#endif
+}
+
+/**
+ * @brief Configure standard SSL certificate mode
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if configuration succeeds, other values indicate failure
+ *
+ * Scenarios:
+ * - Standard SSL mode uses single certificate pair for identity authentication
+ * - Applicable to TLS 1.2/1.3 and other standard protocols
+ */
+static obs_status configure_standard_cert(CURL *curl, const obs_http_request_option *request_options)
+{
+    // Set client certificate
+    obs_status status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLCERT, request_options->client_sign_cert_path, OBS_STATUS_SSL_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGINFO, "%s [Standard SSL] Client certificate path: %s", __FUNCTION__, request_options->client_sign_cert_path);
+
+    // Set client private key
+    status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLKEY, request_options->client_sign_key_path, OBS_STATUS_SSL_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGINFO, "%s [Standard SSL] Client key path: %s", __FUNCTION__, request_options->client_sign_key_path);
+
+    return OBS_STATUS_OK;
+}
+
+/**
+ * @brief Configure private key password callback
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if configuration succeeds
+ *
+ * Scenarios:
+ * - When private key is password protected, retrieve password via callback when needed
+ * - Lazy loading mechanism: password is only obtained during SSL handshake for better security
+ */
+static obs_status configure_password_callback(CURL *curl, const obs_http_request_option *request_options)
+{
+    obs_status status = OBS_STATUS_OK;
+
+    if (request_options->password_callback) {
+        char temp_password[1024] = {0};
+        int ret = request_options->password_callback(
+            request_options->password_callback_context,
+            temp_password,
+            1024
+        );
+
+        if (ret != 0) {
+            COMMLOG(OBS_LOGERROR, "[CURL] User password callback failed with code: %d", ret);
+            OPENSSL_cleanse(temp_password, sizeof(temp_password));
+            return OBS_STATUS_SSL_PasswordCallbackError;
+        }
+        
+        obs_status status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_KEYPASSWD, temp_password, OBS_STATUS_SSL_PasswordConfigError);
+
+        OPENSSL_cleanse(temp_password, sizeof(temp_password));
+
+        if (status != OBS_STATUS_OK) {
+            return status;
+        }
+
+        COMMLOG(OBS_LOGINFO, "[CURL] Client key password configured and securely cleared from stack");
+    }
+
+    return OBS_STATUS_OK;
+}
+
+/**
+ * @brief Configure GM SSL protocol
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if configuration succeeds, other values indicate failure
+ *
+ * Scenarios:
+ * - GM protocol primarily uses NTLSv1.1 version
+ * - If user doesn't specify version, automatically uses default NTLSv1.1
+ */
+static obs_status configure_gm_ssl_version_options(CURL *curl, const obs_http_request_option *request_options)
+{
+    COMMLOG(OBS_LOGINFO, "%s [GM mode] Configuring GM SSL protocol options", __FUNCTION__);
+
+#ifdef CURL_SSLVERSION_NTLSv1_1
+    // Key scenario: Configure GM SSL version
+    int ssl_version = request_options->ssl_version;
+
+    // If user didn't specify version, use GM default version NTLSv1.1
+    if (ssl_version == 0) {
+        ssl_version = CURL_SSLVERSION_NTLSv1_1;
+        COMMLOG(OBS_LOGINFO, "%s [GM mode] SSL version not specified, using default: NTLSv1.1", __FUNCTION__);
+    }
+    // Verify if user-specified version is supported by GM mode
+    else if (ssl_version != CURL_SSLVERSION_NTLSv1_1) {
+        COMMLOG(OBS_LOGERROR, "%s [GM mode] Unsupported SSL version: %d. GM mode only supports NTLSv1.1", __FUNCTION__, ssl_version);
+        return OBS_STATUS_GM_UnsupportedSSLVersion;
+    }
+
+    obs_status status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLVERSION, ssl_version, OBS_STATUS_GM_VersionConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGINFO, "%s [GM mode] SSL version set to: %d (NTLSv1.1)", __FUNCTION__, ssl_version);
+
+    return OBS_STATUS_OK;
+#else
+    // Key scenario: GM feature not supported at runtime
+    COMMLOG(OBS_LOGERROR, "%s [GM mode] Requires Tongsuo-enabled libcurl library", __FUNCTION__);
+    return OBS_STATUS_GM_TongsuoNotSupported;
+#endif
+}
+
+/**
+ * @brief Configure standard SSL protocol
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if configuration succeeds, other values indicate failure
+ *
+ * Scenarios:
+ * - Standard SSL mode supports TLS 1.0/1.1/1.2/1.3 and other versions
+ */
+static obs_status configure_standard_ssl_version_options(CURL *curl, const obs_http_request_option *request_options)
+{
+    // Key scenario: Configure standard SSL version
+    if (request_options->ssl_version != 0) {
+        obs_status status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLVERSION, request_options->ssl_version, OBS_STATUS_SSL_VersionConfigError);
+        if (status != OBS_STATUS_OK) {
+            return status;
+        }
+        COMMLOG(OBS_LOGINFO, "%s [Standard SSL] SSL version set to: %d", __FUNCTION__, request_options->ssl_version);
+    }
+
+    return OBS_STATUS_OK;
+}
+
+/* ============================================================================
+ * Main function: setup_mtls
+ * Purpose: Configure mutual SSL/TLS authentication settings
+ * ============================================================================ */
+/**
+ * @brief Configure mutual SSL/TLS authentication
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK Configuration successful, other values indicate failure
+ *
+ * Main function for configuring mutual SSL/TLS authentication including:
+ * - Client certificate authentication
+ * - GM (Chinese national cryptography) dual certificate mode
+ * - Standard SSL certificate mode
+ *
+ * This function orchestrates the configuration by calling specialized helper functions
+ * for each configuration aspect, improving code readability and maintainability.
+ */
+obs_status setup_client_certificate(CURL *curl, const obs_http_request_option *request_options)
+{
+    obs_status status = OBS_STATUS_OK;
+
+     // Phase 1: Configure client certificate authentication
+    if (request_options->client_auth_switch == OBS_CLIENT_AUTH_OPEN) {
+        // Step 1.1: Validate client certificate configuration
+        if ((status = validate_client_cert_config(request_options)) != OBS_STATUS_OK) {
+            return status;
+        }
+
+        // Step 1.2: Configure certificates based on mode (GM or Standard)
+        if (request_options->gm_mode_switch == OBS_GM_MODE_OPEN) {
+            status = configure_gm_dual_cert(curl, request_options);
+        } else {
+            status = configure_standard_cert(curl, request_options);
+        }
+
+        if (status != OBS_STATUS_OK) {
+            return status;
+        }
+
+        // Step 1.3: Configure password callback for encrypted private keys
+        if ((status = configure_password_callback(curl, request_options)) != OBS_STATUS_OK) {
+            return status;
+        }
+
+        COMMLOG(OBS_LOGINFO, "%s Mutual SSL authentication enabled", __FUNCTION__);
+    }
+
+    return OBS_STATUS_OK;
+}
+
+obs_status setup_ssl_version_options(CURL *curl, const obs_http_request_option *request_options)
+{
+    if (request_options->gm_mode_switch == OBS_GM_MODE_OPEN) {
+        // Configure GM-specific SSL options (NTLSv1.1)
+        return configure_gm_ssl_version_options(curl, request_options);
+    }
+
+    // Configure standard SSL options (TLS 1.0-1.3)
+    return configure_standard_ssl_version_options(curl, request_options);
+}
+
+// Configure standard SSL cipher suite
+obs_status setup_ssl_cipher_options(CURL *curl, const obs_http_request_option *request_options)
+{
+    if (request_options->ssl_cipher_list != NULL) {
+        obs_status status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSL_CIPHER_LIST, request_options->ssl_cipher_list, OBS_STATUS_SSL_CipherConfigError);
+        if (status != OBS_STATUS_OK) {
+            return status;
+        }
+        COMMLOG(OBS_LOGINFO, "%s [Standard SSL] User-specified cipher suite: %s", __FUNCTION__, request_options->ssl_cipher_list);
+    }
+
+    return OBS_STATUS_OK;
+}
+
+obs_status setup_CA(CURL *curl, const obs_http_request_option *request_options, char *certificate_info)
+{
+    obs_status status = OBS_STATUS_OK;
+
+    // Basic SSL verification configuration
+    if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_VERIFYPEER, request_options->ssl_verify_peer)) != OBS_STATUS_OK) {
+        return status;
+    }
+
+    if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_VERIFYHOST, request_options->ssl_verify_host)) != OBS_STATUS_OK) {
+        return status;
+    }
+
+    // CA certificate configuration
+    if (certificate_info) {
+        if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_CTX_DATA, (void *)certificate_info)) != OBS_STATUS_OK) {
+            return status;
+        }
+        if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_CTX_FUNCTION, *sslctx_function)) != OBS_STATUS_OK) {
+            return status;
+        }
+    }
+
+    if (request_options->server_cert_path) {
+        if ((status = OBS_CURL_SETOPT(curl, CURLOPT_CAINFO, request_options->server_cert_path)) != OBS_STATUS_OK) {
+            return status;
+        }
+        COMMLOG(OBS_LOGINFO, "%s CA certificate path: %s", __FUNCTION__, request_options->server_cert_path);
+    }
+
+    return OBS_STATUS_OK;
+}
+
+obs_status setup_CheckCA(CURL *curl, const obs_http_request_option *request_options, char *certificate_info)
+{
+    obs_status status = OBS_STATUS_OK;
+
+    if (!certificate_info && !request_options->server_cert_path) {
+        // Disable SSL verification when no CA certificate is provided
+        if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_VERIFYPEER, request_options->ssl_verify_peer)) != OBS_STATUS_OK) {
+            return status;
+        }
+        if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_VERIFYHOST, request_options->ssl_verify_host)) != OBS_STATUS_OK) {
+            return status;
+        }
+    } else {
+        // Configure CA certificate verification
+        if ((status = setup_CA(curl, request_options, certificate_info)) != OBS_STATUS_OK) {
+            return status;
+        }
+        // Configure Client certificate verification
+        if ((status = setup_client_certificate(curl, request_options)) != OBS_STATUS_OK) {
+             /* Client certificate setup failed - indicates one-way authentication only (server authentication) */
+            COMMLOG(OBS_LOGWARN, "Client certificate setup failed, falling back to one-way SSL authentication");
+        }
+    }
+
+    // Configure SSL options (version)
+    if ((status = setup_ssl_version_options(curl, request_options)) != OBS_STATUS_OK) {
+        return status;
+    }
+
+    // Configure SSL options (cipher suites)
+    if ((status = setup_ssl_cipher_options(curl, request_options)) != OBS_STATUS_OK) {
+        return status;
+    }
+
     return OBS_STATUS_OK;
 }
 
@@ -528,7 +870,10 @@ static obs_status setup_curl(http_request *request,
 		curl_easy_setopt_safe(CURLOPT_MAXCONNECTS, params->request_option.curl_max_connects);
 	}
     curl_easy_setopt_safe(CURLOPT_NETRC, CURL_NETRC_IGNORED);
-    setup_CheckCA(request, params, values);
+
+    if ((setup_CheckCA(request->curl, &params->request_option, params->bucketContext.certificate_info)) != OBS_STATUS_OK) {
+        return status;
+    }
 
 	if (OBS_LOGDEBUG >= getRunLogLevel() && params->request_option.curl_log_verbose) {
 		curl_easy_setopt_safe(CURLOPT_VERBOSE, 1);
@@ -637,9 +982,9 @@ static obs_status request_get(const request_params *params,
 #else
     WaitForSingleObject(hmutex, INFINITE);
 #endif
-    if ((current_request_cnt + 1) > request_online_max){
+    if ((current_request_cnt + 1) > request_online_max) {
         is_no_token = 1;
-    }else {
+    } else {
          current_request_cnt++;
         if (requestStackCountG) {
             request = requestStackG[--requestStackCountG];
@@ -650,7 +995,7 @@ static obs_status request_get(const request_params *params,
 #else
     ReleaseMutex(hmutex);
 #endif
-
+ 
     if (is_no_token)
     {
         COMMLOG(OBS_LOGWARN, "request is no token,cur token num=%u", current_request_cnt);
@@ -875,9 +1220,7 @@ static obs_status compose_auth_header(const request_params *params,
         CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     }
 
-    char * userAgent = USER_AGENT_VALUE;
-    int strLen = (int)(strlen(userAgent));
-    int ret = snprintf_s(values->userAgent, sizeof(values->userAgent),_TRUNCATE,"User-Agent: %.*s", strLen, userAgent);
+    int ret = snprintf_s(values->userAgent, sizeof(values->userAgent), _TRUNCATE, "User-Agent: obs-sdk-c-%s", OBS_SDK_VERSION);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
     return OBS_STATUS_OK;
@@ -893,7 +1236,7 @@ static void request_release(http_request **p_request)
 #else
     WaitForSingleObject(hmutex, INFINITE);
 #endif
-
+ 
     if (requestStackCountG == REQUEST_STACK_SIZE || request->status != OBS_STATUS_OK) {
         if (current_request_cnt > 0)
         {
@@ -1069,7 +1412,7 @@ int is_retry(http_request *request, int is_retry)
         {
             if (is_retry)
             {
-                uint64_t wait_time = pow(2, RETRY_NUM - is_retry + 1) * 50;
+                uint64_t wait_time = ((uint64_t)1 << (RETRY_NUM - is_retry + 1)) * 50;
 #ifdef WIN32
                 Sleep(wait_time);
 #else
@@ -1268,6 +1611,7 @@ void request_perform(const request_params *params)
     int is_true = 0;
     int retry = RETRY_NUM;
     COMMLOG(OBS_LOGINFO, "Enter request_perform object key= %s\n!", params->key);
+ 
 	if ((status = checkParameters(params)) != OBS_STATUS_OK) {
 		return_status(status);
 	}
@@ -1282,12 +1626,12 @@ void request_perform(const request_params *params)
     }
     stTempInfo.temp_auth_headers = authTmpActualHeaders;
     stTempInfo.tempAuthParams = authTmpParams;
-
+ 
     if ((status = compose_headers(params, &computed)) != OBS_STATUS_OK){
         COMMLOG(OBS_LOGERROR, "compose_headers failed in function: %s, line: %d", __FUNCTION__, __LINE__);
 		return_status(status);
     }
-
+ 
     COMMLOG(OBS_LOGINFO, "Enter request_perform object computed key= %s\n!", computed.urlEncodedKey);
     canonicalize_obs_headers(&computed, params->use_api);
     canonicalize_resource(params, computed.urlEncodedKey, computed.canonicalizedResource,
@@ -1306,7 +1650,7 @@ void request_perform(const request_params *params)
     {
         return_status(status);
     }
-
+ 
     if ((status = request_get(params, &computed, &request, &stTempInfo)) != OBS_STATUS_OK) {
         return_status(status);
     }
@@ -1320,7 +1664,7 @@ void request_perform(const request_params *params)
         request_release(&request);
         return_status(status);
     }
-
+ 
 	size_t errorBufferSize = CURL_ERROR_SIZE * sizeof(char);
 	char *errorBuffer = (char*)malloc(errorBufferSize);
 	if (errorBuffer == NULL) {
@@ -1335,9 +1679,9 @@ void request_perform(const request_params *params)
 		return_status(OBS_STATUS_Security_Function_Failed);
 	}
     setCurlErrorBuffer(request->curl, errorBuffer, errorBufferSize);
-
+ 
     request_set_opt_for_progress(request);
-
+ 
     char* accessmode = "Virtual Hosting";
     if (params->bucketContext.uri_style == OBS_URI_STYLE_PATH)
     {
@@ -1404,7 +1748,7 @@ size_t curl_read_func_for_api_version(void *ptr, size_t size, size_t nmemb, void
 	// in case of rewind failed 65;
 	return 0;
 }
-obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protocol, const obs_http_request_option *request_options, bool useCname)
+obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protocol, const obs_http_request_option *request_options, const obs_bucket_context *bucket_options)
 {
     COMMLOG(OBS_LOGINFO, "get api version start!");
     obs_status status = OBS_STATUS_ErrorUnknown;
@@ -1454,7 +1798,7 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
         return OBS_STATUS_FailedToIInitializeRequest;
     }
     obs_status statu = OBS_STATUS_OK;
-	statu = compose_api_version_uri(uri, uriSize, useCname ? "" : bucket_name, host_name, "apiversion", protocol);
+	statu = compose_api_version_uri(uri, uriSize, bucket_options->useCname ? "" : bucket_name, host_name, "apiversion", protocol);
     if (statu != OBS_STATUS_OK) {
         curl_easy_cleanup(curl);
         CHECK_NULL_FREE(uri);                                                          
@@ -1495,6 +1839,14 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
 		easy_setopt_safe(CURLOPT_MAXCONNECTS, request_options->curl_max_connects);
 	}
     setCurlErrorBuffer(curl, errorBuffer, errorBufferSize);
+
+    if ((status = setup_CheckCA(curl, request_options, bucket_options->certificate_info)) != OBS_STATUS_OK) {
+        curl_easy_cleanup(curl); 
+        CHECK_NULL_FREE(uri);                                                          
+        CHECK_NULL_FREE(errorBuffer);       
+        return status;
+    }
+
     COMMLOG(OBS_LOGWARN, "curl_easy_setopt curl path= %s",uri);
     CURLcode code = curl_easy_perform(curl);
     if (code != CURLE_OK) {
@@ -1613,7 +1965,7 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
         use_api_index++;
         if(get_api_version(options->bucket_options.bucket_name,
 options->bucket_options.host_name,
-                           options->bucket_options.protocol, &options->request_options, options->bucket_options.useCname) == OBS_STATUS_OK )
+                           options->bucket_options.protocol, &options->request_options, &options->bucket_options) == OBS_STATUS_OK )
         {   
 			err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
             CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
@@ -1652,7 +2004,7 @@ options->bucket_options.host_name,
            {
                 if(get_api_version(options->bucket_options.bucket_name,
 options->bucket_options.host_name,
-                                   options->bucket_options.protocol, &options->request_options, options->bucket_options.useCname) == OBS_STATUS_OK )
+                                   options->bucket_options.protocol, &options->request_options, &options->bucket_options) == OBS_STATUS_OK )
                 {
                     api_switch[index].use_api = OBS_USE_API_OBS;
                     api_switch[index].time_switch = time_obs;
@@ -1674,7 +2026,7 @@ options->bucket_options.host_name,
             use_api_index++;
             if(get_api_version(options->bucket_options.bucket_name,
 options->bucket_options.host_name,
-                               options->bucket_options.protocol, &options->request_options, options->bucket_options.useCname) == OBS_STATUS_OK )
+                               options->bucket_options.protocol, &options->request_options, &options->bucket_options) == OBS_STATUS_OK )
             {
 				err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
                 CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);

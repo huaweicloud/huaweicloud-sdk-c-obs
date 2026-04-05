@@ -180,15 +180,24 @@ const char *obs_get_status_name(obs_status status)
         handlecase(MetadataNameDuplicate);
         handlecase(GET_UPLOAD_ID_FAILED);
         handlecase(Security_Function_Failed);
-		handlecase(BadAccessLabel);
-		handlecase(FsNotSupport);
-		handlecase(JSON_PARSE_ERROR);
-		handlecase(JSON_CREATE_ERROR);
-		handlecase(AccessLabelNotFound);
-		handlecase(NULL_HOSTNAME);
-		handlecase(NULL_SECRETE_ACCESS_KEY); 
-		handlecase(NoSuchTrashConfiguration);
-		handlecase(InvalidRequestBody);
+        handlecase(BadAccessLabel);
+        handlecase(FsNotSupport);
+        handlecase(JSON_PARSE_ERROR);
+        handlecase(JSON_CREATE_ERROR);
+        handlecase(AccessLabelNotFound);
+        handlecase(NULL_HOSTNAME);
+        handlecase(NULL_SECRETE_ACCESS_KEY); 
+        handlecase(NoSuchTrashConfiguration);
+        handlecase(InvalidRequestBody);
+        handlecase(InvalidCustomDomain);
+        handlecase(InvalidDomainName);
+        handlecase(NoCertName);
+        handlecase(CertNotExist);
+        handlecase(CertPKNotExist);
+        handlecase(InvalidCertNameLen);
+        handlecase(InvalidCertIdLen);
+        handlecase(HttpNotSecure);
+        handlecase(SecureConnectionRequiredForCustomDomainCertificate);
         handlecase(BUTT);
     }
 
@@ -200,28 +209,27 @@ obs_status obs_initialize(int win32_flags)
 {
     CURLcode retCode = CURLE_OK;
     obs_status ret = OBS_STATUS_OK;
-    
+
     SYSTEMTIME reqTime;
     GetLocalTime(&reqTime);
-    
+
     LOG_INIT();
-	setRunLogLevel();
+    setRunLogLevel();
     xmlInitParser();
     COMMLOG(OBS_LOGWARN, "%s OBS SDK Version= %s", __FUNCTION__, OBS_SDK_VERSION);
 #if defined __GNUC__ || defined LINUX
     set_sigaction_for_sigpipe();
 #endif
     retCode = curl_global_init(CURL_GLOBAL_ALL);
-    if (retCode != CURLE_OK)
-    {
-        COMMLOG(OBS_LOGERROR, "%s curl_global_init failed retcode = %d", __FUNCTION__,retCode);
+    if (retCode != CURLE_OK) {
+        COMMLOG(OBS_LOGERROR, "%s curl_global_init failed retcode = %d", __FUNCTION__, retCode);
         return OBS_STATUS_InitCurlFailed;
-    } 
-    
+    }
+
     ret = request_api_initialize(win32_flags);
 
     SYSTEMTIME rspTime;
-    GetLocalTime(&rspTime);      
+    GetLocalTime(&rspTime);
     INTLOG(reqTime, rspTime, ret, "");
 
     return ret;
@@ -229,10 +237,15 @@ obs_status obs_initialize(int win32_flags)
 
 void init_obs_options(obs_options *options)
 {
-    options->request_options.speed_time = DEFAULT_LOW_SPEED_TIME_S;
-    options->request_options.max_connected_time = DEFAULT_TIMEOUT_S;
-    options->request_options.connect_time = DEFAULT_CONNECTTIMEOUT_MS;
-    options->request_options.speed_limit = DEFAULT_LOW_SPEED_LIMIT;
+    int env_val = 0;
+    env_val = safe_getenv_int("OBS_LOW_SPEED_TIME", DEFAULT_LOW_SPEED_TIME_S);
+    options->request_options.speed_time = env_val;
+    env_val = safe_getenv_int("OBS_TIMEOUT", DEFAULT_TIMEOUT_S);
+    options->request_options.max_connected_time = env_val;
+    env_val = safe_getenv_int("OBS_CONNECT_TIMEOUT", DEFAULT_CONNECTTIMEOUT_MS);
+    options->request_options.connect_time = env_val;
+    env_val = safe_getenv_int("OBS_LOW_SPEED_LIMIT", DEFAULT_LOW_SPEED_LIMIT);
+    options->request_options.speed_limit = env_val;
     options->request_options.keep_alive = false;
     options->request_options.keep_idle = DEFAULT_TCP_KEEPIDLE;
     options->request_options.keep_intvl = DEFAULT_TCP_KEEPINVTL;
@@ -241,15 +254,30 @@ void init_obs_options(obs_options *options)
     options->request_options.ssl_cipher_list = NULL;
     options->request_options.http2_switch = OBS_HTTP2_CLOSE;
     options->request_options.bbr_switch = OBS_BBR_CLOSE;
-	options->request_options.auth_switch = OBS_NEGOTIATION_TYPE;
+    options->request_options.auth_switch = OBS_NEGOTIATION_TYPE;
     options->request_options.buffer_size = 16 * 1024L;
-    options->request_options.server_cert_path = NULL;
-	options->request_options.curl_log_verbose = false;
+    options->request_options.curl_log_verbose = false;
     options->request_options.forbid_reuse_tcp = false;
     options->request_options.curl_max_connects = DEFAULT_MAXCONNECTS;
-        
+
+    options->request_options.ssl_verify_host = OBS_SSL_VERIFYHOST_CLOSE;
+    options->request_options.ssl_verify_peer = OBS_SSL_VERIFYPEER_CLOSE;
+    options->request_options.ssl_version = 0;
+    // === 服务端认证配置 ===
+    options->request_options.server_cert_path = NULL;
+    // === 客户端认证配置 ===
+    options->request_options.client_auth_switch = OBS_CLIENT_AUTH_CLOSE;
+    options->request_options.client_sign_cert_path = NULL;
+    options->request_options.client_sign_key_path = NULL;
+    options->request_options.password_callback = NULL;
+    options->request_options.password_callback_context = NULL;
+    // === 国密配置 ===
+    options->request_options.gm_mode_switch = OBS_GM_MODE_CLOSE;
+    options->request_options.client_enc_cert_path = NULL;
+    options->request_options.client_enc_key_path = NULL;
+
     options->bucket_options.access_key = NULL;
-    options->bucket_options.secret_access_key =NULL;
+    options->bucket_options.secret_access_key = NULL;
     options->bucket_options.bucket_name = NULL;
     options->bucket_options.certificate_info = g_ca_info[0] ? g_ca_info : NULL;
     options->bucket_options.host_name = NULL;
@@ -258,45 +286,37 @@ void init_obs_options(obs_options *options)
     options->bucket_options.token = NULL;
     options->bucket_options.uri_style = OBS_URI_STYLE_VIRTUALHOST;
     options->bucket_options.epid = NULL;
-	options->bucket_options.useCname = false;
+    options->bucket_options.useCname = false;
     options->temp_auth = NULL;
 }
 
-obs_status init_certificate_set_path(obs_certificate_conf ca_conf, char *ca_path,
-	const char *path, int path_length)
+obs_status init_certificate_set_path(obs_certificate_conf ca_conf, char *ca_path, const char *path, int path_length)
 {
-	if (OBS_DEFAULT_CERTIFICATE == ca_conf)
-	{
+    if (OBS_DEFAULT_CERTIFICATE == ca_conf) {
 #if defined __GNUC__ || defined LINUX
-		getCurrentPath(ca_path);
-		strcat_s(ca_path, PATH_LENGTH, CERTIFICATE_NAME);
+        getCurrentPath(ca_path);
+        strcat_s(ca_path, PATH_LENGTH, CERTIFICATE_NAME);
 #else
-		GetModuleFileNameA(NULL, ca_path, MAX_MSG_SIZE - 1);
-		char *chr = strrchr(ca_path, '\\');
-		if (NULL != chr)
-		{
-			*(chr + 1) = '\0';
-		}
-		int ret = strcat_s(ca_path, PATH_LENGTH, "client.crt");
-		if (ret != 0) {
-			COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.", __FUNCTION__);
-		}
+        GetModuleFileNameA(NULL, ca_path, MAX_MSG_SIZE - 1);
+        char *chr = strrchr(ca_path, '\\');
+        if (NULL != chr) {
+            *(chr + 1) = '\0';
+        }
+        int ret = strcat_s(ca_path, PATH_LENGTH, "client.crt");
+        if (ret != 0) {
+            COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.", __FUNCTION__);
+        }
 #endif
-	}
-	else if ((OBS_DEFINED_CERTIFICATE == ca_conf) && path && (path_length > 0))
-	{
-		errno_t err = EOK;
-		err = memcpy_s(ca_path, sizeof(ca_path), path, path_length);
-		if (err != EOK)
-		{
-			COMMLOG(OBS_LOGWARN, "%s(%d):memcpy_s failed!", __FUNCTION__, __LINE__);
-		}
-	}
-	else
-	{
-		return OBS_STATUS_InvalidParameter;
-	}
-	return OBS_STATUS_OK;
+    } else if ((OBS_DEFINED_CERTIFICATE == ca_conf) && path && (path_length > 0)) {
+        errno_t err = EOK;
+        err = memcpy_s(ca_path, PATH_LENGTH, path, path_length);
+        if (err != EOK) {
+            COMMLOG(OBS_LOGWARN, "%s(%d):memcpy_s failed!", __FUNCTION__, __LINE__);
+        }
+    } else {
+        return OBS_STATUS_InvalidParameter;
+    }
+    return OBS_STATUS_OK;
 }
 
 obs_status init_certificate_readInfo(char *ca_path, int length)
@@ -309,7 +329,7 @@ obs_status init_certificate_readInfo(char *ca_path, int length)
 	}
 	while (1)
 	{
-		int rc = fread(g_ca_info, sizeof(char), CERTIFICATE_SIZE, fp);
+		int rc = (int)fread(g_ca_info, sizeof(char), CERTIFICATE_SIZE, fp);
 		if (rc <= 0)
 		{
 			break;
@@ -326,31 +346,28 @@ obs_status init_certificate_readInfo(char *ca_path, int length)
 }
 
 
-obs_status init_certificate_by_path(obs_protocol protocol, obs_certificate_conf ca_conf, 
-                                    const char *path, int path_length)
+obs_status init_certificate_by_path(obs_protocol protocol, obs_certificate_conf ca_conf, const char *path,
+                                    int path_length)
 {
     char ca_path[PATH_LENGTH] = {0};
     obs_status status = OBS_STATUS_OK;
     int length = 0;
-    
-    g_protocol =  protocol;
-    if (OBS_PROTOCOL_HTTP == protocol)
-    {
+
+    g_protocol = protocol;
+    if (OBS_PROTOCOL_HTTP == protocol) {
         return status;
     }
 
     memset_s(ca_path, PATH_LENGTH, 0, PATH_LENGTH);
-	status = init_certificate_set_path(ca_conf, ca_path, path, path_length);
-	if (OBS_STATUS_OK != status) 
-	{
-		return status;
-	}
-    
-	status = init_certificate_readInfo(ca_path, length);
-	if (OBS_STATUS_OK != status)
-	{
-		return status;
-	}
+    status = init_certificate_set_path(ca_conf, ca_path, path, path_length);
+    if (OBS_STATUS_OK != status) {
+        return status;
+    }
+
+    status = init_certificate_readInfo(ca_path, length);
+    if (OBS_STATUS_OK != status) {
+        return status;
+    }
     return status;
 }
 
@@ -378,33 +395,33 @@ obs_status init_certificate_by_buffer(const char *buffer, int buffer_length)
 
 void init_put_properties(obs_put_properties *put_properties)
 {
-    put_properties->byte_count=0;
+    put_properties->byte_count = 0;
     put_properties->upload_limit = 0;
-    put_properties->cache_control=0;
-    put_properties->canned_acl= OBS_CANNED_ACL_PRIVATE;
+    put_properties->cache_control = 0;
+    put_properties->canned_acl = OBS_CANNED_ACL_PRIVATE;
     put_properties->content_disposition_filename = 0;
     put_properties->content_encoding = 0;
-    put_properties->content_type =0;
+    put_properties->content_type = 0;
     put_properties->expires = -1;
     put_properties->obs_expires = -1;
-    put_properties->file_object_config=0;
-    put_properties->get_conditions=0;
-    put_properties->md5=0;
-    put_properties->meta_data=0;
-    put_properties->meta_data_count=0;
-    put_properties->start_byte=0;
-    put_properties->website_redirect_location=0;
+    put_properties->file_object_config = 0;
+    put_properties->get_conditions = 0;
+    put_properties->md5 = 0;
+    put_properties->meta_data = 0;
+    put_properties->meta_data_count = 0;
+    put_properties->start_byte = 0;
+    put_properties->website_redirect_location = 0;
     put_properties->domain_config = NULL;
-	put_properties->metadata_action = OBS_NO_METADATA_ACTION;
+    put_properties->metadata_action = OBS_NO_METADATA_ACTION;
     init_server_callback(&(put_properties->server_callback));
 }
 
 void init_get_properties(obs_get_conditions *get_conditions)
 {
-    get_conditions->byte_count=0;
-    get_conditions->start_byte=0;
+    get_conditions->byte_count = 0;
+    get_conditions->start_byte = 0;
     get_conditions->download_limit = 0;
-    get_conditions->if_match_etag=NULL;
+    get_conditions->if_match_etag = NULL;
     get_conditions->if_modified_since = -1;
     get_conditions->if_not_match_etag = NULL;
     get_conditions->if_not_modified_since = -1;

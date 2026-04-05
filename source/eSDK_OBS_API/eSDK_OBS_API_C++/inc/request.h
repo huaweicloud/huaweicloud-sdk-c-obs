@@ -23,12 +23,8 @@
 #include "common.h"
 #include "cJSON.h"
 
-#ifdef WIN32
-#define LIBOBS_VER_MAJOR "3.24"
-#define LIBOBS_VER_MINOR "12"
-#endif
-
-#if defined __GNUC__ || defined LINUX
+#ifndef OBS_SDK_VERSION
+#define OBS_SDK_VERSION "3.26.3-beta"
 #endif
 
 #define HEAD_NORMAL_LEN 128
@@ -38,17 +34,15 @@
 #define DOMAIN_LEN 254
 #define HEAD_CALLBACK_LEN 8192
 
-#define OBS_SDK_VERSION "3.24.12"
-#define USER_AGENT_VALUE  "obs-sdk-c-3.24.12";
-
 #define DEFAULT_LOW_SPEED_LIMIT    (1)
-#define DEFAULT_LOW_SPEED_TIME_S   (300)
+#define DEFAULT_LOW_SPEED_TIME_S   (20)
 #define DEFAULT_CONNECTTIMEOUT_MS  (60000)
 #define DEFAULT_TIMEOUT_S          (0)
 #define DEFAULT_TCP_KEEPIDLE       (120)
 #define DEFAULT_TCP_KEEPINVTL      (60)
 #define DEFAULT_MAXCONNECTS        (-1)
-#define RETRY_NUM                  (3)
+#define RETRY_NUM                  (5)
+#define MAX_RETRY_VALUE            (15)
 #define RETRY_BASE                 (50) //retry base tiem is 50ms
 #define LINUX_USTOMS               (1000) // us -> ms
 
@@ -70,9 +64,41 @@
 #define curl_easy_setopt_safe(opt, val)                                 \
                 if ((status = curl_easy_setopt                                      \
                      (request->curl, opt, val)) != CURLE_OK) {                      \
-                    COMMLOG(OBS_LOGWARN, "curl_easy_setopt_safe failed, curl_ret_code: %d", status);    \
-                    return OBS_STATUS_FailedToIInitializeRequest;                       \
+                    COMMLOG(OBS_LOGERROR, "[CURL ERROR] %s:%d %s - Failed to set %s, " \
+                            "curl_ret_code: %d, error: %s",                         \
+                            __FUNCTION__, __LINE__, __FILE__, #opt, status,         \
+                            curl_easy_strerror(status));                          \
+                    return OBS_STATUS_FailedToIInitializeRequest;                   \
                 }
+
+/* OBS CURL options safe setting APIs */
+#define OBS_CURL_SETOPT_DEFAULT_ERROR OBS_STATUS_FailedToIInitializeRequest
+
+/* 辅助内联函数：只负责判断状态、打日志和返回 obs_status */
+static inline obs_status obs_curl_setopt_check(CURLcode curl_status, const char *opt_name, 
+                                                 obs_status error_status, const char *func, 
+                                                 int line, const char *file) {
+    if (curl_status != CURLE_OK) {
+        COMMLOG(OBS_LOGERROR, "[CURL ERROR] %s:%d %s - Failed to set %s, "
+                "curl_ret_code: %d, error: %s, returning status: %d",
+                file, line, func, opt_name, curl_status,
+                curl_easy_strerror(curl_status), (int)error_status);
+        return error_status;
+    }
+    return OBS_STATUS_OK;
+}
+
+/* 核心宏：保留变量类型，字符串化 #opt，并传递 __FILE__ 等宏 */
+#define OBS_CURL_SET_IMPL(curl, opt, val, error_status) \
+    obs_curl_setopt_check(curl_easy_setopt((curl), (opt), (val)), #opt, \
+                            (error_status), __func__, __LINE__, __FILE__)
+
+#define OBS_CURL_SETOPT(curl, opt, val) \
+    OBS_CURL_SET_IMPL((curl), (opt), (val), OBS_CURL_SETOPT_DEFAULT_ERROR)
+
+#define OBS_CURL_SETOPT_WITH_STATUS(curl, opt, val, error_status) \
+    OBS_CURL_SET_IMPL((curl), (opt), (val), (error_status))
+
                 
 #define append_standard_header(fieldName)                               \
                     if (values-> fieldName [0]) {                                       \
