@@ -1,14 +1,7 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.35431.46
-MinimumVisualStudioVersion = 10.0.40219.1
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "obs_demo", "obs_demo.vcxproj", "{79E4F0DC-AF0A-4D7E-A0F7-C4334F0D9054}"
-	ProjectSection(ProjectDependencies) = postProject
-		{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32} = {AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}
-	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "obs", "..\..\eSDK_OBS_API_C++\sln\vc100\obs.vcxproj", "{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,19 +19,8 @@ Global
 		{79E4F0DC-AF0A-4D7E-A0F7-C4334F0D9054}.Release|Win32.Build.0 = Release|Win32
 		{79E4F0DC-AF0A-4D7E-A0F7-C4334F0D9054}.Release|x64.ActiveCfg = Release|x64
 		{79E4F0DC-AF0A-4D7E-A0F7-C4334F0D9054}.Release|x64.Build.0 = Release|x64
-		{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}.Debug|Win32.ActiveCfg = Debug|Win32
-		{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}.Debug|Win32.Build.0 = Debug|Win32
-		{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}.Debug|x64.ActiveCfg = Debug|x64
-		{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}.Debug|x64.Build.0 = Debug|x64
-		{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}.Release|Win32.ActiveCfg = Release|Win32
-		{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}.Release|Win32.Build.0 = Release|Win32
-		{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}.Release|x64.ActiveCfg = Release|x64
-		{AB9FFBA6-F5BF-4F12-8B33-A4D2F9975F32}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {F99D3A1F-51A1-4794-B23C-2471444C1E7A}
 	EndGlobalSection
 EndGlobal

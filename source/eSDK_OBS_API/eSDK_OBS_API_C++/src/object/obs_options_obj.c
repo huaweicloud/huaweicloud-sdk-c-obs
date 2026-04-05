@@ -61,7 +61,7 @@ void obs_options_obj_or_bucket(const obs_options *options, int is_bucket, char* 
         return;
     }
     unsigned int i = 0;
-    obs_cors_conf corsConf;
+    obs_cors_conf corsConf = {0};
     corsConf.origin = origin;
     corsConf.rmNumber = method_number;
     corsConf.rhNumber = header_number;

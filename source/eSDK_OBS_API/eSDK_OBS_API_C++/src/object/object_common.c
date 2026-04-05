@@ -45,7 +45,7 @@ int check_file_is_valid(char *file_name)
 {
     int ret_stat = -1;
 #if defined __GNUC__ || defined LINUX  
-    struct stat statbuf;
+    struct stat statbuf = {0};
     ret_stat = stat(file_name, &statbuf);
 #else
     struct _stati64 statbuf;
@@ -86,9 +86,9 @@ xmlNodePtr get_xmlnode_from_file(const char * file_name, xmlDocPtr *doc)
     return curNode;
 }
 
-int updataCheckPointFindNode(xmlNodePtr *curNode, unsigned int strNum, char(*strArry)[32])
+unsigned int updataCheckPointFindNode(xmlNodePtr *curNode, unsigned int strNum, char(*strArry)[32])
 {
-    int i = 0;
+    unsigned int i = 0;
     for (i = 1; i < strNum; i++)
     {
         while ((*curNode) != NULL)
@@ -211,7 +211,7 @@ int open_file(const char * file_name, int *ret_stat, int *file_size)
     int fd = 0;
 
 #if defined __GNUC__ || defined LINUX  
-    struct stat statbuf;
+    struct stat statbuf = {0};
     *ret_stat = stat(file_name, &statbuf);
 #else
     struct _stati64 statbuf;

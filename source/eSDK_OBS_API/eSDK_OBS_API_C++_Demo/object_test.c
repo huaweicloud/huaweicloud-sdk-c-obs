@@ -336,6 +336,40 @@ FILE **uploadFilePool = NULL;
 #define USE_S3_AUTH "use_s3_auth"
 #define USE_S3_AUTH_LEN (sizeof(USE_S3_AUTH) - 1)
 
+#define SERVER_CERT_PATH "server_cert_path="
+#define SERVER_CERT_PATH_LEN (sizeof(SERVER_CERT_PATH) - 1)
+
+#define CLIENT_SIGN_CERT_PATH "client_sign_cert_path="
+#define CLIENT_SIGN_CERT_PATH_LEN (sizeof(CLIENT_SIGN_CERT_PATH) - 1)
+#define CLIENT_SIGN_KEY_PATH "client_sign_key_path="
+#define CLIENT_SIGN_KEY_PATH_LEN (sizeof(CLIENT_SIGN_KEY_PATH) - 1)
+
+#define CLIENT_ENC_CERT_PATH "client_enc_cert_path="
+#define CLIENT_ENC_CERT_PATH_LEN (sizeof(CLIENT_ENC_CERT_PATH) - 1)
+#define CLIENT_ENC_KEY_PATH "client_enc_key_path="
+#define CLIENT_ENC_KEY_PATH_LEN (sizeof(CLIENT_ENC_KEY_PATH) - 1)
+
+#define BUCKET_CNAME "bucket_cname="
+#define BUCKET_CNAME_LEN (sizeof(BUCKET_CNAME) - 1)
+
+#define CLIENT_AUTH_SWITCH "client_auth_switch"
+#define CLIENT_AUTH_SWITCH_LEN (sizeof(CLIENT_AUTH_SWITCH) - 1)
+
+#define GM_MODE_SWITCH "gm_mode_switch"
+#define GM_MODE_SWITCH_LEN (sizeof(GM_MODE_SWITCH) - 1)
+
+#define SSL_VERSION "ssl_version="
+#define SSL_VERSION_LEN (sizeof(SSL_VERSION) - 1)
+
+#define SSL_CIPHER_LIST "ssl_cipher_list="
+#define SSL_CIPHER_LIST_LEN (sizeof(SSL_CIPHER_LIST) - 1)
+
+#define SSL_VERIFY_HOST "ssl_verify_host"
+#define SSL_VERIFY_HOST_LEN (sizeof(SSL_VERIFY_HOST) - 1)
+
+#define SSL_VERIFY_PEER "ssl_verify_peer"
+#define SSL_VERIFY_PEER_LEN (sizeof(SSL_VERIFY_PEER) - 1)
+
 // posix add 
 #define BUCKET_QUOTA "quota="
 #define BUCKET_QUOTA_LEN (sizeof(BUCKET_QUOTA) - 1)
@@ -377,6 +411,61 @@ static struct option longOptionsG[] =
 
 
 /********************公共函数******************************************/
+static int parse_common_params(char *param, obs_options *options) {
+    
+    // 绑定自定义域名
+    if (!strncmp(param, BUCKET_CNAME, BUCKET_CNAME_LEN)){
+        options->bucket_options.host_name = &(param[BUCKET_CNAME_LEN]);
+        options->bucket_options.useCname = true;
+        options->bucket_options.uri_style = OBS_URI_STYLE_PATH;
+        options->bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+    }
+    // CA证书
+    else if (!strncmp(param, SERVER_CERT_PATH, SERVER_CERT_PATH_LEN)) {
+        options->request_options.server_cert_path = &(param[SERVER_CERT_PATH_LEN]);
+    }
+    // 客户端证书开关
+    else if (!strncmp(param, CLIENT_AUTH_SWITCH, CLIENT_AUTH_SWITCH_LEN)){
+        options->request_options.client_auth_switch = OBS_CLIENT_AUTH_OPEN;
+    }
+    // 客户端证书
+    else if (!strncmp(param, CLIENT_SIGN_CERT_PATH, CLIENT_SIGN_CERT_PATH_LEN)) {
+        options->request_options.client_sign_cert_path = &(param[CLIENT_SIGN_CERT_PATH_LEN]);
+    }
+    else if (!strncmp(param, CLIENT_SIGN_KEY_PATH, CLIENT_SIGN_KEY_PATH_LEN)) {
+        options->request_options.client_sign_key_path = &(param[CLIENT_SIGN_KEY_PATH_LEN]);
+    }
+    // 国密开关
+    else if (!strncmp(param, GM_MODE_SWITCH, GM_MODE_SWITCH_LEN)){
+        options->request_options.gm_mode_switch = OBS_GM_MODE_OPEN;
+    }
+    // 国密证书
+    else if (!strncmp(param, CLIENT_ENC_CERT_PATH, CLIENT_ENC_CERT_PATH_LEN)) {
+        options->request_options.client_enc_cert_path = &(param[CLIENT_ENC_CERT_PATH_LEN]);
+    }
+    else if (!strncmp(param, CLIENT_ENC_KEY_PATH, CLIENT_ENC_KEY_PATH_LEN)) {
+        options->request_options.client_enc_key_path = &(param[CLIENT_ENC_KEY_PATH_LEN]);
+    }
+    // SSL版本
+    else if (!strncmp(param, SSL_VERSION, SSL_VERSION_LEN)) {
+        options->request_options.ssl_version = atoi(&param[SSL_VERSION_LEN]);
+    }
+    // SSL套件
+    else if (!strncmp(param, SSL_CIPHER_LIST, SSL_CIPHER_LIST_LEN)) {
+        options->request_options.ssl_cipher_list = &(param[SSL_CIPHER_LIST_LEN]);
+    }
+    // 是否开启域名认证
+    else if (!strncmp(param, SSL_VERIFY_HOST, SSL_VERIFY_HOST_LEN)) {
+        options->request_options.ssl_verify_host = OBS_SSL_VERIFYHOST_OPEN;
+    }
+    // 是否开启服务端认证
+    else if (!strncmp(param, SSL_VERIFY_PEER, SSL_VERIFY_PEER_LEN)) {
+        options->request_options.ssl_verify_peer = OBS_SSL_VERIFYPEER_OPEN;
+    }
+    
+    return 0; // 未匹配到公共参数
+}
+
 static uint64_t convertInt(const char *str, const char *paramName)
 {
     uint64_t ret = 0;
@@ -388,7 +477,7 @@ static uint64_t convertInt(const char *str, const char *paramName)
         ret *= 10;
         ret += (*str++ - '0');
     }
-    printf("ret:%llu\n",ret);
+    printf("ret:%lu\n",ret);
     return ret;
 }
 
@@ -458,9 +547,10 @@ static void progress_callback(uint64_t now, uint64_t total, void* callback_data)
 {
     if (total)
     {
-        printf("progress is %llu%% \n", (now * 100) / total);
+        printf("progress is %lu%% \n", (now * 100) / total);
     }
 }
+
 // head object ---------------------------------------------------------------
 static void test_head_object_new(int argc, char **argv, int optindex)
 {
@@ -491,6 +581,9 @@ static void test_head_object_new(int argc, char **argv, int optindex)
     while (optindex < argc)
     {
         char *param = argv[optindex ++];
+
+      
+
         if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) 
         {
             option.bucket_options.certificate_info = ca_info;       
@@ -542,6 +635,11 @@ static void test_head_bucket_new(int argc, char **argv, int optindex)
     while (optindex < argc)
     {
         char *param = argv[optindex ++];
+
+        if (parse_common_params(param, &option)) {
+            continue; 
+        }
+
         if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) 
         {
            option.bucket_options.certificate_info = ca_info;       
@@ -1736,6 +1834,11 @@ static void test_delete_object_new(int argc, char **argv, int optindex)
     memset_s(&object_info,sizeof(object_info), 0, sizeof(obs_object_info));
     while (optindex < argc) {
         char *param = argv[optindex++];
+
+        if (parse_common_params(param, &option)) {
+            continue; 
+        }
+
         if (!strncmp(param, KEY_PREFIX, KEY_PREFIX_LEN)) {
             object_info.key = &(param[KEY_PREFIX_LEN]);
         }
@@ -3663,7 +3766,7 @@ static void test_set_bucket_quota_new(int argc, char **argv, int optindex)
     init_obs_options(&option);
     char *bucket_name = argv[optindex++];
     uint64_t bucketquota = atol(argv[optindex++]);
-    printf("Bucket's name is == %s, bucketquota= %llu. \n", bucket_name, bucketquota);
+    printf("Bucket's name is == %s, bucketquota= %lu. \n", bucket_name, bucketquota);
 
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = bucket_name;
@@ -3750,8 +3853,7 @@ static void test_get_bucket_quota_new(int argc, char **argv, int optindex)
     get_bucket_quota(&option, &bucketquota, &response_handler, &ret_status);
 
     if (OBS_STATUS_OK == ret_status) {
-        printf("Bucket=%s  Quota=%llu \n get bucket quota successfully. \n ",
-            bucket_name, bucketquota);
+        printf("Bucket=%s  Quota=%lu \n get bucket quota successfully. \n ", bucket_name, bucketquota);
     }
     else
     {
@@ -5067,7 +5169,7 @@ static void test_concurrent_copy_part(int argc, char **argv, int optindex)
 static double g_progress = 0;
 void test_progress_callback(double progress, uint64_t uploadedSize, uint64_t fileTotalSize, void *callback_data){
     if (progress == 100 || (g_progress < progress && progress - g_progress > 2)) {
-        printf("test_progress_callback progress=%f  uploadedSize=%llu fileTotalSize=%llu  callback_data=%p\n", progress, uploadedSize, fileTotalSize, callback_data);
+        printf("test_progress_callback progress=%f  uploadedSize=%lu fileTotalSize=%lu  callback_data=%p\n", progress, uploadedSize, fileTotalSize, callback_data);
         g_progress = progress;
     }
 }
@@ -5212,6 +5314,11 @@ static void test_upload_file(int argc, char **argv, int optindex)
 
     while (optindex < argc) {
         char *param = argv[optindex ++];
+
+        if (parse_common_params(param, &option)) {
+        continue; 
+        }
+
         if (!strncmp(param, FILENAME_PREFIX, FILENAME_PREFIX_LEN)) {
             filename = &(param[FILENAME_PREFIX_LEN]);
         }
@@ -5335,6 +5442,11 @@ static void test_download_file(int argc, char **argv, int optindex)
 
     while (optindex < argc) {
         char *param = argv[optindex ++];
+
+        if (parse_common_params(param, &option)) {
+            continue; 
+        }
+
         if (!strncmp(param, FILENAME_PREFIX, FILENAME_PREFIX_LEN)) {
             filename = &(param[FILENAME_PREFIX_LEN]);
         }
@@ -6384,11 +6496,10 @@ void test_truncate_object_new(int argc, char **argv, int optindex)
     };
     truncate_object(&option, key, object_length, &responseHandler, &ret_status); 
     if (OBS_STATUS_OK == ret_status) {
-        printf("truncate_object %s for length %llu successfully.\n", key, object_length);
+        printf("truncate_object %s for length %lu successfully.\n", key, object_length);
     }
     else {
-        printf("truncate_object %s for length %llu failed(%s).\n", key, object_length,
-            obs_get_status_name(ret_status));
+        printf("truncate_object %s for length %lu failed(%s).\n", key, object_length, obs_get_status_name(ret_status));
     }
     return;
 }
@@ -6432,7 +6543,7 @@ void test_set_bucket_policy_from_file(int argc, char** argv, int optind)
 			// buffer is full!
 			fseek(fp, 0L, SEEK_END);  // 将文件指针移到文件结尾
 			long size = ftell(fp);  // 获取文件大小
-			fprintf(stderr, "\nERROR: length of bucket_policy in file is %l exceed buffer limit %d"
+			fprintf(stderr, "\nERROR: length of bucket_policy in file is %ld exceed buffer limit %d"
 				", can't upload! please make it shorter and try again",
 				size, MAX_NON_COMPRESSED_BUCKET_POLICY_LENGTH - 1);
 
@@ -6447,7 +6558,7 @@ void test_set_bucket_policy_from_file(int argc, char** argv, int optind)
 		// 处理缓存中剩余的内容
 		// ...
 		printf("Bucket_policy you trying to set is:\n %s \n", bucket_policy_buffer);
-		printf("Length of bucket_policy you trying to set is: %d. \n", strlen(bucket_policy_buffer));
+		printf("Length of bucket_policy you trying to set is: %ld. \n", strlen(bucket_policy_buffer));
 		fprintf(stderr, "\n\nNOTICE: MAX length of bucket policy(in COMPRESSED json style) is %d!\n\n",
 			MAX_COMPRESSED_BUCKET_POLICY_LENGTH);
 	}

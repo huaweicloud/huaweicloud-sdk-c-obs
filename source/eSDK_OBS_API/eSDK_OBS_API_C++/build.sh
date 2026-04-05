@@ -42,8 +42,8 @@ fi
 #export iconv_version=iconv-1.15
 #export libxml2_version=libxml2-2.9.9
 #else
-export openssl_version=openssl-1.1.1w
-export curl_version=curl-8.11.1
+export openssl_version=tongsuo-8.4.0
+export curl_version=curl-v2025.3.9-SM
 export pcre_version=pcre-8.45
 export iconv_version=iconv-1.15
 export libxml2_version=libxml2-2.9.9
@@ -127,7 +127,7 @@ cd cmake-build
 mkdir cmake
 cd cmake
 cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DSPDLOG_VERSION=${SPDLOG_VERSION}
-make 
+make -j
 
 if [ 0 -ne $? ];then
     echo 'make failed in build.sh'
@@ -164,6 +164,7 @@ fi
 cp -f inc/eSDKOBS.h include
 cp -f cmake-build/cmake/lib/*.so lib
 cp -f ./../../../platform/libboundscheck/include/* include
+cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/C/include/*.h include
 cp -f ./../../../platform/libboundscheck/lib/linux/*.so lib
 cp -af ./../../../platform/eSDK_LogAPI_V2.1.10/C/linux_64/libeSDKLogAPI.so lib
 cp -af ./../../../build/script/Provider/build/linux/${curl_version}/lib/* lib

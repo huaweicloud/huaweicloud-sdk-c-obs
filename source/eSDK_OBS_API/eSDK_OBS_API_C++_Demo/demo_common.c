@@ -59,6 +59,14 @@ char OBJECT_VER[2][256]={0};
 char UPLOAD_ID[2048]={0};
 obs_uri_style gDefaultURIStyle = OBS_URI_STYLE_VIRTUALHOST;
 
+char customCertificateName[64] = {0};
+char customCertificateId[17] = {0};
+char customCertificateBucketName[256] = {0};
+char customCertificateDomainName[256] = {0};
+char customCertificate[2413] = {0};
+char customCertificatePrivateKey[4097] = {0};
+char customCertificateChain[8193] = {0};
+
 int get_certificate_info(char *buffer, int buffer_length)
 {
     int content_length = 0;
@@ -122,7 +130,7 @@ void create_and_write_file(char *filename, unsigned int file_size)
     truncate(filename, 0);
     FILE *write_file_test =  write_to_file(filename);
     if (write_file_test == NULL) {
-        fprintf(stderr, "\nwrite_to_file failed,filename:%s\n");
+        fprintf(stderr, "\nwrite_to_file failed, filename:%s\n", filename);
         return;
     }
     for (i = 0; i < file_size; i++)
@@ -135,15 +143,13 @@ void create_and_write_file(char *filename, unsigned int file_size)
 
 obs_status response_properties_callback(const obs_response_properties *properties, void *callback_data)
 {
-
     if (properties == NULL)
     {
         printf("error! obs_response_properties is null!");
         if(callback_data != NULL)
         {
             obs_sever_callback_data *data = (obs_sever_callback_data *)callback_data;
-            printf("server_callback buf is %s ,len is %d",
-                data->buffer, data->buffer_len);
+            printf("server_callback buf is %s ,len is %ld", data->buffer, data->buffer_len);
             return OBS_STATUS_OK;
         }else {
             printf("error! obs_sever_callback_data is null!");
@@ -166,7 +172,7 @@ obs_status response_properties_callback(const obs_response_properties *propertie
 	print_nonnull("request_id2", request_id2);
 	print_nonnull("content_type", content_type);
 	if (properties->content_length) {                                  
-            printf("content_length: %llu\n", properties->content_length);          
+        printf("content_length: %lu\n", properties->content_length);          
     }
 	print_nonnull("server", server);
 	print_nonnull("ETag", etag);
@@ -422,8 +428,78 @@ void printTagInfo(TaggingInfo* infoToPrint)
     }
 }
 
+void printDomainInfo(const CustomDomains* infoToPrint)
+{
+    int i;
+    if (infoToPrint == NULL) {
+        printf("infoToPrint is NULL\n");
+        return;
+    }
+    printf("etag number is %d\n", infoToPrint->domain_count);
+    for (i = 0; i < infoToPrint->domain_count; i++)
+    {
+        printf("domain[%d]: name:%s, create time:%s, certificate id:%s\n",
+            i,
+            infoToPrint->domains[i].domain_name,
+            infoToPrint->domains[i].create_time,
+            infoToPrint->domains[i].certificate_id);
+    }
+}
+
+obs_status get_bucket_custom_domain_callback(int domain_count,
+    obs_domain_response* domain_response_list, void* callback_data)
+{
+    if (callback_data == NULL) {
+        printf("callback_data is NULL.\n");
+        return OBS_STATUS_AbortedByCallback;
+    }
+    CustomDomains* domain_info = (CustomDomains*)callback_data;
+    domain_info->domain_count = domain_count;
+
+    if (domain_count > 0)
+    {
+        int domain_num = 0;
+        for (; domain_num < domain_count; domain_num++)
+        {
+            char *domain_name = domain_info->domains[domain_num].domain_name;
+            char *certificate_id = domain_info->domains[domain_num].certificate_id;
+            char *create_time = domain_info->domains[domain_num].create_time;
+
+            const char *rsp_list_domain_name = (&domain_response_list[domain_num])->domain_name;
+            const char *rsp_list_certificate_id = (&domain_response_list[domain_num])->certificate_id;
+            const char *rsp_list_create_time = (&domain_response_list[domain_num])->create_time;
+
+            memcpy_s(domain_name, sizeof(domain_name),
+                rsp_list_domain_name, strlen(rsp_list_domain_name + 1));
+            memcpy_s(certificate_id, sizeof(certificate_id),
+                rsp_list_certificate_id, strlen(rsp_list_certificate_id + 1));
+            memcpy_s(create_time, sizeof(create_time),
+                rsp_list_create_time, strlen(rsp_list_create_time + 1));
+        }
+    }
+    printDomainInfo(domain_info);
+    return OBS_STATUS_OK;
+}
+
+void get_bucket_custom_domain_complete_callback(obs_status status,
+    const obs_error_details* error,
+    void* callback_data)
+{
+    if (callback_data == NULL) {
+        printf("callback_data is NULL.\n");
+        return;
+    }
+    CustomDomains* domain_info = (CustomDomains*)callback_data;
+    domain_info->ret_status = status;
+}
+
+
 obs_status get_bucket_tagging_callback(int tagging_count, obs_name_value *tagging_list, void *callback_data)
 {
+    if (callback_data == NULL) {
+        printf("callback_data is NULL.\n");
+        return OBS_STATUS_AbortedByCallback;
+    }
     int tag_num = 0;
 
     TaggingInfo * tag_info = (TaggingInfo *)callback_data;
@@ -446,6 +522,10 @@ void get_tagging_complete_callback(obs_status status,
                                      const obs_error_details *error, 
                                      void *callback_data)
 {
+    if (callback_data == NULL) {
+        printf("callback_data is NULL.\n");
+        return;
+    }
     TaggingInfo *tagging_info = (TaggingInfo*)callback_data;
     tagging_info->ret_status = status;
 }
@@ -1444,8 +1524,7 @@ obs_status concurrent_response_properties_callback(
     if (properties == NULL && callback_data != NULL)
     {
         obs_sever_callback_data *data = (obs_sever_callback_data *)callback_data;
-        printf("server_callback buf is %s ,len is %d",
-            data->buffer, data->buffer_len);
+        printf("server_callback buf is %s ,len is %ld", data->buffer, data->buffer_len);
         return OBS_STATUS_OK;
     }
     test_concurrent_upload_file_callback_data *concurrent_callback_data =

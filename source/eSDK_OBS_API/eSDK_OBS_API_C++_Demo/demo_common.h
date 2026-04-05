@@ -35,6 +35,18 @@ extern char UPLOAD_ETAG[][256];
 extern char OBJECT_VER[][256];
 extern obs_uri_style gDefaultURIStyle;
 
+extern char customCertificateName[64];
+extern char customCertificateId[17];
+extern char customCertificateBucketName[256];
+extern char customCertificateDomainName[256];
+extern char customCertificate[2413];
+extern char customCertificatePrivateKey[4097];
+extern char customCertificateChain[8193];
+ 
+extern char customCertificateChainTemp[8193];
+extern char customCertificatePrivateKeyTemp[4097];
+extern char customCertificateTemp[4097];
+
 // struct------------------------------------------
 typedef struct head_object_data
 {
@@ -55,6 +67,20 @@ typedef struct TaggingInfo
     tagkv taglist[10];
     obs_status ret_status;
 }TaggingInfo;
+
+typedef struct list_bucket_custom_domains_demo
+{
+    char domain_name[256];
+    char create_time[128];
+    char certificate_id[64];
+} list_bucket_custom_domains_demo;
+
+typedef struct CustomDomains
+{
+    int domain_count;
+    list_bucket_custom_domains_demo domains[64];
+    obs_status ret_status;
+}CustomDomains;
 
 typedef struct list_object_callback_data
 {
@@ -212,6 +238,11 @@ obs_status get_bucket_storageclass_handler(const char * storage_class, void * ca
 obs_status get_bucket_tagging_callback(int tagging_count, obs_name_value *tagging_list, void *callback_data);
 void get_tagging_complete_callback(obs_status status, const obs_error_details *error, 
                                      void *callback_data);
+obs_status get_bucket_custom_domain_callback(int domain_count,
+    obs_domain_response* domain_response_list, void* callback_data);
+void get_bucket_custom_domain_complete_callback(obs_status status,
+    const obs_error_details* error,
+    void* callback_data);
 obs_status get_bucket_websiteconf_callback(const char *hostname,
                                 const char *protocol,
                                 const char *suffix,

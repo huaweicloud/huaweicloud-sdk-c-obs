@@ -18,12 +18,12 @@
 
 static obs_status malloc_smn_data_s3(const char *element_path, get_smn_data *smn_data)
 {
-    int nTopicConfIdx = smn_data->notification_conf.topic_conf_num;
+    unsigned int nTopicConfIdx = smn_data->notification_conf.topic_conf_num;
 
     if (!strcmp(element_path, "NotificationConfiguration/TopicConfiguration/Filter/S3Key/FilterRule"))
     {
         smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule_num++;
-        int alloc_size = (sizeof(obs_smn_filter_rule)) *
+        unsigned int alloc_size = (sizeof(obs_smn_filter_rule)) *
             (smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule_num + 1);
         obs_smn_filter_rule* tmpFilter = (obs_smn_filter_rule*)malloc(alloc_size);
         if (NULL == tmpFilter)
@@ -49,7 +49,7 @@ static obs_status malloc_smn_data_s3(const char *element_path, get_smn_data *smn
     else if (!strcmp(element_path, "NotificationConfiguration/TopicConfiguration"))
     {
         smn_data->notification_conf.topic_conf_num++;
-        int alloc_topic_size = sizeof(obs_smn_topic_configuration) *
+        unsigned int alloc_topic_size = sizeof(obs_smn_topic_configuration) *
             (smn_data->notification_conf.topic_conf_num + 1);
         obs_smn_topic_configuration* tmpTopicConf =
             (obs_smn_topic_configuration*)malloc(alloc_topic_size);
@@ -60,7 +60,7 @@ static obs_status malloc_smn_data_s3(const char *element_path, get_smn_data *smn
         }
         memset_s(tmpTopicConf, alloc_topic_size, 0, alloc_topic_size);
 
-        int nTmpIdx = smn_data->notification_conf.topic_conf_num;
+        unsigned int nTmpIdx = smn_data->notification_conf.topic_conf_num;
         (tmpTopicConf + nTmpIdx)->filter_rule = (obs_smn_filter_rule*)malloc(sizeof(obs_smn_filter_rule));
         if (!(tmpTopicConf + nTmpIdx)->filter_rule)
         {
@@ -96,7 +96,7 @@ static obs_status malloc_smn_data_s3(const char *element_path, get_smn_data *smn
     else if (!strcmp(element_path, "NotificationConfiguration/TopicConfiguration/Event"))
     {
         smn_data->notification_conf.topic_conf[nTopicConfIdx].event_num++;
-        int alloc_event_size = sizeof(obs_smn_event_enum) *
+        unsigned int alloc_event_size = sizeof(obs_smn_event_enum) *
             (smn_data->notification_conf.topic_conf[nTopicConfIdx].event_num + 1);
         obs_smn_event_enum* tmpEvent = (obs_smn_event_enum*)malloc(alloc_event_size);
         if (NULL == tmpEvent)
@@ -125,13 +125,13 @@ static obs_status malloc_smn_data_s3(const char *element_path, get_smn_data *smn
 
 static obs_status malloc_smn_data_obs(const char *element_path, get_smn_data *smn_data)
 {
-    int nTopicConfIdx = smn_data->notification_conf.topic_conf_num;
+    unsigned int nTopicConfIdx = smn_data->notification_conf.topic_conf_num;
     errno_t err = EOK;
 
     if (!strcmp(element_path, "NotificationConfiguration/TopicConfiguration/Filter/Object/FilterRule"))
     {
         smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule_num++;
-        int alloc_size = (sizeof(obs_smn_filter_rule)) *
+        unsigned int alloc_size = (sizeof(obs_smn_filter_rule)) *
             (smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule_num + 1);
         obs_smn_filter_rule* tmpFilter = (obs_smn_filter_rule*)malloc(alloc_size);
         if (NULL == tmpFilter)
@@ -157,7 +157,7 @@ static obs_status malloc_smn_data_obs(const char *element_path, get_smn_data *sm
     else if (!strcmp(element_path, "NotificationConfiguration/TopicConfiguration"))
     {
         smn_data->notification_conf.topic_conf_num++;
-        int alloc_topic_size = sizeof(obs_smn_topic_configuration) *
+        unsigned int alloc_topic_size = sizeof(obs_smn_topic_configuration) *
             (smn_data->notification_conf.topic_conf_num + 1);
         obs_smn_topic_configuration* tmpTopicConf =
             (obs_smn_topic_configuration*)malloc(alloc_topic_size);
@@ -168,7 +168,7 @@ static obs_status malloc_smn_data_obs(const char *element_path, get_smn_data *sm
         }
         memset_s(tmpTopicConf, alloc_topic_size, 0, alloc_topic_size);
 
-        int nTmpIdx = smn_data->notification_conf.topic_conf_num;
+        unsigned int nTmpIdx = smn_data->notification_conf.topic_conf_num;
         (tmpTopicConf + nTmpIdx)->filter_rule = (obs_smn_filter_rule*)malloc(sizeof(obs_smn_filter_rule));
         if (!(tmpTopicConf + nTmpIdx)->filter_rule)
         {
@@ -204,7 +204,7 @@ static obs_status malloc_smn_data_obs(const char *element_path, get_smn_data *sm
     else if (!strcmp(element_path, "NotificationConfiguration/TopicConfiguration/Event"))
     {
         smn_data->notification_conf.topic_conf[nTopicConfIdx].event_num++;
-        int alloc_event_size = sizeof(obs_smn_event_enum) *
+        unsigned int alloc_event_size = sizeof(obs_smn_event_enum) *
             (smn_data->notification_conf.topic_conf[nTopicConfIdx].event_num + 1);
         obs_smn_event_enum* tmpEvent = (obs_smn_event_enum*)malloc(alloc_event_size);
         if (NULL == tmpEvent)
@@ -235,9 +235,9 @@ static obs_status get_notification_xml_s3_callback(const char *element_path,
     const char *data, int data_len, void *callback_data)
 {
     get_smn_data *smn_data = (get_smn_data *)callback_data;
-    int nTopicConfIdx = smn_data->notification_conf.topic_conf_num;
-    int nFilterRuleIdx = smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule_num;
-    int nEventIdx = smn_data->notification_conf.topic_conf[nTopicConfIdx].event_num;
+    unsigned int nTopicConfIdx = smn_data->notification_conf.topic_conf_num;
+    unsigned int nFilterRuleIdx = smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule_num;
+    unsigned int nEventIdx = smn_data->notification_conf.topic_conf[nTopicConfIdx].event_num;
     obs_status ret_status = OBS_STATUS_OK;
 
     if (data)
@@ -288,9 +288,9 @@ static obs_status get_notification_xml_obs_callback(const char *element_path,
     const char *data, int data_len, void *callback_data)
 {
     get_smn_data *smn_data = (get_smn_data *)callback_data;
-    int nTopicConfIdx = smn_data->notification_conf.topic_conf_num;
-    int nFilterRuleIdx = smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule_num;
-    int nEventIdx = smn_data->notification_conf.topic_conf[nTopicConfIdx].event_num;
+    unsigned int nTopicConfIdx = smn_data->notification_conf.topic_conf_num;
+    unsigned int nFilterRuleIdx = smn_data->notification_conf.topic_conf[nTopicConfIdx].filter_rule_num;
+    unsigned int nEventIdx = smn_data->notification_conf.topic_conf[nTopicConfIdx].event_num;
     obs_status ret_status = OBS_STATUS_OK;
 
     if (data)

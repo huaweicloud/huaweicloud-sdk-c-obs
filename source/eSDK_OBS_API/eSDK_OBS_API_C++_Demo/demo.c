@@ -1900,7 +1900,7 @@ static void progress_callback(uint64_t now, uint64_t total, void* callback_data)
 {
     if (total)
     {
-        printf("progress is %d%% \n", (now * 100) / total);
+        printf("progress is %ld%% \n", (now * 100) / total);
     }
 }
 

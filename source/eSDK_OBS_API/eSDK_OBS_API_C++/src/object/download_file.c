@@ -35,54 +35,56 @@
 #define LENGTH_1024 1024
 #define LENGTH_32 32
 
-obs_storage_class getStorageClassEnum(const char * storage_class_value)
+static char * g_storageClass[OBS_STORAGE_CLASS_BUTT] = 
 {
-	if (!strcmp(storage_class_value, "STANDARD"))
-	{
-		return OBS_STORAGE_CLASS_STANDARD;
-	}
-	else if (!strcmp(storage_class_value, "WARM") || !strcmp(storage_class_value, "STANDARD_IA"))
-	{
-		return OBS_STORAGE_CLASS_STANDARD_IA;
-	}
-	else if (!strcmp(storage_class_value, "COLD") || !strcmp(storage_class_value, "GLACIER"))
-	{
-		return OBS_STORAGE_CLASS_GLACIER;
-	}
-	else if (!strcmp(storage_class_value, "DEEP_ARCHIVE"))
-	{
-		return OBS_STORAGE_CLASS_DEEP_ARCHIVE;
-	}
-	else if (!strcmp(storage_class_value, "HIGH_PERFORMANCE"))
-	{
-		return OBS_STORAGE_CLASS_HIGH_PERFORMANCE;
-	}
-    else
-    {
+    "STANDARD",
+    "STANDARD_IA",
+    "GLACIER"
+};
+
+static char * g_downloadStatus[DOWN_STATUS_BUTT] = 
+{
+    "DOWNLOAD_NOTSTART",
+    "DOWNLOADING",
+    "DOWNLOAD_FAILED",
+    "DOWNLOAD_SUCCESS",
+    "COMBINE_SUCCESS"
+};
+
+obs_storage_class getStorageClassEnum(const char *storage_class_value)
+{
+    if (!strcmp(storage_class_value, "STANDARD")) {
+        return OBS_STORAGE_CLASS_STANDARD;
+    } else if (!strcmp(storage_class_value, "WARM") || !strcmp(storage_class_value, "STANDARD_IA")) {
+        return OBS_STORAGE_CLASS_STANDARD_IA;
+    } else if (!strcmp(storage_class_value, "COLD") || !strcmp(storage_class_value, "GLACIER")) {
+        return OBS_STORAGE_CLASS_GLACIER;
+    } else if (!strcmp(storage_class_value, "DEEP_ARCHIVE")) {
+        return OBS_STORAGE_CLASS_DEEP_ARCHIVE;
+    } else if (!strcmp(storage_class_value, "HIGH_PERFORMANCE")) {
+        return OBS_STORAGE_CLASS_HIGH_PERFORMANCE;
+    } else {
         return OBS_STORAGE_CLASS_BUTT;
     }
 }
 
-static obs_status GetObjectMetadataPropertiesCallback_Intern
-(const obs_response_properties *properties, void *callback_data)
+static obs_status GetObjectMetadataPropertiesCallback_Intern(const obs_response_properties *properties,
+                                                             void *callback_data)
 {
-    get_object_metadata_callback_data * cb = (get_object_metadata_callback_data *)callback_data;
-    download_file_summary * pstFileInfo = cb->pstFileInfo;
+    get_object_metadata_callback_data *cb = (get_object_metadata_callback_data *)callback_data;
+    download_file_summary *pstFileInfo = cb->pstFileInfo;
 
     pstFileInfo->objectLength = properties->content_length;
     pstFileInfo->lastModify = properties->last_modified;
-    if (properties->etag)
-    {
+    if (properties->etag) {
         errno_t err = EOK;
         err = memcpy_s(pstFileInfo->etag, MAX_SIZE_ETAG, properties->etag, strlen(properties->etag));
-        if (err != EOK)
-        {
+        if (err != EOK) {
             COMMLOG(OBS_LOGWARN, "GetObjectMetadataPropertiesCallback_Intern: memcpy_s failed!\n");
         }
     }
 
-    if (properties->storage_class)
-    {
+    if (properties->storage_class) {
         pstFileInfo->storage_class = getStorageClassEnum(properties->storage_class);
     }
 
@@ -125,7 +127,6 @@ obs_status getObjectInfo(download_file_summary * downloadFileInfo,
 
 obs_status restoreGlacierObject(const obs_options *options, char * key, char * version_id)
 {
-
     obs_tier tier = OBS_TIER_EXPEDITED;
     char *days = "1";
     lisPartResult retResult;
@@ -143,79 +144,52 @@ obs_status restoreGlacierObject(const obs_options *options, char * key, char * v
     return retResult.retStatus;
 }
 
-download_status GetDownloadStatusEnum(const char * strStatus)
+download_status GetDownloadStatusEnum(const char *strStatus)
 {
-    if (!strcmp(strStatus, "DOWNLOAD_NOTSTART"))
-    {
+    if (!strcmp(strStatus, "DOWNLOAD_NOTSTART")) {
         return DOWNLOAD_NOTSTART;
-    }
-    else if (!strcmp(strStatus, "DOWNLOADING"))
-    {
+    } else if (!strcmp(strStatus, "DOWNLOADING")) {
         return DOWNLOADING;
-    }
-    else if (!strcmp(strStatus, "DOWNLOAD_FAILED"))
-    {
+    } else if (!strcmp(strStatus, "DOWNLOAD_FAILED")) {
         return DOWNLOAD_FAILED;
-    }
-    else if (!strcmp(strStatus, "DOWNLOAD_SUCCESS"))
-    {
+    } else if (!strcmp(strStatus, "DOWNLOAD_SUCCESS")) {
         return DOWNLOAD_SUCCESS;
-    }
-    else if (!strcmp(strStatus, "COMBINE_SUCCESS"))
-    {
+    } else if (!strcmp(strStatus, "COMBINE_SUCCESS")) {
         return COMBINE_SUCCESS;
-    }
-    else
-    {
+    } else {
         return DOWNLOAD_NOTSTART;
     }
 }
 
-errno_t parse_download_xmlnode_objectinfo_xmlCmp(xmlNodePtr objectinfoNode,
-    download_file_summary *pstDownLoadSummary, xmlChar *nodeContent,
-    errno_t err)
+errno_t parse_download_xmlnode_objectinfo_xmlCmp(xmlNodePtr objectinfoNode, download_file_summary *pstDownLoadSummary,
+                                                 xmlChar *nodeContent, errno_t err)
 {
-    if (!xmlStrcmp(objectinfoNode->name, (xmlChar *)"ContentLength"))
-    {
-        pstDownLoadSummary->objectLength = parseUnsignedInt((char*)nodeContent);
-    }
-    else if (!xmlStrcmp((xmlChar *)objectinfoNode->name, (xmlChar*)"lastmodify"))
-    {
-        pstDownLoadSummary->lastModify = parseUnsignedInt((char*)nodeContent);
-    }
-    else if (!xmlStrcmp(objectinfoNode->name, (xmlChar *)"etag"))
-    {
-        err = memcpy_s(pstDownLoadSummary->etag, MAX_SIZE_ETAG, (char*)nodeContent, strlen((char*)nodeContent) + 1);
-    }
-    else if (!xmlStrcmp(objectinfoNode->name, (xmlChar*)"storageclass"))
-    {
-        pstDownLoadSummary->storage_class = getStorageClassEnum((char*)nodeContent);
-    }
-    else if (!xmlStrcmp(objectinfoNode->name, (xmlChar*)"bucketname"))
-    {
-        err = memcpy_s(pstDownLoadSummary->bucket_name, MAX_BKTNAME_SIZE, nodeContent, strlen((char*)nodeContent) + 1);
-    }
-    else if (!xmlStrcmp(objectinfoNode->name, (xmlChar*)"key"))
-    {
-        err = memcpy_s(pstDownLoadSummary->key, MAX_KEY_SIZE, nodeContent, strlen((char*)nodeContent) + 1);
+    if (!xmlStrcmp(objectinfoNode->name, (xmlChar *)"ContentLength")) {
+        pstDownLoadSummary->objectLength = parseUnsignedInt((char *)nodeContent);
+    } else if (!xmlStrcmp((xmlChar *)objectinfoNode->name, (xmlChar *)"lastmodify")) {
+        pstDownLoadSummary->lastModify = parseUnsignedInt((char *)nodeContent);
+    } else if (!xmlStrcmp(objectinfoNode->name, (xmlChar *)"etag")) {
+        err = memcpy_s(pstDownLoadSummary->etag, MAX_SIZE_ETAG, (char *)nodeContent, strlen((char *)nodeContent) + 1);
+    } else if (!xmlStrcmp(objectinfoNode->name, (xmlChar *)"storageclass")) {
+        pstDownLoadSummary->storage_class = getStorageClassEnum((char *)nodeContent);
+    } else if (!xmlStrcmp(objectinfoNode->name, (xmlChar *)"bucketname")) {
+        err = memcpy_s(pstDownLoadSummary->bucket_name, MAX_BKTNAME_SIZE, nodeContent, strlen((char *)nodeContent) + 1);
+    } else if (!xmlStrcmp(objectinfoNode->name, (xmlChar *)"key")) {
+        err = memcpy_s(pstDownLoadSummary->key, MAX_KEY_SIZE, nodeContent, strlen((char *)nodeContent) + 1);
     }
     return err;
 }
 
 
-void parse_download_xmlnode_objectinfo(xmlNodePtr curNode,
-    download_file_summary * pstDownLoadSummary)
+void parse_download_xmlnode_objectinfo(xmlNodePtr curNode, download_file_summary *pstDownLoadSummary)
 {
     xmlNodePtr objectinfoNode = curNode->xmlChildrenNode;
-    while (objectinfoNode != NULL)
-    {
+    while (objectinfoNode != NULL) {
         xmlChar *nodeContent = xmlNodeGetContent(objectinfoNode);
         errno_t err = EOK;
 
-        err = parse_download_xmlnode_objectinfo_xmlCmp(objectinfoNode,
-            pstDownLoadSummary, nodeContent, err);
-        if (err != EOK)
-        {
+        err = parse_download_xmlnode_objectinfo_xmlCmp(objectinfoNode, pstDownLoadSummary, nodeContent, err);
+        if (err != EOK) {
             COMMLOG(OBS_LOGWARN, "parse_download_xmlnode_objectinfo: memcpy_s failed!\n");
         }
 
@@ -226,35 +200,25 @@ void parse_download_xmlnode_objectinfo(xmlNodePtr curNode,
     return;
 }
 
-int parse_download_xmlnode_partsinfo_xmlCmp(xmlNodePtr partinfoNode,
-    download_file_part_info *downloadPartNode, xmlChar *nodeContent)
+int parse_download_xmlnode_partsinfo_xmlCmp(xmlNodePtr partinfoNode, download_file_part_info *downloadPartNode,
+                                            xmlChar *nodeContent)
 {
-    if (!xmlStrcmp(partinfoNode->name, (xmlChar*)"partNum"))
-    {
-        downloadPartNode->part_num = (int)parseUnsignedInt((char*)nodeContent) - 1;
-    }
-    else if (!xmlStrcmp(partinfoNode->name, (xmlChar*)"partNum"))
-    {
+    if (!xmlStrcmp(partinfoNode->name, (xmlChar *)"partNum")) {
+        downloadPartNode->part_num = (int)parseUnsignedInt((char *)nodeContent) - 1;
+    } else if (!xmlStrcmp(partinfoNode->name, (xmlChar *)"partNum")) {
         memset_s(downloadPartNode->etag, MAX_SIZE_ETAG, 0, MAX_SIZE_ETAG);
         errno_t err = EOK;
-        err = memcpy_s(downloadPartNode->etag, MAX_SIZE_ETAG, nodeContent, strlen((char*)nodeContent) + 1);
-        if (err != EOK)
-        {
+        err = memcpy_s(downloadPartNode->etag, MAX_SIZE_ETAG, nodeContent, strlen((char *)nodeContent) + 1);
+        if (err != EOK) {
             COMMLOG(OBS_LOGWARN, "parse_download_xmlnode_partsinfo: memcpy_s failed!\n");
             return -1;
         }
-    }
-    else if (!xmlStrcmp(partinfoNode->name, (xmlChar*)"startByte"))
-    {
-        downloadPartNode->start_byte = parseUnsignedInt((char*)nodeContent);
-    }
-    else if (!xmlStrcmp(partinfoNode->name, (xmlChar*)"partSize"))
-    {
-        downloadPartNode->part_size = parseUnsignedInt((char*)nodeContent);
-    }
-    else if (!xmlStrcmp(partinfoNode->name, (xmlChar*)"downloadStatus"))
-    {
-        downloadPartNode->downloadStatus = GetDownloadStatusEnum((char*)nodeContent);
+    } else if (!xmlStrcmp(partinfoNode->name, (xmlChar *)"startByte")) {
+        downloadPartNode->start_byte = parseUnsignedInt((char *)nodeContent);
+    } else if (!xmlStrcmp(partinfoNode->name, (xmlChar *)"partSize")) {
+        downloadPartNode->part_size = parseUnsignedInt((char *)nodeContent);
+    } else if (!xmlStrcmp(partinfoNode->name, (xmlChar *)"downloadStatus")) {
+        downloadPartNode->downloadStatus = GetDownloadStatusEnum((char *)nodeContent);
     }
     return 0;
 }
@@ -318,40 +282,32 @@ int parse_download_xmlnode_partsinfo(xmlNodePtr curNode,
     return 0;
 }
 
-void parse_download_xmlnode_partsinfo_and_get_part_count(xmlNodePtr curNode,
-	int *partCount)
+void parse_download_xmlnode_partsinfo_and_get_part_count(xmlNodePtr curNode, int *partCount)
 {
-	int partCountTmp = 0;
-	xmlNodePtr partNode = curNode->xmlChildrenNode;
-	while (partNode)
-	{
-		if (strncmp((char*)partNode->name, "part", strlen("part")))
-		{
-			partNode = partNode->next;
-			continue;
-		}
-		partCountTmp++;
-		partNode = partNode->next;
-	}
+    int partCountTmp = 0;
+    xmlNodePtr partNode = curNode->xmlChildrenNode;
+    while (partNode) {
+        if (strncmp((char *)partNode->name, "part", strlen("part"))) {
+            partNode = partNode->next;
+            continue;
+        }
+        partCountTmp++;
+        partNode = partNode->next;
+    }
 
-	*partCount = partCountTmp;
+    *partCount = partCountTmp;
 }
 
 int readCheckpointFile_Download_xmlCmp(xmlNodePtr curNode, download_file_summary *pstDownLoadSummary,
-    download_file_part_info **downloadPartList, int *partCount, int ret_stat)
+                                       download_file_part_info **downloadPartList, int *partCount, int ret_stat)
 {
-    while (curNode != NULL)
-    {
-        if (!xmlStrcmp(curNode->name, (xmlChar*)"objectinfo"))
-        {
+    while (curNode != NULL) {
+        if (!xmlStrcmp(curNode->name, (xmlChar *)"objectinfo")) {
             parse_download_xmlnode_objectinfo(curNode, pstDownLoadSummary);
         }
-        if (!xmlStrcmp(curNode->name, (xmlChar*)"partsinfo"))
-        {
-            ret_stat = parse_download_xmlnode_partsinfo(curNode, downloadPartList,
-                partCount);
-            if (-1 == ret_stat)
-            {
+        if (!xmlStrcmp(curNode->name, (xmlChar *)"partsinfo")) {
+            ret_stat = parse_download_xmlnode_partsinfo(curNode, downloadPartList, partCount);
+            if (-1 == ret_stat) {
                 break;
             }
         }
@@ -360,41 +316,35 @@ int readCheckpointFile_Download_xmlCmp(xmlNodePtr curNode, download_file_summary
     return ret_stat;
 }
 
-int readCheckpointFile_Download_XML(char *file_name, xmlDocPtr* doc, xmlNodePtr* curNode)
+int readCheckpointFile_Download_XML(char *file_name, xmlDocPtr *doc, xmlNodePtr *curNode)
 {
-	//parameter 'doc' is the doc pointer to parse the file
+    // parameter 'doc' is the doc pointer to parse the file
 
-	if (check_file_is_valid(file_name) == -1)
-	{
-		return -1;
-	}
-	xmlNodePtr tempNode = get_xmlnode_from_file(file_name, doc);
-	if (NULL == tempNode)
-	{
-		return -1;
-	}
+    if (check_file_is_valid(file_name) == -1) {
+        return -1;
+    }
+    xmlNodePtr tempNode = get_xmlnode_from_file(file_name, doc);
+    if (NULL == tempNode) {
+        return -1;
+    }
 
-	if (xmlStrcmp((xmlChar *)tempNode->name, BAD_CAST "downloadinfo"))
-	{
-		COMMLOG(OBS_LOGERROR, "document of the wrong type, root node != downloadinfo");
-		return -1;
-	}
-	tempNode = tempNode->xmlChildrenNode;
-	*curNode = tempNode;
-	return 0;
+    if (xmlStrcmp((xmlChar *)tempNode->name, BAD_CAST "downloadinfo")) {
+        COMMLOG(OBS_LOGERROR, "document of the wrong type, root node != downloadinfo");
+        return -1;
+    }
+    tempNode = tempNode->xmlChildrenNode;
+    *curNode = tempNode;
+    return 0;
 }
-void readCheckpointFile_ToGetDownloadPartCount(xmlNodePtr curNode,
-	 int *partCount)
+
+void readCheckpointFile_ToGetDownloadPartCount(xmlNodePtr curNode, int *partCount)
 {
-	while (curNode != NULL)
-	{
-		if (!xmlStrcmp(curNode->name, (xmlChar*)"partsinfo"))
-		{
-			parse_download_xmlnode_partsinfo_and_get_part_count(curNode,
-				partCount);
-		}
-		curNode = curNode->next;
-	}
+    while (curNode != NULL) {
+        if (!xmlStrcmp(curNode->name, (xmlChar *)"partsinfo")) {
+            parse_download_xmlnode_partsinfo_and_get_part_count(curNode, partCount);
+        }
+        curNode = curNode->next;
+    }
 }
 
 void removeTempFiles(const char * fileName, download_file_part_info * downloadPartList, int removeAll)
@@ -435,18 +385,15 @@ void removeTempFiles(const char * fileName, download_file_part_info * downloadPa
 static int getPartCount(download_file_summary *pstDownLoadFileSummaryNew, uint64_t downloadPartsize) {
 	if (downloadPartsize == 0) {
 		return 1;
-	} else {
-		return (int)(pstDownLoadFileSummaryNew->objectLength / downloadPartsize);
-	}
+	} 
+	return (int)(pstDownLoadFileSummaryNew->objectLength / downloadPartsize);	
 }
 
 static uint64_t getLastPartSize(download_file_summary *pstDownLoadFileSummaryNew, uint64_t downloadPartsize) {
 	if (downloadPartsize == 0) {
 		return 0;
 	}
-	else {
-		return pstDownLoadFileSummaryNew->objectLength % downloadPartsize;
-	}
+	return pstDownLoadFileSummaryNew->objectLength % downloadPartsize;
 }
 
 int setDownloadpartList(download_file_summary *pstDownLoadFileSummaryNew, uint64_t downloadPartsize,
@@ -468,7 +415,7 @@ int setDownloadpartList(download_file_summary *pstDownLoadFileSummaryNew, uint64
 		pstdownloadPartListTemp = (*downloadPartList) + i;
         pstdownloadPartListTemp->next = NULL;
         pstdownloadPartListTemp->part_num = i;
-        pstdownloadPartListTemp->start_byte = downloadPartsize * i;
+        pstdownloadPartListTemp->start_byte = downloadPartsize * (uint64_t)i;
         pstdownloadPartListTemp->part_size = downloadPartsize;
         pstdownloadPartListTemp->downloadStatus = DOWNLOAD_NOTSTART;
         memset_s(pstdownloadPartListTemp->etag, MAX_SIZE_ETAG, 0, MAX_SIZE_ETAG);
@@ -496,7 +443,7 @@ int setDownloadpartList(download_file_summary *pstDownLoadFileSummaryNew, uint64
         COMMLOG(OBS_LOGERROR, "download 4");
 
         pstdownloadPartListTemp->part_num = i;
-        pstdownloadPartListTemp->start_byte = downloadPartsize * i;
+        pstdownloadPartListTemp->start_byte = downloadPartsize * (uint64_t)i;
         pstdownloadPartListTemp->part_size = lastPartSize;
         pstdownloadPartListTemp->downloadStatus = DOWNLOAD_NOTSTART;
         pstdownloadPartListTemp->next = NULL;
@@ -683,47 +630,36 @@ void DividDownloadPartListSetNode(download_file_part_info *pstSrcListNode, downl
     }
 }
 
-int DividDownloadPartList(download_file_part_info * listSrc, download_file_part_info ** listDone,
-    download_file_part_info ** listNotDone)
+int DividDownloadPartList(download_file_part_info *listSrc, download_file_part_info **listDone,
+                          download_file_part_info **listNotDone)
 {
-    //we assume that the listSrc is sorted in ascending order
+    // we assume that the listSrc is sorted in ascending order
     download_file_part_info *pstSrcListNode = listSrc;
     download_file_part_info *pstTmpDoneList = NULL;
     download_file_part_info *pstTmpNotDoneList = NULL;
 
-
-    DividDownloadPartListSetNode(pstSrcListNode, &pstTmpDoneList,
-        &pstTmpNotDoneList);
+    DividDownloadPartListSetNode(pstSrcListNode, &pstTmpDoneList, &pstTmpNotDoneList);
 
     *listDone = pstTmpDoneList;
     *listNotDone = pstTmpNotDoneList;
     return 0;
-
 }
 
-int addDownloadPartNodeToListMiddle(download_file_part_info **pstTempNode,
-    download_file_part_info *partNode)
+int addDownloadPartNodeToListMiddle(download_file_part_info **pstTempNode, download_file_part_info *partNode)
 {
     download_file_part_info *pMiddleTempNode = *pstTempNode;
-    while (pMiddleTempNode)
-    {
-        if (pMiddleTempNode->part_num > partNode->part_num)
-        {
+    while (pMiddleTempNode) {
+        if (pMiddleTempNode->part_num > partNode->part_num) {
             partNode->next = pMiddleTempNode;
             partNode->prev = pMiddleTempNode->prev;
             pMiddleTempNode->prev->next = partNode;
             pMiddleTempNode->prev = partNode;
             return -1;
-        }
-        else
-        {
-            if (pMiddleTempNode->next != NULL)
-            {
+        } else {
+            if (pMiddleTempNode->next != NULL) {
                 pMiddleTempNode = pMiddleTempNode->next;
                 *pstTempNode = pMiddleTempNode;
-            }
-            else
-            {
+            } else {
                 break;
             }
         }
@@ -853,7 +789,7 @@ static obs_status DownloadPartCompletePropertiesCallback
 #endif
         }
     }
-    if (cbd->respHandler->complete_callback)
+    if (cbd->respHandler->properties_callback)
     {
         (cbd->respHandler->properties_callback)(properties,
             cbd->callbackDataIn);
@@ -932,9 +868,9 @@ static obs_status getObjectPartDataCallback(int buffer_size, const char *buffer,
 
     int fd = cbd->fdStorefile;
 
-    size_t wrote = write(fd, buffer, buffer_size);
+    int wrote = write(fd, buffer, (unsigned int)buffer_size);
 
-    return ((wrote < (size_t)buffer_size) ?
+    return ((wrote < buffer_size) ?
         OBS_STATUS_AbortedByCallback : OBS_STATUS_OK);
 }
 
@@ -1000,7 +936,7 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
             char pathToUpdate[1024];
             char contentToSet[32];
 
-            ret = sprintf_s(pathToUpdate, ARRAY_LENGTH_1024, "%s%s/%s", "downloadinfo/partsinfo/part", strPartNum, "downloadStatus");
+            ret = sprintf_s(pathToUpdate, ARRAY_LENGTH_1024, "%s%s/%s", "downloadinfo/partsinfo/part", strPartNum + 1, "downloadStatus");
             CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             ret = sprintf_s(contentToSet, ARRAY_LENGTH_32, "%s", "DOWNLOADING");
             CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
@@ -1096,7 +1032,7 @@ void * DownloadThreadProc_linux(void* param)
             char pathToUpdate[1024];
             char contentToSet[32];
 
-            ret = sprintf_s(pathToUpdate, ARRAY_LENGTH_1024, "%s%s/%s", "downloadinfo/partsinfo/part", strPartNum, "downloadStatus");
+            ret = sprintf_s(pathToUpdate, ARRAY_LENGTH_1024, "%s%s/%s", "downloadinfo/partsinfo/part", strPartNum + 1, "downloadStatus");
             CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
             ret = sprintf_s(contentToSet, ARRAY_LENGTH_32, "%s", "DOWNLOADING");
             CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
@@ -1340,7 +1276,7 @@ int combinePartsFileRead(uint64_t remain_bytes, int bytesToRead, int bytesReadOu
             writeSuccess = 0;
             break;
         }
-        remain_bytes = remain_bytes - bytesWritten;
+        remain_bytes = remain_bytes - (uint64_t)bytesWritten;
     }
     return writeSuccess;
 }
@@ -1510,8 +1446,6 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
         partNode = partNode->next;
     }
 
-
-
     close(fdDest);
     fdDest = -1;
     free(buff);
@@ -1527,20 +1461,18 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
     return 0;
 }
 
-int setDownloadReturnPartList(download_file_part_info * partListIntern,
-    obs_download_file_part_info **partListReturn, int partCount)
+int setDownloadReturnPartList(download_file_part_info *partListIntern, obs_download_file_part_info **partListReturn,
+                              int partCount)
 {
     int i = 0;
-    download_file_part_info * partInfoNode = partListIntern;
-    obs_download_file_part_info * partListReturnTemp =
-        (obs_download_file_part_info *)malloc(sizeof(obs_download_file_part_info)*partCount);
-    if (partListReturnTemp == NULL)
-    {
+    download_file_part_info *partInfoNode = partListIntern;
+    obs_download_file_part_info *partListReturnTemp =
+        (obs_download_file_part_info *)malloc(sizeof(obs_download_file_part_info) * partCount);
+    if (partListReturnTemp == NULL) {
         return -1;
     }
     (*partListReturn) = partListReturnTemp;
-    for (i = 0; i < partCount; i++)
-    {
+    for (i = 0; i < partCount; i++) {
         partListReturnTemp->part_num = partInfoNode->part_num + 1;
         partListReturnTemp->part_size = partInfoNode->part_size;
         partListReturnTemp->start_byte = partInfoNode->start_byte;
@@ -1551,29 +1483,25 @@ int setDownloadReturnPartList(download_file_part_info * partListIntern,
     return 0;
 }
 
-int isObjectChanged(download_file_summary * infoNew, download_file_summary * infoOld)
+int isObjectChanged(download_file_summary *infoNew, download_file_summary *infoOld)
 {
-    if ((infoNew->lastModify != infoOld->lastModify)
-        || (infoNew->objectLength != infoOld->objectLength)
-        || (infoNew->storage_class != infoOld->storage_class))
-    {
+    if ((infoNew->lastModify != infoOld->lastModify) || (infoNew->objectLength != infoOld->objectLength) ||
+        (infoNew->storage_class != infoOld->storage_class)) {
         return 1;
     }
 
-    if (strcmp(infoNew->etag, infoOld->etag))
-    {
+    if (strcmp(infoNew->etag, infoOld->etag)) {
         return 1;
     }
     return 0;
 }
 
-int checkDownloadPartsInfo(download_file_part_info * downloadPartList)
+int checkDownloadPartsInfo(download_file_part_info *downloadPartList)
 {
-    download_file_part_info * partNode = downloadPartList;
-    download_file_part_info * partNodePrev = NULL;
+    download_file_part_info *partNode = downloadPartList;
+    download_file_part_info *partNodePrev = NULL;
     int isValid = 1;
-    while (partNode)
-    {
+    while (partNode) {
 #if defined WIN32
         Sleep(0);
 #endif
@@ -1581,11 +1509,9 @@ int checkDownloadPartsInfo(download_file_part_info * downloadPartList)
 #if defined __GNUC__ || defined LINUX
         sleep(0);
 #endif
-        if (partNode->prev)
-        {
+        if (partNode->prev) {
             partNodePrev = partNode->prev;
-            if ((partNodePrev->start_byte + partNodePrev->part_size) != partNode->start_byte)
-            {
+            if ((partNodePrev->start_byte + partNodePrev->part_size) != partNode->start_byte) {
                 isValid = 0;
                 break;
             }
@@ -1660,69 +1586,56 @@ int get_download_isfirst_time_setFile(obs_download_file_configuration *download_
 }
 
 int get_download_isfirst_time_read(download_file_summary *downloadFileInfoOld,
-    download_file_part_info** pstDownloadFilePartInfoList, int *partCount,
-    download_file_summary *pdownLoadFileInfo, int isObjectModified,
-    int isPatsInfoValid, char *checkpointFile, char *storeFile,
-    int retVal, int is_true, int isFirstTime)
+                                   download_file_part_info **pstDownloadFilePartInfoList, int *partCount,
+                                   download_file_summary *pdownLoadFileInfo, int isObjectModified, int isPatsInfoValid,
+                                   char *checkpointFile, char *storeFile, int retVal, int is_true, int isFirstTime)
 {
-    if (retVal == -1)
-    {
+    if (retVal == -1) {
         isFirstTime = 1;
-    }
-    else
-    {
+    } else {
         isObjectModified = isObjectChanged(pdownLoadFileInfo, downloadFileInfoOld);
         isPatsInfoValid = checkDownloadPartsInfo(*pstDownloadFilePartInfoList);
         is_true = ((isObjectModified) || (!isPatsInfoValid));
-        if (is_true)
-        {
+        if (is_true) {
             removeTempFiles(storeFile, *pstDownloadFilePartInfoList, 1);
             isFirstTime = 1;
+        } else {
+            isFirstTime = 0;
+            errno_t err = EOK;
+            err = memcpy_s(pdownLoadFileInfo, sizeof(download_file_summary), downloadFileInfoOld,
+                           sizeof(download_file_summary));
+            CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
         }
-		else 
-		{
-			isFirstTime = 0;
-			errno_t err = EOK;
-			err = memcpy_s(pdownLoadFileInfo, sizeof(download_file_summary), downloadFileInfoOld, sizeof(download_file_summary));
-			CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
-		}
     }
     return isFirstTime;
 }
 
 
 void download_complete_handle_success(obs_download_file_configuration *download_file_config,
-    download_file_part_info *pstDownloadFilePartInfoList, char *checkpointFile,
-    obs_download_file_response_handler *handler, void *callback_data,
-    const char *storeFile, int retVal, void *xmlwrite_mutex)
+                                      download_file_part_info *pstDownloadFilePartInfoList, char *checkpointFile,
+                                      obs_download_file_response_handler *handler, void *callback_data,
+                                      const char *storeFile, int retVal, void *xmlwrite_mutex)
 {
     char *pstCheckPoint = download_file_config->enable_check_point ? checkpointFile : NULL;
     COMMLOG(OBS_LOGINFO, "%s all parts download success\n", "DownloadFile");
-    retVal = combinePartsFile(storeFile, pstDownloadFilePartInfoList,
-        pstCheckPoint, xmlwrite_mutex);
-    if (retVal == 0)
-    {
-        char strReturn[1024] = { 0 };
+    retVal = combinePartsFile(storeFile, pstDownloadFilePartInfoList, pstCheckPoint, xmlwrite_mutex);
+    if (retVal == 0) {
+        char strReturn[1024] = {0};
         int ret = sprintf_s(strReturn, ARRAY_LENGTH_1024, "DownloadFile %s success\n", storeFile);
         CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         COMMLOG(OBS_LOGINFO, "DonwloadFlie combine success\n");
-        if (handler->download_file_callback)
-        {
+        if (handler->download_file_callback) {
             handler->download_file_callback(OBS_STATUS_OK, strReturn, 0, NULL, callback_data);
         }
         remove_file(checkpointFile);
-    }
-    else
-    {
-        COMMLOG(OBS_LOGERROR, "DownloadFile combine failed\n"); 
-        if (download_file_config->enable_check_point == 0)
-        {
+    } else {
+        COMMLOG(OBS_LOGERROR, "DownloadFile combine failed\n");
+        if (download_file_config->enable_check_point == 0) {
             removeTempFiles(storeFile, pstDownloadFilePartInfoList, 1);
         }
-        if (handler->download_file_callback)
-        {
-            handler->download_file_callback(OBS_STATUS_OpenFileFailed,
-                "DownloadFile combine failed\n", 0, NULL, callback_data);
+        if (handler->download_file_callback) {
+            handler->download_file_callback(OBS_STATUS_OpenFileFailed, "DownloadFile combine failed\n", 0, NULL,
+                                            callback_data);
         }
     }
 }
@@ -1751,25 +1664,21 @@ void download_complete_handle_noSuccess(obs_download_file_configuration *downloa
     }
 }
 
-void download_complete_handle(download_file_part_info * pstPartInfoListDone,
-    obs_download_file_configuration * download_file_config,
-    char *checkpointFile, const char *storeFile,
-    obs_download_file_response_handler *handler, void *callback_data,
-    int partCount, void *xmlwrite_mutex)
+void download_complete_handle(download_file_part_info *pstPartInfoListDone,
+                              obs_download_file_configuration *download_file_config, char *checkpointFile,
+                              const char *storeFile, obs_download_file_response_handler *handler, void *callback_data,
+                              int partCount, void *xmlwrite_mutex)
 {
     int retVal = -1;
-    download_file_part_info * pstDownloadFilePartInfoList = NULL;
+    download_file_part_info *pstDownloadFilePartInfoList = NULL;
 
     pstDownloadFilePartInfoList = pstPartInfoListDone;
-    if (isAllDownLoadPartsSuccess(pstDownloadFilePartInfoList))
-    {
-        download_complete_handle_success(download_file_config, pstDownloadFilePartInfoList,
-            checkpointFile, handler, callback_data, storeFile, retVal, xmlwrite_mutex);
-    }
-    else
-    {
-        download_complete_handle_noSuccess(download_file_config, pstDownloadFilePartInfoList,
-            storeFile, handler, callback_data, partCount, retVal);
+    if (isAllDownLoadPartsSuccess(pstDownloadFilePartInfoList)) {
+        download_complete_handle_success(download_file_config, pstDownloadFilePartInfoList, checkpointFile, handler,
+                                         callback_data, storeFile, retVal, xmlwrite_mutex);
+    } else {
+        download_complete_handle_noSuccess(download_file_config, pstDownloadFilePartInfoList, storeFile, handler,
+                                           callback_data, partCount, retVal);
     }
     return;
 }
@@ -1905,104 +1814,98 @@ void download_file(const obs_options *options, char *key, char* version_id,
         } 
     }
 
-	uint64_t download_file_part_info_mem_size = 0;
+    uint64_t download_file_part_info_mem_size = 0;
     {
-		bool part_size_illegal = ((download_file_config->part_size == 0)
-			|| (download_file_config->part_size > MAX_PART_SIZE));
-		part_size = part_size_illegal ? DEFAULT_PART_SIZE : download_file_config->part_size;
-		part_size = part_size > downLoadFileInfo.objectLength ? downLoadFileInfo.objectLength : part_size;
-		download_file_part_info_mem_size = get_malloc_size_for_download_file_part_info(&downLoadFileInfo, part_size);
-		
-		int readCheckPointOk = 0;
-		download_file_summary downLoadFileInfoOld = { 0 };
-		//2,set the file to store the object, and the checkpoint file
-		isFirstTime = get_download_isfirst_time_setFile(download_file_config, storeFile, 0,
-			-1, key, checkpointFile, 1);
+        bool part_size_illegal =
+            ((download_file_config->part_size == 0) || (download_file_config->part_size > MAX_PART_SIZE));
+        part_size = part_size_illegal ? DEFAULT_PART_SIZE : download_file_config->part_size;
+        part_size = part_size > downLoadFileInfo.objectLength ? downLoadFileInfo.objectLength : part_size;
+        download_file_part_info_mem_size = get_malloc_size_for_download_file_part_info(&downLoadFileInfo, part_size);
 
-		//3, read the content of the checkpoint file
-		xmlNodePtr curNode = NULL;
-		xmlDocPtr doc = NULL;           //the doc pointer to parse the file
-		if (download_file_config->enable_check_point)
-		{
-			readCheckPointOk = readCheckpointFile_Download_XML(checkpointFile, &doc, &curNode);
-			readCheckpointFile_ToGetDownloadPartCount(curNode, &partCount);
-			uint64_t download_file_part_info_mem_size_old = partCount * sizeof(download_file_part_info);
-			download_file_part_info_mem_size =
-				download_file_part_info_mem_size < download_file_part_info_mem_size_old ?
-				download_file_part_info_mem_size_old : download_file_part_info_mem_size;
-		}
-		pstDownloadFilePartInfoListOrigin = (download_file_part_info*)malloc(download_file_part_info_mem_size);
-		pstDownloadFilePartInfoList = pstDownloadFilePartInfoListOrigin;
-		if (!CheckAndLogNULL(pstDownloadFilePartInfoListOrigin,
-			SYMBOL_NAME_STR(pstDownloadFilePartInfoListOrigin), SYMBOL_NAME_STR(malloc), __FUNCTION__, __LINE__)) {
-			ret_status = OBS_STATUS_OutOfMemory;
-			(void)(*(handler->response_handler.complete_callback))(ret_status, 0, callback_data);
-			CHECK_NULL_FREE(storeFile);
-			CHECK_NULL_FREE(checkpointFile);
-			checkAndXmlFreeDoc(&doc);
-			return;
-		}
-		errno_t err = memset_s(pstDownloadFilePartInfoListOrigin, download_file_part_info_mem_size, 0, download_file_part_info_mem_size);
-		if (checkIfErrorAndLogStrError(SYMBOL_NAME_STR(memset_s), __FUNCTION__, __LINE__, err)) {
-			ret_status = OBS_STATUS_Security_Function_Failed;
-			(void)(*(handler->response_handler.complete_callback))(ret_status, 0, callback_data);
-			CHECK_NULL_FREE(storeFile);
-			CHECK_NULL_FREE(checkpointFile);
-			CHECK_NULL_FREE(pstDownloadFilePartInfoListOrigin);
-			checkAndXmlFreeDoc(&doc);
-			return;
-		}
+        int readCheckPointOk = 0;
+        download_file_summary downLoadFileInfoOld = {0};
+        // 2,set the file to store the object, and the checkpoint file
+        isFirstTime = get_download_isfirst_time_setFile(download_file_config, storeFile, 0, -1, key, checkpointFile, 1);
 
-		if (download_file_config->enable_check_point && readCheckPointOk == 0) {
+        // 3, read the content of the checkpoint file
+        xmlNodePtr curNode = NULL;
+        xmlDocPtr doc = NULL; // the doc pointer to parse the file
+        if (download_file_config->enable_check_point) {
+            readCheckPointOk = readCheckpointFile_Download_XML(checkpointFile, &doc, &curNode);
+            readCheckpointFile_ToGetDownloadPartCount(curNode, &partCount);
+            uint64_t download_file_part_info_mem_size_old = partCount * sizeof(download_file_part_info);
+            download_file_part_info_mem_size = download_file_part_info_mem_size < download_file_part_info_mem_size_old ?
+                                                   download_file_part_info_mem_size_old :
+                                                   download_file_part_info_mem_size;
+        }
+        pstDownloadFilePartInfoListOrigin = (download_file_part_info *)malloc(download_file_part_info_mem_size);
+        if (!CheckAndLogNULL(pstDownloadFilePartInfoListOrigin, SYMBOL_NAME_STR(pstDownloadFilePartInfoListOrigin),
+                             SYMBOL_NAME_STR(malloc), __FUNCTION__, __LINE__)) {
+            ret_status = OBS_STATUS_OutOfMemory;
+            (void)(*(handler->response_handler.complete_callback))(ret_status, 0, callback_data);
+            CHECK_NULL_FREE(storeFile);
+            CHECK_NULL_FREE(checkpointFile);
+            checkAndXmlFreeDoc(&doc);
+            return;
+        }
+        pstDownloadFilePartInfoList = pstDownloadFilePartInfoListOrigin;
+        errno_t err = memset_s(pstDownloadFilePartInfoListOrigin, download_file_part_info_mem_size, 0,
+                               download_file_part_info_mem_size);
+        if (checkIfErrorAndLogStrError(SYMBOL_NAME_STR(memset_s), __FUNCTION__, __LINE__, err)) {
+            ret_status = OBS_STATUS_Security_Function_Failed;
+            (void)(*(handler->response_handler.complete_callback))(ret_status, 0, callback_data);
+            CHECK_NULL_FREE(storeFile);
+            CHECK_NULL_FREE(checkpointFile);
+            CHECK_NULL_FREE(pstDownloadFilePartInfoListOrigin);
+            checkAndXmlFreeDoc(&doc);
+            return;
+        }
 
-			readCheckPointOk = readCheckpointFile_Download_xmlCmp(curNode, &downLoadFileInfoOld,
-				&pstDownloadFilePartInfoList, &partCount, readCheckPointOk);
-			isFirstTime = get_download_isfirst_time_read(&downLoadFileInfoOld, &pstDownloadFilePartInfoList,
-				&partCount, &downLoadFileInfo, 0, 0,
-			    checkpointFile, storeFile, retVal, is_true, isFirstTime);
-		}
-		checkAndXmlFreeDoc(&doc);
+        if (download_file_config->enable_check_point && readCheckPointOk == 0) {
+            readCheckPointOk = readCheckpointFile_Download_xmlCmp(
+                curNode, &downLoadFileInfoOld, &pstDownloadFilePartInfoList, &partCount, readCheckPointOk);
+            isFirstTime = get_download_isfirst_time_read(&downLoadFileInfoOld, &pstDownloadFilePartInfoList, &partCount,
+                                                         &downLoadFileInfo, 0, 0, checkpointFile, storeFile, retVal,
+                                                         is_true, isFirstTime);
+        }
+        checkAndXmlFreeDoc(&doc);
     }
 
 
-    //set down load part list
+    // set down load part list
     is_true = ((isFirstTime == 1) || (download_file_config->enable_check_point == 0));
-    if (is_true)
-    {
-		errno_t err = memset_s(pstDownloadFilePartInfoListOrigin, download_file_part_info_mem_size, 0, download_file_part_info_mem_size);
-		if (checkIfErrorAndLogStrError(SYMBOL_NAME_STR(memset_s), __FUNCTION__, __LINE__, err)) {
-			ret_status = OBS_STATUS_Security_Function_Failed;
-			(void)(*(handler->response_handler.complete_callback))(ret_status, 0, callback_data);
-			CHECK_NULL_FREE(storeFile);
-			CHECK_NULL_FREE(checkpointFile);
-			CHECK_NULL_FREE(pstDownloadFilePartInfoListOrigin);
-			return;
-		}
-		retVal = setDownloadpartList(&downLoadFileInfo, part_size, &pstDownloadFilePartInfoList, &partCount);
-		if (retVal == -1)
-		{
-			if (download_file_config->enable_check_point)
-			{
-				remove_file(checkpointFile);
-			}
-			CHECK_NULL_FREE(storeFile);
-			CHECK_NULL_FREE(checkpointFile);
-			CHECK_NULL_FREE(pstDownloadFilePartInfoListOrigin);
-			return;
-		}
+    if (is_true) {
+        errno_t err = memset_s(pstDownloadFilePartInfoListOrigin, download_file_part_info_mem_size, 0,
+                               download_file_part_info_mem_size);
+        if (checkIfErrorAndLogStrError(SYMBOL_NAME_STR(memset_s), __FUNCTION__, __LINE__, err)) {
+            ret_status = OBS_STATUS_Security_Function_Failed;
+            (void)(*(handler->response_handler.complete_callback))(ret_status, 0, callback_data);
+            CHECK_NULL_FREE(storeFile);
+            CHECK_NULL_FREE(checkpointFile);
+            CHECK_NULL_FREE(pstDownloadFilePartInfoListOrigin);
+            return;
+        }
+        retVal = setDownloadpartList(&downLoadFileInfo, part_size, &pstDownloadFilePartInfoList, &partCount);
+        if (retVal == -1) {
+            if (download_file_config->enable_check_point) {
+                remove_file(checkpointFile);
+            }
+            CHECK_NULL_FREE(storeFile);
+            CHECK_NULL_FREE(checkpointFile);
+            CHECK_NULL_FREE(pstDownloadFilePartInfoListOrigin);
+            return;
+        }
     }
 
     is_true = ((isFirstTime == 1) && (download_file_config->enable_check_point == 1));
-    if (is_true)
-    {
-        (void)writeCheckpointFile_Download(&downLoadFileInfo,
-            pstDownloadFilePartInfoList, partCount, checkpointFile);
+    if (is_true) {
+        (void)writeCheckpointFile_Download(&downLoadFileInfo, pstDownloadFilePartInfoList, partCount, checkpointFile);
     }
 
-    //divid the list
+    // divid the list
     (void)DividDownloadPartList(pstDownloadFilePartInfoList, &pstPartInfoListDone, &pstPartInfoListNotDone);
 
-    //start thread to download
+    // start thread to download
     memset_s(&stDownloadParams, sizeof(download_params), 0, sizeof(download_params));
     stDownloadParams.callBackData = callback_data;
     stDownloadParams.enable_check_point = download_file_config->enable_check_point;
@@ -2014,20 +1917,22 @@ void download_file(const obs_options *options, char *key, char* version_id,
     stDownloadParams.pstServerSideEncryptionParams = encryption_params;
     stDownloadParams.response_handler = &(handler->response_handler);
     stDownloadParams.get_conditions = get_conditions;
-    download_file_config->task_num = download_file_config->task_num == 0 ? MAX_THREAD_NUM :
-        download_file_config->task_num;
+    download_file_config->task_num =
+        download_file_config->task_num == 0 ? MAX_THREAD_NUM : download_file_config->task_num;
     partCountToProc = 0;
 
 #ifdef WIN32
-    partCountToProc = download_file_win32(download_file_config, pstPartInfoListDone, pstPartInfoListNotDone,
-        stDownloadParams, partCountToProc, checkpointFile, handler, callback_data, storeFile, partCount);
-#endif 
+    partCountToProc =
+        download_file_win32(download_file_config, pstPartInfoListDone, pstPartInfoListNotDone, stDownloadParams,
+                            partCountToProc, checkpointFile, handler, callback_data, storeFile, partCount);
+#endif
 
 #if defined __GNUC__ || defined LINUX
-    partCountToProc = download_file_linux(download_file_config, pstPartInfoListDone, pstPartInfoListNotDone,
-        stDownloadParams, partCountToProc, checkpointFile, handler, callback_data, storeFile, partCount);
+    partCountToProc =
+        download_file_linux(download_file_config, pstPartInfoListDone, pstPartInfoListNotDone, stDownloadParams,
+                            partCountToProc, checkpointFile, handler, callback_data, storeFile, partCount);
 #endif
-	CHECK_NULL_FREE(storeFile);
-	CHECK_NULL_FREE(checkpointFile);
-	CHECK_NULL_FREE(pstDownloadFilePartInfoListOrigin);
+    CHECK_NULL_FREE(storeFile);
+    CHECK_NULL_FREE(checkpointFile);
+    CHECK_NULL_FREE(pstDownloadFilePartInfoListOrigin);
 }

@@ -42,8 +42,8 @@ fi
 #export iconv_version=iconv-1.15
 #export libxml2_version=libxml2-2.9.9
 #else
-export openssl_version=openssl-1.1.1w
-export curl_version=curl-8.11.1
+export openssl_version=tongsuo-8.4.0
+export curl_version=curl-v2025.3.9-SM
 export pcre_version=pcre-8.45
 export iconv_version=iconv-1.15
 export libxml2_version=libxml2-2.9.9

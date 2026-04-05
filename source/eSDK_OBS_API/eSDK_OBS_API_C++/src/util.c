@@ -19,6 +19,7 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <stdlib.h>
 #include "util.h"
 #include "securec.h"
 #include "log.h"
@@ -354,12 +355,12 @@ int urlDecode(char *dest, const char *src, int maxSrcSize)
             if (ret != 1) {
                 COMMLOG(OBS_LOGWARN, "%s(%d): sscanf_s failed!(%d)", __FUNCTION__, __LINE__);
             }
-            if (ret = memset_s(strOne, ARRAY_LENGTH_4, 0, 4))
+            if ((ret = memset_s(strOne, ARRAY_LENGTH_4, 0, 4)) != EOK)
             {
                 COMMLOG(OBS_LOGERROR, "in %s line %d memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
                 return OBS_STATUS_InternalError;
             }
-            src ++;
+            src++;
 
             *dest++ = (char)charGot;            
         }
@@ -589,7 +590,7 @@ void HMAC_SHA256(unsigned char hmac[32], const unsigned char *key, int key_len,
     HMAC_CTX_free(ctx);
 #endif
     int ret = 0;
-    if (ret = memset_s(hmac, ARRAY_LENGTH_32, 0, 32))
+    if ((ret = memset_s(hmac, ARRAY_LENGTH_32, 0, 32)) != EOK)
     {
         COMMLOG(OBS_LOGERROR, "in %s line %d memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
     }
@@ -644,7 +645,7 @@ void SHA256Hash(unsigned char sha[32], const unsigned char *message, int message
     EVP_MD_CTX_free(mdctx);
 #endif
     int ret = 0;
-    if (ret = memset_s(sha, ARRAY_LENGTH_32, 0, 32))
+    if ((ret = memset_s(sha, ARRAY_LENGTH_32, 0, 32)) != EOK)
     {
         COMMLOG(OBS_LOGERROR, "in %s line %d memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
     }
@@ -899,6 +900,29 @@ int add_xml_element_in_bufflen(char * buffOut, int * lenth,const char * elementN
     }      
     
     return 0;     
+}
+
+int safe_getenv_int(const char *env_key, int default_retval)
+{
+    char *env_val = NULL;
+    env_val = getenv(env_key);
+    
+    if (env_val == NULL) {
+        return default_retval;
+    }
+    
+    for (int i = 0; env_val[i] != '\0'; i++) {
+        if (i == 0 && env_val[i] == '-') {
+            continue;
+        }
+        if (!isdigit((unsigned char)env_val[i])) {
+            return default_retval;
+        }
+    }
+    
+    int retry = atoi(env_val);
+    
+    return (retry < 0 || retry > MAX_INT) ? default_retval : retry;
 }
 /*lint restore*/
 

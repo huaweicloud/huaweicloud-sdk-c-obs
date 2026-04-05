@@ -1,9 +1,7 @@
 # --------------------------------------------------------------------------
 # Set libeSDKOBS version number, unless it is already set.
 
-LIBOBS_VER_MAJOR ?= 2.1
-LIBOBS_VER_MINOR ?= 15
-LIBOBS_VER := $(LIBOBS_VER_MAJOR).$(LIBOBS_VER_MINOR)
+LIBOBS_SDK_VERSION ?= 3.26.3-beta
 
 #DEBUG=debug
 # -----------------------------------------------------------------------------
@@ -210,9 +208,7 @@ SPEC_PARAM = -Wno-unused-command-line-argument -Wno-format
 endif
 CFLAGS += -Wall -Werror -Wshadow -Wextra -Iinc \
           $(NGHTTP2_CFLAGS) $(CURL_CFLAGS) $(LIBXML2_CFLAGS) $(LIBESDKLOGAPI_CFLAGS) $(LIBOPENSSL_CFLAGS) $(LIBPCRE_CFLAGS) $(LIBSSH2_CFLAGS) $(LIBSECUREC_CFLAGS) $(LIBICONV_CFLAGS)\
-          -DLIBOBS_VER_MAJOR=\"$(LIBOBS_VER_MAJOR)\" \
-          -DLIBOBS_VER_MINOR=\"$(LIBOBS_VER_MINOR)\" \
-          -DLIBOBS_VER=\"$(LIBOBS_VER)\" \
+          -DOBS_SDK_VERSION=\"$(LIBOBS_SDK_VERSION)\" \
           -D__STRICT_ANSI__ \
           -D_ISOC99_SOURCE \
           -D_POSIX_C_SOURCE=200112L \
@@ -404,8 +400,9 @@ $(foreach i, $(ALL_SOURCES), $(eval -include $(BUILD)/dep/src/$(i:%.c=%.dd)))
 # --------------------------------------------------------------------------
 # Debian package target
 
-DEBPKG = $(BUILD)/pkg/libOBS_$(LIBOBS_VER).deb
-DEBDEVPKG = $(BUILD)/pkg/libOBS-dev_$(LIBOBS_VER).deb
+DEBPKG_VERSION = $(shell echo $(LIBOBS_SDK_VERSION) | cut -d. -f1,2)
+DEBPKG = $(BUILD)/pkg/libOBS_$(DEBPKG_VERSION).deb
+DEBDEVPKG = $(BUILD)/pkg/libOBS-dev_$(DEBPKG_VERSION).deb
 
 .PHONY: deb
 deb: $(DEBPKG) $(DEBDEVPKG)
@@ -422,7 +419,7 @@ $(DEBPKG): exported $(BUILD)/deb/DEBIAN/control $(BUILD)/deb/DEBIAN/shlibs \
 	rm -f $(BUILD)/deb/usr/lib/libOBS.a
 	@mkdir -p $(dir $@)
 	fakeroot dpkg-deb -b $(BUILD)/deb $@
-	mv $@ $(BUILD)/pkg/libOBS_$(LIBOBS_VER)_$(DEBARCH).deb
+	mv $@ $(BUILD)/pkg/libOBS_$(DEBPKG_VERSION)_$(DEBARCH).deb
 
 $(DEBDEVPKG): DEBARCH = $(shell dpkg-architecture | grep ^DEB_BUILD_ARCH= | \
                           cut -d '=' -f 2)
@@ -435,25 +432,23 @@ $(DEBDEVPKG): exported $(BUILD)/deb-dev/DEBIAN/control \
 	rm -f $(BUILD)/deb-dev/usr/lib/libOBS.so*
 	@mkdir -p $(dir $@)
 	fakeroot dpkg-deb -b $(BUILD)/deb-dev $@
-	mv $@ $(BUILD)/pkg/libOBS-dev_$(LIBOBS_VER)_$(DEBARCH).deb
+	mv $@ $(BUILD)/pkg/libOBS-dev_$(DEBPKG_VERSION)_$(DEBARCH).deb
 
 $(BUILD)/deb/DEBIAN/control: debian/control
 	@mkdir -p $(dir $@)
 	echo -n "Depends: " > $@
-	dpkg-shlibdeps -Sbuild -O $(BUILD)/lib/libOBS.so.$(LIBOBS_VER_MAJOR) | \
+	dpkg-shlibdeps -Sbuild -O $(BUILD)/lib/libOBS.so.$(firstword $(subst ., ,$(LIBOBS_SDK_VERSION))) | \
             cut -d '=' -f 2- >> $@
-	sed -e 's/LIBOBS_VERSION/$(LIBOBS_VER)/' \
-            < $< | sed -e 's/DEBIAN_ARCHITECTURE/$(DEBARCH)/' | \
+	sed -e 's/DEBIAN_ARCHITECTURE/$(DEBARCH)/' < $< | \
             grep -v ^Source: >> $@
 
 $(BUILD)/deb-dev/DEBIAN/control: debian/control.dev
 	@mkdir -p $(dir $@)
-	sed -e 's/LIBOBS_VERSION/$(LIBOBS_VER)/' \
-            < $< | sed -e 's/DEBIAN_ARCHITECTURE/$(DEBARCH)/' > $@
+	sed -e 's/DEBIAN_ARCHITECTURE/$(DEBARCH)/' < $< > $@
 
 $(BUILD)/deb/DEBIAN/shlibs:
-	echo -n "libOBS $(LIBOBS_VER_MAJOR) libOBS " > $@
-	echo "(>= $(LIBOBS_VER))" >> $@
+	echo -n "libOBS $(firstword $(subst ., ,$(LIBOBS_SDK_VERSION))) libOBS " > $@
+	echo "(>= $(LIBOBS_SDK_VERSION))" >> $@
 
 $(BUILD)/deb/DEBIAN/postinst: debian/postinst
 	@mkdir -p $(dir $@)
