@@ -1,90 +1,127 @@
-huaweicloud-sdk-c-obs
-----------------------------------------------------
-Version 3.24.12
-新特性：
-1.支持并行文件系统回收站特性
-2.支持获取桶元数据中的桶类型
-修复问题：
-1、优化断点续传上传、下载时的部分逻辑
-2、修复部分变量未正确初始化的问题
-----------------------------------------------------
-Version 3.24.3
-新特性：
-1.支持通过自定义域名访问
-2.支持设置、获取、删除access label
-修复问题：
-1.修复部分打印函数的占位符格式不正确的问题
-2.不安全函数替换为安全函数
-3.修复无法获取头域中报错的问题
-4.修复bucket policy长度过小的问题
-5.修复内存泄漏问题
-6.修复日志路径内存长度和实际不一致的问题
-----------------------------------------------------
-Version 3.23.9
-新特性：
-1.windows下日志文件名支持宽字符
-2.断点续传上传支持设置对象过期时间
-3.修复断点续传上传返回状态码不正确的问题
-4.修复断点续传上传设置ssec不生效的问题
-----------------------------------------------------
-Version 3.23.3
-新特性：
-1.windows下新增对宽字符的支持
-2.升级openssl、curl、pcre等组件
-3.升级log4cpp，修复部分编译告警
-----------------------------------------------------
-Version 3.22.5
-新特性：
-1.增加了put_object上传对象对于进度获取的支持
-2.增加了部分情况下失败重试的功能，例如网络超时，服务端错误等
-修复问题：
-1.修复了上传对象加密功能中，密钥中存在\0时，MD5校验失败的问题
-----------------------------------------------------
-Version 3.22.3
-新特性：
-1.	断点续传支持回传上传进度
-----------------------------------------------------
-Version 3.21.8
-修复问题：
-1、解决windows下中英文目录名和对象名list接口丢失信息的bug
-----------------------------------------------------
-Version 3.20.7
-修复问题：
-1、解决copy_object时源对象和目标对象都有中文时签名错误问题
-2、修复download_file下载文件打开失败时导致异常的问题
+# huaweicloud-sdk-c-obs
 
------------------------------------------------------
+## Release Notes
 
-----------------------------------------------------
-Version 3.19.9.3
-新特性：
-添加create_bucket_with_params接口，支持创建3AZ的桶
+### Version 3.24.12
 
------------------------------------------------------
-Version 3.19.9
+**New Features:**
+1. Supports the recycle bin feature of parallel file systems.
+2. Supports obtaining the bucket type in bucket metadata.
 
-新特效：
-demo中添加下载限流的示例；
-添加创建查询POSIX桶的相关接口；
-优化日志打印；
-修复问题：
+**Resolved Issues:**
+1. Optimized some logic for resumable upload and download.
+2. Resolved the issue where some variables are not correctly initialized.
 
-【功能】修复断点续传上传功能失败的问题；
-【功能】修复断点续传上传状态未正确返回的问题；
+---
 
-------------------------------------------------------
-Version 3.19.7
+### Version 3.24.3
 
-新特效：
-添加set_object_metadata接口，提供设置对象元数据功能；
-支持设置bbr加速
-修复问题：
+**New Features:**
+1. Supports access using a custom domain name.
+2. Supports setting, obtaining, and deleting access labels.
 
-【功能】修复服务端开启http2.0协议导致请求失败的问题；
-【功能】修复错误返回后重试导致请求异常的问题；
-三方依赖:
+**Resolved Issues:**
+1. Resolved the issue where the placeholder formats of some print functions are incorrect.
+2. Replaced unsafe functions with safe functions.
+3. Resolved the issue where an error is reported when the header field cannot be obtained.
+4. Resolved the issue where the bucket policy length is too short.
+5. Resolved memory leakage.
+6. Resolved the issue where the length of the log path in the memory is inconsistent with the actual length.
 
-curl升级为7.64.1
-libssh2升级为1.9.0
-libxml2升级为2.9.9
-openssl升级为1.0.2r
+---
+
+### Version 3.23.9
+
+**New Features:**
+1. The log file name in Windows supports wide characters.
+2. Supports setting an object expiration time during resumable upload.
+3. Resolved the issue where the status code returned for resumable upload is incorrect.
+4. Resolved the issue where the SSE-C setting does not take effect during resumable upload.
+
+---
+
+### Version 3.23.3
+
+**New Features:**
+1. Wide characters are supported in Windows.
+2. Components such as OpenSSL, cURL, and PCRE are upgraded.
+3. The log4cpp is upgraded to fix some compilation alarms.
+
+---
+
+### Version 3.22.5
+
+**New Features:**
+1. Supports obtaining the progress of uploading objects using put_object.
+2. The retry feature is supported in some cases, such as network timeout and server errors.
+
+**Resolved Issues:**
+1. Resolved the issue where MD5 verification fails when the encryption key contains \0 during object upload.
+
+---
+
+### Version 3.22.3
+
+**New Features:**
+1. Resumable upload supports getting the upload progress.
+
+---
+
+### Version 3.21.8
+
+**Resolved Issues:**
+1. Resolved the issue where some information about the directory and object names is lost when using the listing interface in Windows.
+
+---
+
+### Version 3.20.7
+
+**Resolved Issues:**
+1. Resolved the issue where the signature is incorrect when both the source object and destination object contain full-width characters during the copy_object operation.
+2. Resolved the issue where an exception occurs when the file downloaded using download_file fails to be opened.
+
+---
+
+### Version 3.19.9.3
+
+**New Features:**
+1. Added the create_bucket_with_params interface to support the creation of 3AZ buckets.
+
+---
+
+### Version 3.19.9
+
+**New Features:**
+1. Added the code example of limiting download rates.
+2. Added APIs for creating and querying POSIX buckets.
+3. Optimized log printing.
+
+**Resolved Issues:**
+1. [Feature] Resolved the issue where the resumable upload fails.
+2. [Feature] Resolved the issue where the upload status is not correctly returned during resumable upload.
+
+---
+
+### Version 3.19.7
+
+**New Features:**
+1. Added the set_object_metadata interface to provide the feature of setting object metadata.
+2. Supports the setting of BBR acceleration.
+
+**Resolved Issues:**
+1. [Feature] Resolved the issue where requests fail because HTTP 2.0 is enabled on the server.
+2. [Feature] Resolved the issue where the request is abnormal due to retry after an error is returned.
+
+**Third-party Dependency Updates:**
+- cURL is upgraded to 7.64.1
+- libssh2 is upgraded to 1.9.0
+- libxml2 is upgraded to 2.9.9
+- OpenSSL is upgraded to 1.0.2r
+
+---
+
+## About
+
+This is the Huawei Cloud C SDK for OBS (Object Storage Service).
+
+For more information, please refer to the [official documentation](https://support.huaweicloud.com/intl/en-us/obs/index.html).

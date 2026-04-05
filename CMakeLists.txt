@@ -16,45 +16,42 @@ add_definitions(-DV5R1C00)
 add_definitions(-DMY_PID=196)
 add_definitions(-D__DPAX_LINUX_USR__)
 add_definitions(-D__DPAX_THREAD_NOPREEMPT__)
-
-set(LIBOBS_VER_MAJOR "3.24")
-set(LIBOBS_VER_MINOR "3")
-if(NOT CMAKE_HOST_WIN32)
-    add_definitions(-DLIBOBS_VER_MAJOR="${LIBOBS_VER_MAJOR}")
-    add_definitions(-DLIBOBS_VER_MINOR="${LIBOBS_VER_MINOR}")
-endif()
-
+ 
+set(LIBOBS_SDK_VERSION "3.26.3-beta")
+add_definitions(-DOBS_SDK_VERSION="${LIBOBS_SDK_VERSION}")
+ 
 option(USE_CUSTOM "option for custom library path" OFF)
 set(SECUREC_INC_DIR ${PROJECT_SOURCE_DIR}/platform/libboundscheck/include)
-set(CURL_VERSION curl-8.11.1)
-set(OPENSSL_VERSION openssl-1.1.1w)
+set(CURL_VERSION curl-v2025.3.9-SM)
+set(TONGSUO_VERSION tongsuo-8.4.0)
 set(LIBXML2_VERSION libxml2-2.9.9)
 set(PCRE_VERSION pcre-8.45)
 set(ICONV_VERSION iconv-1.15)
 set(CJSON_VERSION cjson-1.7.18)
-
-
-
+set(SPDLOG_VERSION spdlog-1.12.0)
+ 
+ 
+ 
 execute_process(COMMAND uname -m OUTPUT_VARIABLE OARCH)
     string(STRIP "${OARCH}" ARCH)
     message(">>> ARCH ${ARCH}")
     if (${ARCH} STREQUAL "aarch64")
-        set(ESDK_LOG_INC_DIR ${PROJECT_SOURCE_DIR}/platform/eSDK_LogAPI_V2.1.10)
+        set(ESDK_LOG_INC_DIR ${PROJECT_SOURCE_DIR}/platform/eSDK_LogAPI_V2.1.10/C/include)
         set(ESDK_LOG_LIB_DIR ${PROJECT_SOURCE_DIR}/platform/eSDK_LogAPI_V2.1.10/C/aarch64)
         set(LINKARCH "arm")
         #execute_process(COMMAND make -f  ${PROJECT_SOURCE_DIR}/platform/libboundscheck/src/Makefile.aarch64)
     elseif(${ARCH} STREQUAL "x86_64")
-        set(ESDK_LOG_INC_DIR ${PROJECT_SOURCE_DIR}/platform/eSDK_LogAPI_V2.1.10)
+        set(ESDK_LOG_INC_DIR ${PROJECT_SOURCE_DIR}/platform/eSDK_LogAPI_V2.1.10/C/include)
         set(ESDK_LOG_LIB_DIR ${PROJECT_SOURCE_DIR}/platform/eSDK_LogAPI_V2.1.10/C/linux_64)
         set(LINKARCH "linux")
         #execute_process(COMMAND make -f  ${PROJECT_SOURCE_DIR}/platform/libboundscheck/src/Makefile)
     endif()
-
+ 
     if(NOT USE_CUSTOM)
         set(CURL_INC_DIR ${PROJECT_SOURCE_DIR}/build/script/Provider/build/${LINKARCH}/${CURL_VERSION}/include)
         set(CURL_LIB_DIR ${PROJECT_SOURCE_DIR}/build/script/Provider/build/${LINKARCH}/${CURL_VERSION}/lib)
-        set(OPENSSL_INC_DIR ${PROJECT_SOURCE_DIR}/build/script/Provider/build/${LINKARCH}/${OPENSSL_VERSION}/include)
-        set(OPENSSL_LIB_DIR ${PROJECT_SOURCE_DIR}/build/script/Provider/build/${LINKARCH}/${OPENSSL_VERSION}/lib)
+        set(OPENSSL_INC_DIR ${PROJECT_SOURCE_DIR}/build/script/Provider/build/${LINKARCH}/${TONGSUO_VERSION}/include)
+        set(OPENSSL_LIB_DIR ${PROJECT_SOURCE_DIR}/build/script/Provider/build/${LINKARCH}/${TONGSUO_VERSION}/lib)
         set(LIBXML2_INC_DIR ${PROJECT_SOURCE_DIR}/build/script/Provider/build/${LINKARCH}/${LIBXML2_VERSION}/include)
         set(LIBXML2_LIB_DIR ${PROJECT_SOURCE_DIR}/build/script/Provider/build/${LINKARCH}/${LIBXML2_VERSION}/lib)
         set(PCRE_INC_DIR ${PROJECT_SOURCE_DIR}/build/script/Provider/build/${LINKARCH}/${PCRE_VERSION}/include/pcre)
@@ -110,7 +107,7 @@ execute_process(COMMAND uname -m OUTPUT_VARIABLE OARCH)
             set(SPDLOG_LIB_DIR "/usr/lib64" CACHE STRING "")
         endif()         
     endif()
-
+ 
 message(STATUS "CURL_INC_DIR: ${CURL_INC_DIR}")
 message(STATUS "CURL_LIB_DIR: ${CURL_LIB_DIR}")
 message(STATUS "OPENSSL_INC_DIR: ${OPENSSL_INC_DIR}")
@@ -125,7 +122,7 @@ message(STATUS "CJSON_INC_DIR: ${CJSON_INC_DIR}")
 message(STATUS "CJSON_LIB_DIR: ${CJSON_LIB_DIR}")
 message(STATUS "SPDLOG_INC_DIR: ${SPDLOG_INC_DIR}")
 message(STATUS "SPDLOG_LIB_DIR: ${SPDLOG_LIB_DIR}")
-
+ 
 #***********************************************************************
 #*
 #*  compile mode
@@ -189,7 +186,7 @@ include_directories(${CJSON_INC_DIR})
 include_directories(${SECUREC_INC_DIR})
 include_directories(${ESDK_LOG_INC_DIR})
 include_directories(${SPDLOG_INC_DIR})
-
+ 
 link_directories(${CURL_LIB_DIR})
 link_directories(${OPENSSL_LIB_DIR})
 link_directories(${LIBXML2_LIB_DIR})
@@ -206,7 +203,7 @@ aux_source_directory(${CMAKE_SOURCE_DIR}/source/eSDK_OBS_API/eSDK_OBS_API_C++/sr
 aux_source_directory(${CMAKE_SOURCE_DIR}/source/eSDK_OBS_API/eSDK_OBS_API_C++/src/object OBJECT_SOURCE_DIR)
 add_library(eSDKOBS SHARED ${SOURCE_DIR} ${BUCKET_SOURCE_DIR} ${OBJECT_SOURCE_DIR})
 target_link_libraries(eSDKOBS curl ssl xml2 pcre iconv cjson boundscheck eSDKLogAPI spdlog)
-
+ 
 #***********************************************************************
 #*
 #*  Unset Cache
@@ -227,7 +224,7 @@ unset(CJSON_INC_DIR CACHE)
 unset(CJSON_LIB_DIR CACHE)
 unset(SPDLOG_INC_DIR CACHE)
 unset(SPDLOG_LIB_DIR CACHE)
-
+ 
 #***********************************************************************
 #*
 #*  add source code dir
