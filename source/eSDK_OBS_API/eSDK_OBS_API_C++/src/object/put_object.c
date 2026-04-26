@@ -38,7 +38,7 @@ void put_object(const obs_options *options, char *key, uint64_t content_length,
     params.put_properties = put_properties;
     params.encryption_params = encryption_params;
     params.toObsCallback = handler->put_object_data_callback;
-    params.toObsCallbackTotalSize = content_length;
+    params.toObsCallbackTotalSize = (int64_t)content_length;
     params.properties_callback = handler->response_handler.properties_callback;
     params.complete_callback = handler->response_handler.complete_callback;
     params.progressCallback = handler->progress_callback;

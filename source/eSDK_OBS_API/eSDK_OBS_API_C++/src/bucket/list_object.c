@@ -21,7 +21,6 @@ obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element
     const char *data, int data_len)
 {
     int fit = 1;
-    int ret = 0;
 
     if (!strcmp(element_path, "ListBucketResult/IsTruncated")) {
         string_buffer_append(lbData->is_truncated, data, data_len, fit);
@@ -46,6 +45,8 @@ obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element
             return OBS_STATUS_InternalError;
         }
         memset_s(strTmpSource, strTmpSourceLen, 0, strTmpSourceLen);
+
+        int ret = 0;
         if (ret = strncpy_s(strTmpSource, strTmpSourceLen, data, data_len))
         {
             COMMLOG(OBS_LOGERROR, "in %s line %d strncpy_s error, code is %d.", __FUNCTION__, __LINE__, ret);
@@ -109,9 +110,16 @@ obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element
             return OBS_STATUS_XmlParseFailure;
         }
         memset_s(common_Prefix, prefix_size, 0, prefix_size);
+        int lenght = 0;
+        lenght = snprintf_s(common_Prefix, prefix_size, data_len, "%.*s", data_len, data);
+        CheckAndLogNeg(lenght, "snprintf_s", __FUNCTION__, __LINE__);
         int str_ret = 0;
-        snprintf_s(common_Prefix, prefix_size, data_len, "%.*s", data_len, data);
-        char* strTmpOut = UTF8_To_String(common_Prefix);
+        char* strTmpOut = NULL;
+#ifdef _WIN32
+    strTmpOut = UTF8_To_String(common_Prefix);
+#else
+    strTmpOut = common_Prefix ? strdup(common_Prefix) : NULL;
+#endif
         str_ret = strcat_s(lbData->common_prefixes[which], sizeof(lbData->common_prefixes[which]), strTmpOut);
         CHECK_NULL_FREE(common_Prefix);
         CHECK_NULL_FREE(strTmpOut);

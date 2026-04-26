@@ -42,12 +42,13 @@ fi
 #export iconv_version=iconv-1.15
 #export libxml2_version=libxml2-2.9.9
 #else
-export openssl_version=openssl-1.1.1w
-export curl_version=curl-8.11.1
-export pcre_version=pcre-8.45
-export iconv_version=iconv-1.15
-export libxml2_version=libxml2-2.9.9
-export cjson_version=cjson-1.7.18
+export openssl_version=openssl-3.0.9
+export curl_version=curl-8.19.0
+export pcre_version=pcre2-pcre2-10.46
+export iconv_version=iconv-1.18
+export libxml2_version=libxml2-2.14.0
+export cjson_version=cjson-1.7.19
+export spdlog_version=spdlog-v1.15.3
 #fi
 #export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #
@@ -129,7 +130,7 @@ mkdir cmake-build
 cd cmake-build
 mkdir cmake
 cd cmake
-cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DSPDLOG_VERSION=${SPDLOG_VERSION}
+cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DSPDLOG_VERSION=${spdlog_version}
 make 
 
 if [ 0 -ne $? ];then
@@ -166,11 +167,11 @@ cp -f ./../../../platform/libboundscheck/lib/arm/*.so lib
 cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/C/aarch64/libeSDKLogAPI.so lib
 cp -af ./../../../build/script/Provider/build/arm/${curl_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/arm/${libxml2_version}/lib/* lib
-cp -af ./../../../build/script/Provider/build/arm/${openssl_version}/lib/* lib 
+cp -af ./../../../build/script/Provider/build/arm/${openssl_version}/lib64/* lib 
 cp -af ./../../../build/script/Provider/build/arm/${pcre_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/arm/${iconv_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/arm/${cjson_version}/lib/* lib
-cp -af ./../../../build/script/Provider/build/arm/${SPDLOG_VERSION}/lib/* lib
+cp -af ./../../../build/script/Provider/build/arm/${spdlog_version}/lib/* lib
 cp -f ./../../../build/script/Provider/build/arm/${cjson_version}/include/cJSON.h include
 echo "BUILD_FOR_ARM=true" >  demo/Makefile
 cat Makefile_obs >> demo/Makefile

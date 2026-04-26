@@ -32,6 +32,7 @@
 #define ACS_GROUP_AWS_USERS     ACS_URL "global/AuthenticatedUsers"
 #define ACS_GROUP_LOG_DELIVERY  ACS_URL "s3/LogDelivery"
 #define MAX_XML_LEN (1024*100)
+#define MAX_INT     (2147483647)
 /* _TRUNCATE */
 #ifndef _MSC_VER
 #define _TRUNCATE (SECUREC_STRING_MAX_LEN - 1)
@@ -125,6 +126,7 @@ int add_xml_element(char * buffOut, int * lenth,const char * elementName, const 
 int add_xml_element_in_bufflen(char * buffOut, int * lenth,const char * elementName, const char * content, 
         eFormalizeChoice needFormalize, xmlAddType addType, int buff_len);
 
+int safe_getenv_int(const char *env_key, int default_retval);        
 
 #endif /* UTIL_H */
 

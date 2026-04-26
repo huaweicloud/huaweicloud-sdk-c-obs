@@ -85,9 +85,17 @@ typedef int errno_t;
 /* If you need export the function of this library in Win32 dll, use __declspec(dllexport) */
 #ifndef SECUREC_API
 #if defined(SECUREC_DLL_EXPORT)
+#if defined(_MSC_VER)
 #define SECUREC_API __declspec(dllexport)
+#else /* build for linux */
+#define SECUREC_API __attribute__((visibility("default")))
+#endif /* end of _MSC_VER and SECUREC_DLL_EXPORT */
 #elif defined(SECUREC_DLL_IMPORT)
+#if defined(_MSC_VER)
 #define SECUREC_API __declspec(dllimport)
+#else
+#define SECUREC_API
+#endif /* end of _MSC_VER and SECUREC_DLL_IMPORT */
 #else
 /*
  * Standardized function declaration. If a security function is declared in the your code,

@@ -43,6 +43,7 @@
 #define BLS_XML_DOC_MAXSIZE (64 * 1024)
 #define MAX_NAME_LEN  256
 #define MAX_NUM_TAGGING 10
+#define MAX_CUSTOM_DOMAINS 100
 
 #define MAX_COUNT_ONE_CORS_RULE 20
 #define MAX_CORS_RULE 100
@@ -51,21 +52,6 @@
 #define PFS_BUCKET_MIN_QUOTA 1099511627776
 
 #define else_if else if
-
-
-static char * g_storage_class_s3[OBS_STORAGE_CLASS_BUTT] = 
-{
-    "STANDARD",
-    "STANDARD_IA",
-    "GLACIER"
-};
-
-static char * g_storage_class_obs[OBS_STORAGE_CLASS_BUTT] = 
-{
-    "STANDARD",
-    "WARM",
-    "COLD"
-};
 
 #define MAX_BUCKET_DATA_DOC_LEN (20 * 1024 + 1)
 typedef struct update_bucket_common_data
@@ -189,6 +175,26 @@ typedef struct list_versions_data
     int common_prefixes_count;
     list_common_prefixes common_prefixes[MAX_VERSION_COMMON_PREFIXES];    
 }list_versions_data;
+
+typedef struct list_bucket_custom_domains
+{
+    string_buffer(domain_name, 256);
+    string_buffer(create_time, 128);
+    string_buffer(certificate_id, 64);
+} list_bucket_custom_domains;
+
+typedef struct get_bucket_custom_domain_data
+{
+    simple_xml simpleXml;
+
+    obs_response_properties_callback* response_properties_callback;
+    obs_response_complete_callback* response_complete_callback;
+    obs_get_bucket_custom_domain_callback* response_custom_domain_callback;
+    void* callback_data;
+
+    int domains_count;
+    list_bucket_custom_domains domains[MAX_CUSTOM_DOMAINS];
+} get_bucket_custom_domain_data;
 
 typedef struct get_bucket_common_data
 {

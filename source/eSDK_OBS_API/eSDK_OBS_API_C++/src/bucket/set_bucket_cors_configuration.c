@@ -50,8 +50,7 @@ static obs_status set_cors_quest_xml(obs_bucket_cors_conf *obs_cors_conf_info,
     {
         if (NULL == obs_cors_conf_info[i].allowed_method || NULL == obs_cors_conf_info[i].allowed_origin)
         {
-            COMMLOG(OBS_LOGERROR, "allowed_method(%p) or allowed_origin(%p) is NULL",
-                obs_cors_conf_info[i].allowed_method, obs_cors_conf_info[i].allowed_origin);
+            COMMLOG(OBS_LOGERROR, "allowed_method or allowed_origin is NULL");
             return OBS_STATUS_InvalidParameter;
         }
 

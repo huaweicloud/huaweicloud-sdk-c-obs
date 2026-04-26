@@ -20,7 +20,11 @@
 
 int prefix_cmp(const char *header, const char* prefix, int namelen)
 {
-	return strncmp(header, prefix, namelen) == 0 && namelen == (int)(strlen(prefix));
+#if defined(_WIN32) || defined(_WIN64)
+	return _strnicmp(header, prefix, namelen) == 0 && namelen == (int)(strlen(prefix));
+#else
+	return strncasecmp(header, prefix, namelen) == 0 && namelen == (int)(strlen(prefix));
+#endif
 }
 
 void response_headers_handler_initialize(response_headers_handler *handler)

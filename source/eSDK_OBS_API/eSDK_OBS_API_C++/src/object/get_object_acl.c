@@ -226,8 +226,6 @@ static obs_status convert_acl_xml_callback_s3(const char *elementPath,
 obs_status convert_acl_xml_callback_obs_withData(const char *elementPath,
     const char *data, int dataLen,
     convert_acl_data_info *caData,
-    char *object_delivered_string,
-    int object_delivered_stringLen,
     int fit)
 {
     if (!strcmp(elementPath, "AccessControlPolicy/Owner/ID")) {
@@ -243,6 +241,8 @@ obs_status convert_acl_xml_callback_obs_withData(const char *elementPath,
     }
     else if (!strcmp(elementPath, "AccessControlPolicy/Delivered"))
     {
+        string_buffer(object_delivered_string, 32);
+        string_buffer_initialize(object_delivered_string);
         string_buffer_append(object_delivered_string, data, dataLen, fit);
         *(caData->object_delivered) = convert_obs_object_delivered_str(object_delivered_string);
     }
@@ -306,14 +306,11 @@ static obs_status convert_acl_xml_callback_obs(const char *elementPath,
     void *callback_data)
 {
     convert_acl_data_info *caData = (convert_acl_data_info *)callback_data;
-    string_buffer(object_delivered_string, 32);
-    string_buffer_initialize(object_delivered_string);
 
     int fit = 1;
 
     if (data) {
-        return convert_acl_xml_callback_obs_withData(elementPath, data, dataLen,
-            caData, object_delivered_string, object_delivered_stringLen, fit);
+        return convert_acl_xml_callback_obs_withData(elementPath, data, dataLen, caData, fit);
     }
     else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant")) {
         return convert_acl_xml_callback_obs_noData(caData);

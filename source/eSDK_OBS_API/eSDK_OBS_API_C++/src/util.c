@@ -19,10 +19,12 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <stdlib.h>
 #include "util.h"
 #include "securec.h"
 #include "log.h"
-#include "pcre.h"
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include "pcre2.h"
 
 #ifdef WIN32
 #include <windows.h>
@@ -354,12 +356,12 @@ int urlDecode(char *dest, const char *src, int maxSrcSize)
             if (ret != 1) {
                 COMMLOG(OBS_LOGWARN, "%s(%d): sscanf_s failed!(%d)", __FUNCTION__, __LINE__);
             }
-            if (ret = memset_s(strOne, ARRAY_LENGTH_4, 0, 4))
+            if ((ret = memset_s(strOne, ARRAY_LENGTH_4, 0, 4)) != EOK)
             {
                 COMMLOG(OBS_LOGERROR, "in %s line %d memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
                 return OBS_STATUS_InternalError;
             }
-            src ++;
+            src++;
 
             *dest++ = (char)charGot;            
         }
@@ -589,7 +591,7 @@ void HMAC_SHA256(unsigned char hmac[32], const unsigned char *key, int key_len,
     HMAC_CTX_free(ctx);
 #endif
     int ret = 0;
-    if (ret = memset_s(hmac, ARRAY_LENGTH_32, 0, 32))
+    if ((ret = memset_s(hmac, ARRAY_LENGTH_32, 0, 32)) != EOK)
     {
         COMMLOG(OBS_LOGERROR, "in %s line %d memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
     }
@@ -644,7 +646,7 @@ void SHA256Hash(unsigned char sha[32], const unsigned char *message, int message
     EVP_MD_CTX_free(mdctx);
 #endif
     int ret = 0;
-    if (ret = memset_s(sha, ARRAY_LENGTH_32, 0, 32))
+    if ((ret = memset_s(sha, ARRAY_LENGTH_32, 0, 32)) != EOK)
     {
         COMMLOG(OBS_LOGERROR, "in %s line %d memset_s error, code is %d.", __FUNCTION__, __LINE__, ret);
     }
@@ -683,8 +685,8 @@ void ustr_to_hexes(unsigned char* szIn,unsigned int inlen, unsigned char* szOut)
     }
 }
 
-int pcre_replace_start(char *dest, int offset, int count,
-	const char *src, int src_len, int *ovector)
+static int pcre_replace_start(char *dest, size_t offset, int count,
+	const char *src, int src_len, PCRE2_SIZE *ovector)
 {
 	for (int i = 0; i<count; i++)
 	{
@@ -693,92 +695,118 @@ int pcre_replace_start(char *dest, int offset, int count,
 		{
 			int ret = strncpy_s(dest + offset, src_len + count * 6 - offset, src, ovector[i * 2]);
 			CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
-			offset = ovector[i * 2];
+			offset += ovector[i * 2];
 		}
 		else
 		{
-			int ret = strncpy_s(dest + offset, src_len + count * 6 - offset, 
-				src + ovector[i * 2 - 1], ovector[i * 2] - ovector[i * 2 - 1]);
+			int ret = strncpy_s(dest + offset, src_len + count * 6 - offset,
+				src + ovector[(i-1) * 2 + 1], ovector[i * 2] - ovector[(i-1) * 2 + 1]);
 			CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
-			offset += ovector[i * 2] - ovector[i * 2 - 1];
+			offset += ovector[i * 2] - ovector[(i-1) * 2 + 1];
 		}
 		if (src[ovector[i * 2]] == '<')
 		{
-			retVal = strcat_s(dest, sizeof(char)*(src_len + count * 6), "&lt;");
+			retVal = strcpy_s(dest + offset, src_len + count * 6 - offset, "&lt;");
 			if (retVal != 0)
 			{
-				COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+				COMMLOG(OBS_LOGWARN, "strcpy_s failed in %s.(%d)", __FUNCTION__, __LINE__);
 			}
 			offset += 4;
 		}
 		if (src[ovector[i*2]] == '>')
 		{
-			retVal = strcat_s(dest, sizeof(char)*(src_len + count * 6), "&gt;");
+			retVal = strcpy_s(dest + offset, src_len + count * 6 - offset, "&gt;");
 			if (retVal != 0)
 			{
-				COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+				COMMLOG(OBS_LOGWARN, "strcpy_s failed in %s.(%d)", __FUNCTION__, __LINE__);
 			}
 			offset += 4;
 		}
 		if (src[ovector[i*2]] == '&')
 		{
-			retVal = strcat_s(dest, sizeof(char)*(src_len + count * 6), "&amp;");
+			retVal = strcpy_s(dest + offset, src_len + count * 6 - offset, "&amp;");
 			if (retVal != 0)
 			{
-				COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+				COMMLOG(OBS_LOGWARN, "strcpy_s failed in %s.(%d)", __FUNCTION__, __LINE__);
 			}
 			offset += 5;
 		}
 		if (src[ovector[i*2]] == '\'')
 		{
-			retVal = strcat_s(dest, sizeof(char)*(src_len + count * 6), "&apos;");
+			retVal = strcpy_s(dest + offset, src_len + count * 6 - offset, "&apos;");
 			if (retVal != 0)
 			{
-				COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+				COMMLOG(OBS_LOGWARN, "strcpy_s failed in %s.(%d)", __FUNCTION__, __LINE__);
 			}
 			offset += 6;
 		}
 		if (src[ovector[i * 2]] == '\"')
 		{
-			retVal = strcat_s(dest, sizeof(char)*(src_len + count * 6), "&quot;");
+			retVal = strcpy_s(dest + offset, src_len + count * 6 - offset, "&quot;");
 			if (retVal != 0) {
-				COMMLOG(OBS_LOGWARN, "strcat_s failed in %s.(%d)", __FUNCTION__, __LINE__);
+				COMMLOG(OBS_LOGWARN, "strcpy_s failed in %s.(%d)", __FUNCTION__, __LINE__);
 			}
 			offset += 6;
 		}
+	}
+	// Copy the remaining content after the last special character
+	if (count > 0) {
+		int ret = strncpy_s(dest + offset, src_len + count * 6 - offset,
+			src + ovector[(count - 1) * 2 + 1], src_len - ovector[(count - 1) * 2 + 1]);
+		CheckAndLogNoneZero(ret, "strncpy_s", __FUNCTION__, __LINE__);
 	}
 	return count;
 }
 
 int pcre_replace(const char* src,char ** destOut)
 {
-    pcre  *re = NULL;
-    const char *error = NULL;
-    int src_len = 0;
-    int  erroffset = 0;
-    int  ovector[OVECCOUNT]={0};
+    pcre2_code_8  *re = NULL;
+    int errornumber = 0;
+    size_t erroroffset = 0;
+    PCRE2_SIZE ovector[OVECCOUNT * 2]={0};
     if (src == NULL) {
         COMMLOG(OBS_LOGERROR, "src for pcre_replace is NULL.");
         return 0;
     }
-    src_len = strlen(src);
-    re = pcre_compile("[&\'\"<>]", 0, &error, &erroffset, NULL);
+    int src_len = strlen(src);
+    re = pcre2_compile_8((PCRE2_SPTR8)"[&\'\"<>]", PCRE2_ZERO_TERMINATED, 0, &errornumber, &erroroffset, NULL);
     if (re == NULL)
     {
+        COMMLOG(OBS_LOGERROR, "pcre2_compile_8 failed in pcre_replace, errornumber=%d, erroroffset=%zu",
+                 errornumber, erroroffset);
         return 0;
     }
     int count = 0;
-    int offset = 0;
-    while( pcre_exec(re,NULL,src,src_len,offset,0,&ovector[count*2],OVECCOUNT) > 0)
+    size_t offset = 0;
+    pcre2_match_data_8 *match_data = pcre2_match_data_create_8(OVECCOUNT, NULL);
+    if (match_data == NULL) {
+        COMMLOG(OBS_LOGERROR, "pcre2_match_data_create_8 failed in pcre_replace");
+        pcre2_code_free_8(re);
+        return 0;
+    }
+    while(1)
     {
-        offset=ovector[count*2 + 1];
+        int rc = pcre2_match_8(re, (PCRE2_SPTR8)src, src_len, offset, 0, match_data, NULL);
+        if (rc < 0) {
+            break;
+        }
+        if (count >= OVECCOUNT) {
+            COMMLOG(OBS_LOGWARN, "pcre_replace reached OVECCOUNT limit (%d), some special chars may not be replaced",
+                     OVECCOUNT);
+            break;
+        }
+        PCRE2_SIZE *ovector_ptr = pcre2_get_ovector_pointer_8(match_data);
+        ovector[count*2] = ovector_ptr[0];
+        ovector[count*2 + 1] = ovector_ptr[1];
+        offset = ovector_ptr[1];
         count++;
     }
     if (re != NULL)
     {
-        pcre_free(re);
+        pcre2_code_free_8(re);
         re = NULL;
     }
+    pcre2_match_data_free_8(match_data);
     if(count == 0)
     {
         return 0;
@@ -787,12 +815,12 @@ int pcre_replace(const char* src,char ** destOut)
     char* dest = (char *)malloc(sizeof(char)*(src_len + count*6));
     if(dest==NULL)
     {
-        COMMLOG(OBS_LOGERROR, "Malloc dest failed !");
+        COMMLOG(OBS_LOGERROR, "Malloc dest failed in pcre_replace, required size=%d",
+                 src_len + count*6);
         return 0;
     }
     memset_s(dest, sizeof(char)*(src_len + count*6), 0,(src_len + count*6));
-    offset = 0;
-	pcre_replace_start(dest, offset, count, src, src_len, ovector);
+	pcre_replace_start(dest, 0, count, src, src_len, ovector);
     *destOut = dest;
     return count;
 }
@@ -899,6 +927,29 @@ int add_xml_element_in_bufflen(char * buffOut, int * lenth,const char * elementN
     }      
     
     return 0;     
+}
+
+int safe_getenv_int(const char *env_key, int default_retval)
+{
+    char *env_val = NULL;
+    env_val = getenv(env_key);
+    
+    if (env_val == NULL) {
+        return default_retval;
+    }
+    
+    for (int i = 0; env_val[i] != '\0'; i++) {
+        if (i == 0 && env_val[i] == '-') {
+            continue;
+        }
+        if (!isdigit((unsigned char)env_val[i])) {
+            return default_retval;
+        }
+    }
+    
+    int retry = atoi(env_val);
+    
+    return (retry < 0 || retry > MAX_INT) ? default_retval : retry;
 }
 /*lint restore*/
 

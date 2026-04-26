@@ -193,7 +193,15 @@ typedef enum
     OBS_STATUS_NoSuchCORSConfiguration,
     OBS_STATUS_InArrearOrInsufficientBalance,
     OBS_STATUS_NoSuchTagSet,
+    OBS_STATUS_InvalidCustomDomain,
+    OBS_STATUS_InvalidDomainName,
+    OBS_STATUS_NoCertName,
+    OBS_STATUS_CertNotExist,
+    OBS_STATUS_CertPKNotExist,
+    OBS_STATUS_InvalidCertNameLen,
+    OBS_STATUS_InvalidCertIdLen,
     OBS_STATUS_ErrorUnknown,
+    
     /*
     * The following are HTTP errors returned by obs without enough detail to
     * distinguish any of the above OBS_STATUS_error conditions
@@ -204,6 +212,8 @@ typedef enum
     OBS_STATUS_HttpErrorNotFound,
     OBS_STATUS_HttpErrorConflict,
     OBS_STATUS_HttpErrorUnknown,
+    OBS_STATUS_HttpNotSecure,
+    OBS_STATUS_SecureConnectionRequiredForCustomDomainCertificate,
 
     /*
     * posix new add errors
@@ -620,6 +630,12 @@ typedef struct obs_list_objects_content
     const char *storage_class;
     const char *type;
 } obs_list_objects_content;
+    typedef struct obs_domain_response
+    {
+        const char* domain_name;
+        const char* create_time;
+        const char* certificate_id;
+    } obs_domain_response;
 
 typedef struct obs_version
 {
@@ -713,6 +729,21 @@ typedef struct obs_bucket_cors_conf
     unsigned int expose_header_number;
 }obs_bucket_cors_conf;
 
+    typedef struct custom_domain_certificate_config
+    {
+        char* name;
+        char* certificate_id;
+        char* certificate;
+        char* certificate_chain;
+        char* private_key;
+    }custom_domain_certificate_config;
+
+    typedef struct obs_custom_domain
+    {
+        char* bucket_name;
+        char* domain_name;
+        custom_domain_certificate_config* custom_domain_certificate_config;
+    }obs_custom_domain;
 typedef struct obs_uploaded_parts_total_info
 {
     int  is_truncated;
@@ -1110,6 +1141,7 @@ typedef struct obs_http_request_option
     char *ssl_cipher_list;
     bool forbid_reuse_tcp;
     long curl_max_connects;
+    long curl_max_age_conn;
     obs_http2_switch http2_switch;
     obs_bbr_switch   bbr_switch;
 	obs_auth_switch  auth_switch;
@@ -1229,6 +1261,14 @@ typedef struct obs_get_bucket_tagging_handler
     obs_response_handler response_handler;
     obs_get_bucket_tagging_callback *get_bucket_tagging_callback;
 }obs_get_bucket_tagging_handler;
+    typedef obs_status(obs_get_bucket_custom_domain_callback)(int domains_count,
+        obs_domain_response* domains_list, void* callback_data);
+
+    typedef struct obs_get_bucket_custom_domain_handler
+    {
+        obs_response_handler response_handler;
+        obs_get_bucket_custom_domain_callback* get_bucket_custom_domain_callback;
+    }obs_get_bucket_custom_domain_handler;
 
 typedef struct obs_list_service_handler
 {
@@ -1379,10 +1419,10 @@ eSDK_OBS_API void delete_bucket_website_configuration(const obs_options *options
 eSDK_OBS_API void get_bucket_storage_info(const obs_options *options, int capacity_length, char *capacity,
                     int object_number_length, char *object_number,
                     obs_response_handler *handler, void *callback_data);
- 
- eSDK_OBS_API void list_multipart_uploads(const obs_options *options, const char *prefix, const char *marker, const char *delimiter,
-                    const char* uploadid_marke, int max_uploads, obs_list_multipart_uploads_handler *handler, 
-                    void *callback_data);
+
+eSDK_OBS_API void list_multipart_uploads(const obs_options *options, const char *prefix, const char *marker,
+                                         const char *delimiter, const char *uploadid_marker, int max_uploads,
+                                         obs_list_multipart_uploads_handler *handler, void *callback_data);
 
 eSDK_OBS_API void set_bucket_lifecycle_configuration(const obs_options *options, 
            obs_lifecycle_conf* bucket_lifecycle_conf, unsigned int blcc_number, 
@@ -1403,6 +1443,15 @@ eSDK_OBS_API void get_bucket_cors_configuration(const obs_options *options, obs_
             void *callback_data);
 // only object bucket can use
 eSDK_OBS_API void delete_bucket_cors_configuration(const obs_options *options, 
+        obs_response_handler* handler, void* callback_data);
+
+    eSDK_OBS_API void get_bucket_custom_domain(const obs_options* options,
+        obs_get_bucket_custom_domain_handler* handler, void* callback_data);
+
+    eSDK_OBS_API void set_bucket_custom_domain(const obs_options* options, obs_custom_domain* custom_domain,
+        obs_response_handler* handler, void* callback_data);
+
+    eSDK_OBS_API obs_status delete_bucket_custom_domain(const obs_options* options, obs_custom_domain* custom_domain,
             obs_response_handler *handler, void *callback_data);
 
 eSDK_OBS_API void set_notification_configuration(const obs_options *options, 

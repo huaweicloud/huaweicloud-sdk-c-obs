@@ -6,10 +6,10 @@
 static obs_status get_bucket_trash_configuration_xml_callback(const char *element_path, const char *data,
 	int data_len, void *callback_data)
 {
-	get_bucket_trash_config_data *bucket_trash_configuration = (get_bucket_trash_config_data *)callback_data;
+	get_bucket_trash_config_data *bucket_trash_cfg_data = (get_bucket_trash_config_data *)callback_data;
 	int fit = 1;
 	if (data && !strcmp(element_path, "BucketTrashConfiguration/ReservedDays")) {
-		string_buffer_append(bucket_trash_configuration->common_data, data, data_len, fit);
+		string_buffer_append(bucket_trash_cfg_data->common_data, data, data_len, fit);
 	}
 
 	//(void) fit;

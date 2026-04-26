@@ -197,10 +197,13 @@ static obs_status complete_multi_part_upload_data_from_obs_callback(int buffer_s
 			return OBS_STATUS_Security_Function_Failed;
 		}
         server_callback_data.buffer = server_callback_buf;
-        server_callback_data.buffer_len = buffer_size;
+        server_callback_data.buffer_len = (uint64_t)buffer_size;
         cmuData->callback_data = (void *)(&server_callback_data);
-        (*(cmuData->responsePropertiesCallback))
-            (NULL, cmuData->callback_data);
+
+		if (cmuData->responsePropertiesCallback) {
+			(*(cmuData->responsePropertiesCallback))
+				(NULL, cmuData->callback_data);
+		}
         free(server_callback_buf);
         return OBS_STATUS_OK;
     }
@@ -215,8 +218,11 @@ static void complete_multi_part_upload_complete_callback(obs_status requestStatu
     complete_multi_part_upload_data *cmuData = (complete_multi_part_upload_data *)callback_data;
     (*(cmuData->complete_multipart_upload_callback))
         (cmuData->location, cmuData->bucket, cmuData->key, cmuData->etag, cmuData->callback_data);
-    (*(cmuData->responseCompleteCallback))
-        (requestStatus, s3ErrorDetails, cmuData->callback_data);
+
+	if (cmuData->responseCompleteCallback) {
+		(*(cmuData->responseCompleteCallback))
+			(requestStatus, s3ErrorDetails, cmuData->callback_data);
+	}
     simplexml_deinitialize(&(cmuData->simpleXml));
     if (NULL != cmuData->doc)
     {

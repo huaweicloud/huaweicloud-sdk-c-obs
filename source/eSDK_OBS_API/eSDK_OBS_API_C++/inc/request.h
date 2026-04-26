@@ -24,8 +24,8 @@
 #include "cJSON.h"
 
 #ifdef WIN32
-#define LIBOBS_VER_MAJOR "3.24"
-#define LIBOBS_VER_MINOR "12"
+#define LIBOBS_VER_MAJOR "3.25"
+#define LIBOBS_VER_MINOR "3"
 #endif
 
 #if defined __GNUC__ || defined LINUX
@@ -38,17 +38,19 @@
 #define DOMAIN_LEN 254
 #define HEAD_CALLBACK_LEN 8192
 
-#define OBS_SDK_VERSION "3.24.12"
-#define USER_AGENT_VALUE  "obs-sdk-c-3.24.12";
+#define OBS_SDK_VERSION "3.25.3"
+#define USER_AGENT_VALUE  "obs-sdk-c-3.25.3";
 
 #define DEFAULT_LOW_SPEED_LIMIT    (1)
-#define DEFAULT_LOW_SPEED_TIME_S   (300)
+#define DEFAULT_LOW_SPEED_TIME_S   (20)
 #define DEFAULT_CONNECTTIMEOUT_MS  (60000)
 #define DEFAULT_TIMEOUT_S          (0)
 #define DEFAULT_TCP_KEEPIDLE       (120)
 #define DEFAULT_TCP_KEEPINVTL      (60)
 #define DEFAULT_MAXCONNECTS        (-1)
-#define RETRY_NUM                  (3)
+#define DEFAULT_MAXAGE_CONN        (-1)
+#define RETRY_NUM                  (5)
+#define MAX_RETRY_VALUE            (15)
 #define RETRY_BASE                 (50) //retry base tiem is 50ms
 #define LINUX_USTOMS               (1000) // us -> ms
 

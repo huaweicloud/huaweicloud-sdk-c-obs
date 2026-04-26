@@ -146,7 +146,6 @@ void obs_destroy_request_context(obs_request_context *request_context)
     } while (r != rFirst);
 
     free(request_context);
-    request_context = NULL;
 }
 
 obs_status obs_runall_request_context(obs_request_context *request_context)

@@ -20,7 +20,7 @@
 static obs_status add_one_get_cors_data(const char *element_path,
     get_bucket_cors_data *gbccDataEx)
 {
-    int nIndex = gbccDataEx->bccd_number - 1;
+    int nIndex = (int)(gbccDataEx->bccd_number) - 1;
 
     if (!strcmp(element_path, "CORSConfiguration/CORSRule"))
     {
@@ -66,7 +66,7 @@ static obs_status get_cors_xml_callback(const char *element_path,
     int fit = 1;
     obs_status ret_status = OBS_STATUS_OK;
     get_bucket_cors_data *gbccDataEx = (get_bucket_cors_data *)callback_data;
-    int nIndex = gbccDataEx->bccd_number - 1;
+    int nIndex = (int)(gbccDataEx->bccd_number) - 1;
 
     if (data) {
         if (!strcmp(element_path, "CORSConfiguration/CORSRule/ID")) {
@@ -246,7 +246,7 @@ static obs_status make_get_cors_callbackEx(get_bucket_cors_data *gbccDataEx)
     obs_status iRet = OBS_STATUS_OK;
     int i = 0;
     int is_get_data_err = 0;
-    int nCount = gbccDataEx->bccd_number - 1;
+    int nCount = (int)(gbccDataEx->bccd_number) - 1;
     if (nCount <= 0)
     {
         COMMLOG(OBS_LOGERROR, "bccd is empty,bccd_num(%u).", gbccDataEx->bccd_number);
@@ -278,17 +278,17 @@ static obs_status make_get_cors_callbackEx(get_bucket_cors_data *gbccDataEx)
 
         bucketCorsConf[i].allowed_method = set_return_cors_value(
             gbccDataEx->bcc_data[i]->allowedMethodes, gbccDataEx->bcc_data[i]->allowedMethodCount);
-        bucketCorsConf[i].allowed_method_number = gbccDataEx->bcc_data[i]->allowedMethodCount;
+        bucketCorsConf[i].allowed_method_number = (unsigned int)gbccDataEx->bcc_data[i]->allowedMethodCount;
 
         bucketCorsConf[i].allowed_origin = set_return_cors_value(
             gbccDataEx->bcc_data[i]->allowedOrigines, gbccDataEx->bcc_data[i]->allowedOriginCount);
-        bucketCorsConf[i].allowed_origin_number = gbccDataEx->bcc_data[i]->allowedOriginCount;
+        bucketCorsConf[i].allowed_origin_number = (unsigned int)gbccDataEx->bcc_data[i]->allowedOriginCount;
 
         if (gbccDataEx->bcc_data[i]->allowedHeaderCount > 0)
         {
             bucketCorsConf[i].allowed_header = set_return_cors_value(
                 gbccDataEx->bcc_data[i]->allowedHeaderes, gbccDataEx->bcc_data[i]->allowedHeaderCount);
-            bucketCorsConf[i].allowed_header_number = gbccDataEx->bcc_data[i]->allowedHeaderCount;
+            bucketCorsConf[i].allowed_header_number = (unsigned int)gbccDataEx->bcc_data[i]->allowedHeaderCount;
         }
 
         bucketCorsConf[i].max_age_seconds = gbccDataEx->bcc_data[i]->max_age_seconds;
@@ -297,12 +297,10 @@ static obs_status make_get_cors_callbackEx(get_bucket_cors_data *gbccDataEx)
         {
             bucketCorsConf[i].expose_header = set_return_cors_value(
                 gbccDataEx->bcc_data[i]->exposeHeaderes, gbccDataEx->bcc_data[i]->exposeHeaderCount);
-            bucketCorsConf[i].expose_header_number = gbccDataEx->bcc_data[i]->exposeHeaderCount;
+            bucketCorsConf[i].expose_header_number = (unsigned int)gbccDataEx->bcc_data[i]->exposeHeaderCount;
         }
 
-        COMMLOG(OBS_LOGINFO, "get cors config err,Method(%p),Origin(%p),Header(%p),expose(%p).",
-            bucketCorsConf[i].allowed_method, bucketCorsConf[i].allowed_origin,
-            bucketCorsConf[i].allowed_header, bucketCorsConf[i].expose_header);
+        COMMLOG(OBS_LOGINFO, "get cors config err,Method,Origin,Header,expose.");
         is_get_data_err = (NULL == bucketCorsConf[i].allowed_method)
             || (NULL == bucketCorsConf[i].allowed_origin)
             || (gbccDataEx->bcc_data[i]->allowedHeaderCount > 0
@@ -343,7 +341,6 @@ static obs_status get_cors_data_callback(int buffer_size, const char *buffer, vo
     return simplexml_add(&(gbccDataEx->simple_xml_info), buffer, buffer_size);
 }
 
-
 static void get_cors_complete_callback(obs_status request_status,
     const obs_error_details *obs_error_info,
     void *callback_data)
@@ -373,7 +370,6 @@ void get_bucket_cors_configuration(const obs_options *options, obs_cors_handler 
     COMMLOG(OBS_LOGINFO, "get_bucket_cors_configuration start !");
 
     gbccDataEx = init_get_cors_data(handler, callback_data);
-    
     if (NULL == gbccDataEx)
     {
         (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, 0);
@@ -382,7 +378,7 @@ void get_bucket_cors_configuration(const obs_options *options, obs_cors_handler 
 	if (OBS_STATUS_OK != copy_options_and_init_params(options, &params, &use_api, &handler->response_handler, callback_data)) {
 		return;
 	}
-
+    
     params.httpRequestType = http_request_type_get;
     params.properties_callback = &get_cors_properties_callback;
     params.fromObsCallback = &get_cors_data_callback;
