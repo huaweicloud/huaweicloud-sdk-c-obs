@@ -242,7 +242,8 @@ int remove_file(const char* filename)
 		return -1;
 	}
 	if (ret != 0) {
-		checkIfErrorAndLogStrError(removeFunc, __FUNCTION__, __LINE__, ret);
+		checkIfErrorAndLogStrError(removeFunc, __FUNCTION__, __LINE__, errno);
+		errno = EOK;
 	}
 	return ret;
 }

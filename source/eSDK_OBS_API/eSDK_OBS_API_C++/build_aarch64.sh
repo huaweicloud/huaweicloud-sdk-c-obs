@@ -37,11 +37,12 @@ fi
 # export openssl_version=openssl-1.0.2r
 # export curl_version=curl-7.64.1
 # else
-export openssl_version=openssl-1.1.1k
-export curl_version=curl-7.78.0
-export pcre_version=pcre-8.45
-export iconv_version=iconv-1.15
-export libxml2_version=libxml2-2.9.9
+export openssl_version=openssl-3.0.9
+export curl_version=curl-8.19.0
+export pcre_version=pcre2-pcre2-10.46
+export iconv_version=iconv-1.18
+export libxml2_version=libxml2-2.14.0
+export cjson_version=cjson-1.7.19
 # fi
 #export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #

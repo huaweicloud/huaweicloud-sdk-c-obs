@@ -61,11 +61,43 @@ static char HOST_NAME[2048]={0};
 static char BUCKET_NAME[2048]={0};
 static char UPLOAD_ID[2048]={0};
 
+static char customCertificateName[64] = {0};
+static char customCertificateId[17] = {0};
+static char customCertificateBucketName[256] = {0};
+static char customCertificateDomainName[256] = {0};
+static char customCertificate[4097] = {0};
+static char customCertificateTemp[4097] = {0};
+static char customCertificatePrivateKey[4097] = {0};
+static char customCertificatePrivateKeyTemp[4097] = {0};
+static char customCertificateChain[8193] = {0};
+static char customCertificateChainTemp[8193] = {0};
+
 
 #define LOCATION_PREFIX "location="
 #define LOCATION_PREFIX_LEN (sizeof(LOCATION_PREFIX) - 1)
 #define CANNED_ACL_PREFIX "canned_acl="
 #define CANNED_ACL_PREFIX_LEN (sizeof(CANNED_ACL_PREFIX) - 1)
+
+#define SET_DOMAIN_PREFIX "domain="
+#define SET_DOMAIN_PREFIX_LEN (sizeof(SET_DOMAIN_PREFIX) - 1)
+
+#define CERT_NAME_PREFIX "cert_name="
+#define CERT_NAME_PREFIX_LEN (sizeof(CERT_NAME_PREFIX) - 1)
+
+#define CERTIFICATE_PREFIX "certificate="
+#define CERTIFICATE_PREFIX_LEN (sizeof(CERTIFICATE_PREFIX) - 1)
+
+#define CERTIFICATE_CHAIN_PREFIX "certificate_chain="
+#define CERTIFICATE_CHAIN_PREFIX_LEN (sizeof(CERTIFICATE_CHAIN_PREFIX) - 1)
+
+#define CERTIFICATE_ID_PREFIX "certificate_id="
+#define CERTIFICATE_ID_PREFIX_LEN (sizeof(CERTIFICATE_ID_PREFIX) - 1)
+
+#define PRIVATE_KEY_PREFIX "private_key="
+#define PRIVATE_KEY_PREFIX_LEN (sizeof(PRIVATE_KEY_PREFIX) - 1)
+
+#define HTTPS_MODE_PREFIX "https_mode="
+#define HTTPS_MODE_PREFIX_LEN (sizeof(HTTPS_MODE_PREFIX) - 1)
 
 #define CERTIFICATE_INFO_PREFIX "ca"
 #define CERTIFICATE_INFO_PREFIX_LEN (sizeof(CERTIFICATE_INFO_PREFIX) - 1)
@@ -425,22 +457,6 @@ static obs_storage_class get_storage_class_from_argv(char *param)
     return ret_storage_class;
 }
 
-static obs_protocol get_protocol_from_argv(char *param)
-{
-    obs_protocol ret_protocol = OBS_PROTOCOL_HTTP;
-    char *val = &(param[PROTOCOL_PREFIX_LEN]);
-    printf("protocol is: %s\n", val);
-    if (!strcmp(val, "http")) {
-        ret_protocol = OBS_PROTOCOL_HTTP;
-    }else if (!strcmp(val, "https")) {
-        ret_protocol = OBS_PROTOCOL_HTTPS;
-    }else {
-        fprintf(stderr, "ERROR: Unknown protocol: %s.\n", val);
-    }
-
-    return ret_protocol;
-}
-
 static obs_bucket_type get_bucket_type_from_argv(char *param)
 {
 	obs_bucket_type bucket_type = OBS_BUCKET_OBJECT;
@@ -705,6 +721,7 @@ static void response_complete_callback(obs_status status,
     {
         obs_status *ret_status = (obs_status *)callback_data;
         *ret_status = status;
+        printf("Return status code: %d\n", *ret_status);
     }
     else
     {
@@ -863,6 +880,21 @@ static void test_set_object_metadata(char* bucket_name, char * key, char *versio
 	}
 }
 
+static obs_protocol get_protocol_from_argv(char *param)
+{
+    obs_protocol ret_protocol = OBS_PROTOCOL_HTTP;
+    char *val = &(param[PROTOCOL_PREFIX_LEN]);
+    printf("protocol is: %s\n", val);
+    if (!strcmp(val, "http")) {
+        ret_protocol = OBS_PROTOCOL_HTTP;
+    }else if (!strcmp(val, "https")) {
+        ret_protocol = OBS_PROTOCOL_HTTPS;
+    }else {
+        fprintf(stderr, "ERROR: Unknown protocol: %s.\n", val);
+    }
+ 
+    return ret_protocol;
+}
 
 
 // get object metadata---------------------------------------------------------------
@@ -1606,7 +1638,7 @@ typedef struct TaggingInfo
     obs_status ret_status;
 }TaggingInfo;
 
-void printTagInfo(TaggingInfo* infoToPrint)
+void printTagInfo(const TaggingInfo* infoToPrint)
 {
     int i;
     printf("etag number is %d\n",infoToPrint->tagCount);
@@ -1616,6 +1648,74 @@ void printTagInfo(TaggingInfo* infoToPrint)
         printf("key:[%s], value[%s]\n",infoToPrint->taglist[i].key, infoToPrint->taglist[i].value);
     }
 }
+
+
+typedef struct list_bucket_custom_domains_demo
+{
+    char domain_name[256];
+    char create_time[128];
+    char certificate_id[64];
+} list_bucket_custom_domains_demo;
+
+typedef struct CustomDomains
+{
+    int domain_count;
+    list_bucket_custom_domains_demo domains[64];
+    obs_status ret_status;
+}CustomDomains;
+
+void printTagInfo(const CustomDomains* infoToPrint)
+{
+    int i;
+    printf("etag number is %d\n", infoToPrint->domain_count);
+    for (i = 0; i < infoToPrint->domain_count; i++)
+    {
+        printf("domain[%d]: name:%s, create time:%s, certificate id:%s\n",
+            i,
+            infoToPrint->domains[i].domain_name,
+            infoToPrint->domains[i].create_time,
+            infoToPrint->domains[i].certificate_id);
+    }
+}
+
+obs_status get_bucket_custom_domain_callback(int domain_count,
+    obs_domain_response* domain_response_list, void* callback_data)
+{
+    int domain_num = 0;
+    CustomDomains* domain_info = (CustomDomains*)callback_data;
+    domain_info->domain_count = domain_count;
+
+    if (domain_count > 0)
+    {
+        for (domain_num = 0; domain_num < domain_count; domain_num++)
+        {
+            if ((&domain_response_list[domain_num])->domain_name) {
+                memcpy_s(domain_info->domains[domain_num].domain_name, sizeof(domain_info->domains[domain_num].domain_name),
+                    (&domain_response_list[domain_num])->domain_name, strlen((&domain_response_list[domain_num])->domain_name) + 1);
+            }            
+            if ((&domain_response_list[domain_num])->certificate_id) {
+                memcpy_s(domain_info->domains[domain_num].certificate_id, sizeof(domain_info->domains[domain_num].certificate_id),
+                    (&domain_response_list[domain_num])->certificate_id, strlen((&domain_response_list[domain_num])->certificate_id) + 1);
+            }
+            if ((&domain_response_list[domain_num])->create_time) {
+                memcpy_s(domain_info->domains[domain_num].create_time, sizeof(domain_info->domains[domain_num].create_time),
+                    (&domain_response_list[domain_num])->create_time, strlen((&domain_response_list[domain_num])->create_time) + 1);
+            }          
+        }
+    }
+    printTagInfo(domain_info);
+    return OBS_STATUS_OK;
+}
+
+static void get_bucket_custom_domain_complete_callback(obs_status status,
+    const obs_error_details* error,
+    void* callback_data)
+{
+    CustomDomains* domain_info = (CustomDomains*)callback_data;
+    domain_info->ret_status = status;
+    printf("Returned status code : %d\n", status);
+}
+
 
 obs_status get_bucket_tagging_callback(int tagging_count, obs_name_value *tagging_list, void *callback_data)
 {
@@ -3247,6 +3347,1244 @@ static void test_set_bucket_cors()
         printf("set_bucket_cors failed(%s).\n", obs_get_status_name(ret_status));
     }
 }
+
+/* function that converts //r and //n into /r and /n to simulate really input arg has /r an /n
+   because arguments are often interpreted as //r and //n by command processor*/
+void replace_escape_sequences(char* str) {
+    if (str == NULL) {
+        return;
+    }
+    char* src = str, *dst = str;
+
+    while (*src) {
+        if (src[0] == '\\' && src[1] == 'n') {
+            *dst = '\n';
+            src += 2;
+        }
+        else if (src[0] == '\\' && src[1] == 'r') {
+            *dst = '\r';
+            src += 2;
+        }
+        else {
+            *dst = *src; 
+            src++;
+        }
+        dst++;
+    }
+    *dst = '\0';
+}
+
+/*********************** SET BUCKET CUSTOM DOMAIN TEST BUNDLE*************************************/
+/***********************should_set_bucket_custom_domain*********************************************/
+void should_set_bucket_custom_domain(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain Bucket's name is == %s \n", bucket_name);
+
+    init_obs_options(&option);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = NULL;// "www.masukgungor.com";
+
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = NULL;// "serhatCert123456";
+    domain_cert_config.certificate = NULL;//"Ce\nRt\r123\r\n4567\r89\n012\r";
+    domain_cert_config.certificate_id = NULL;//"CeRt123456789012";
+    domain_cert_config.certificate_chain = NULL;//"C\rhA\niN\r\n12\r345\n";
+    domain_cert_config.private_key = NULL;//"Pr\ri\nvK\r\ney1\r2345\n";
+    custom_domain.custom_domain_certificate_config = NULL;// &domain_cert_config;
+
+    bool has_cert_config = false;
+    while (optindex < argc) {
+        char* param = argv[optindex++];
+        if (!strncmp(param, SET_DOMAIN_PREFIX, SET_DOMAIN_PREFIX_LEN)) {
+            custom_domain.domain_name = &(param[SET_DOMAIN_PREFIX_LEN]);
+            printf("domain is: %s\n", custom_domain.domain_name);
+        }
+        else if (!strncmp(param, CERT_NAME_PREFIX, CERT_NAME_PREFIX_LEN)) {
+            domain_cert_config.name = &(param[CERT_NAME_PREFIX_LEN]);
+            has_cert_config = true;
+        }
+        else if (!strncmp(param, CERTIFICATE_PREFIX, CERTIFICATE_PREFIX_LEN)) {
+            domain_cert_config.certificate = &(param[CERTIFICATE_PREFIX_LEN]);
+            has_cert_config = true;
+        }
+        else if (!strncmp(param, CERTIFICATE_ID_PREFIX, CERTIFICATE_ID_PREFIX_LEN)) {
+            domain_cert_config.certificate_id = &(param[CERTIFICATE_ID_PREFIX_LEN]);
+            has_cert_config = true;
+        }
+        else if (!strncmp(param, CERTIFICATE_CHAIN_PREFIX, CERTIFICATE_CHAIN_PREFIX_LEN)) {
+            domain_cert_config.certificate_chain = &(param[CERTIFICATE_CHAIN_PREFIX_LEN]);
+            has_cert_config = true;
+        }
+        else if (!strncmp(param, PRIVATE_KEY_PREFIX, PRIVATE_KEY_PREFIX_LEN)) {
+            domain_cert_config.private_key = &(param[PRIVATE_KEY_PREFIX_LEN]);
+            has_cert_config = true;
+        }
+    }
+
+    if (has_cert_config) {
+        custom_domain.custom_domain_certificate_config = &domain_cert_config;
+        option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+    }
+
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+    if (ret_status == OBS_STATUS_OK) {
+        printf("set bucket custom_domain successfully. \n");
+    }
+    else
+    {
+        printf("set bucket custom_domain failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_no_bucket_name*********************************************/
+void should_set_bucket_custom_domain_no_bucket_name(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+    char* bucket_name = argv[optindex++];
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = NULL;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+    if (ret_status == OBS_STATUS_InvalidBucketName) {
+        printf("should_set_bucket_custom_domain_no_bucket_name successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_no_bucket_name failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_null_domain*********************************************/
+void should_set_bucket_custom_domain_null_domain(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_null_domain Bucket's name is == %s \n", bucket_name);
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+    set_bucket_custom_domain(&option, NULL, &response_handler, &ret_status);
+    if (ret_status == OBS_STATUS_InvalidParameter) {
+        printf("should_set_bucket_custom_domain_null_domain successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_null_domain failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_invalid_domain_length*********************************************/
+void should_set_bucket_custom_domain_invalid_domain_length(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_invalid_domain_length Bucket's name is == %s \n", bucket_name);
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+
+    // generate random string
+    srand(time(NULL));
+    const int size = 8192;
+    char str[size + 1];
+    const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456789";
+    const int charset_size = sizeof(charset) - 1;
+    size_t i = 0;
+    while (i < size) {
+        int rand_index = rand() % charset_size;
+        char c = charset[rand_index];
+        str[i++] = c;
+    }
+    str[size] = '\0';
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = str;
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+    if (ret_status == OBS_STATUS_OutOfMemory) {
+        printf("should_set_bucket_custom_domain_invalid_domain_length successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_invalid_domain_length failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_no_domain_name*********************************************/
+void should_set_bucket_custom_domain_no_domain_name(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_no_domain_name Bucket's name is == %s \n", bucket_name);
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = NULL;
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+    if (ret_status == OBS_STATUS_InvalidDomainName) {
+        printf("should_set_bucket_custom_domain_no_domain_name successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_no_domain_name failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_null_info_in_cert_config*********************************************/
+void should_set_bucket_custom_domain_null_info_in_cert_config(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_null_info_in_cert_config Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = NULL;
+    domain_cert_config.certificate_id = NULL;
+    domain_cert_config.certificate = NULL;
+    domain_cert_config.certificate_chain = NULL;
+    domain_cert_config.private_key = NULL;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_InvalidParameter) {
+        printf("should_set_bucket_custom_domain_null_info_in_cert_config successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_null_info_in_cert_config failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_invalid_length_in_cert_config*********************************************/
+void should_set_bucket_custom_domain_invalid_length_in_cert_config(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_invalid_length_in_cert_config Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+
+    // generate random string
+    srand(time(NULL)); 
+    const int size = 8400;
+    char str[size + 1];
+    const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\r\n";
+    const int charset_size = sizeof(charset) - 1;
+    size_t i = 0;
+    while (i < size) {
+        int rand_index = rand() % charset_size;
+        char c = charset[rand_index];
+        // place \r\n 
+        if (c == '\r') {
+            if (i + 1 < size) {
+                str[i++] = c; // \r
+                str[i++] = '\n'; // \n
+            }
+        }
+        else {
+            str[i++] = c;
+        }
+    }
+    str[size] = '\0';
+
+    domain_cert_config.name = str;
+    domain_cert_config.certificate = str;
+    domain_cert_config.certificate_id = str;
+    domain_cert_config.certificate_chain = str;
+    domain_cert_config.private_key = str;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_InvalidCertNameLen) {
+        printf("should_set_bucket_custom_domain_invalid_length_in_cert_config successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_invalid_length_in_cert_config failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_all_valid_values_in_cert_config*********************************************/
+void should_set_bucket_custom_domain_all_valid_values_in_cert_config(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_all_valid_values_in_cert_config Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = "serhatCert123456"; //customCertificateName;
+    domain_cert_config.certificate = "Ce\nRt\r123\r\n4567\r89\n012\r"; //customCertificate;
+    domain_cert_config.certificate_id = "CeRt123456789012"; //customCertificateId;
+    domain_cert_config.certificate_chain = "C\rhA\niN\r\n12\r345\n"; //customCertificateChain;
+    domain_cert_config.private_key = "Pr\ri\nvK\r\ney1\r2345\n"; //customCertificatePrivateKey;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+    option.bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_ErrorUnknown) {
+        printf("should_set_bucket_custom_domain_all_valid_values_in_cert_config successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_all_valid_values_in_cert_config failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_real_cert_values_in_cert_config*********************************************/
+void should_set_bucket_custom_domain_real_cert_values_in_cert_config(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_real_cert_values_in_cert_config Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+    
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = customCertificateName;
+    domain_cert_config.certificate_id = NULL;
+    domain_cert_config.certificate_chain = NULL;
+    domain_cert_config.certificate = customCertificate;
+    domain_cert_config.private_key = customCertificatePrivateKey;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_OK) {
+        printf("should_set_bucket_custom_domain_real_cert_values_in_cert_config successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_real_cert_values_in_cert_config failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_null_certname*********************************************/
+void should_set_bucket_custom_domain_null_certname(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_null_certname Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+    
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = NULL;
+    domain_cert_config.certificate_id = customCertificateId;
+    domain_cert_config.certificate_chain = customCertificateChain;
+    domain_cert_config.certificate = customCertificate;
+    domain_cert_config.private_key = customCertificatePrivateKey;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_NoCertName) {
+        printf("should_set_bucket_custom_domain_null_certname successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_null_certname failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_certificate_name_aa*********************************************/
+void should_set_bucket_custom_domain_certificate_name_aa(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_certificate_name_aa Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+    
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = "aa";
+    domain_cert_config.certificate_id = customCertificateId;
+    domain_cert_config.certificate_chain = customCertificateChain;
+    domain_cert_config.certificate = customCertificate;
+    domain_cert_config.private_key = customCertificatePrivateKey;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_InvalidCertNameLen) {
+        printf("should_set_bucket_custom_domain_certificate_name_aa successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_certificate_name_aa failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_certificate_name_chinese*********************************************/
+void should_set_bucket_custom_domain_certificate_name_chinese(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_certificate_name_chinese Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+    
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = "中国证书.pem";
+    domain_cert_config.certificate = customCertificate;
+    domain_cert_config.certificate_id = customCertificateId;
+    domain_cert_config.certificate_chain =customCertificateChain;
+    domain_cert_config.private_key = customCertificatePrivateKey;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_OK) {
+        printf("should_set_bucket_custom_domain_certificate_name_chinese succesfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_certificate_name_chinese failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_no_cert_id*********************************************/
+void should_set_bucket_custom_domain_no_cert_id(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_no_cert_id Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+    
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = customCertificateName;
+    domain_cert_config.certificate_id = NULL;
+    domain_cert_config.certificate_chain = customCertificateChain;
+    domain_cert_config.certificate = customCertificate;
+    domain_cert_config.private_key = customCertificatePrivateKey;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_OK) {
+        printf("should_set_bucket_custom_domain_no_cert_id successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_no_cert_id failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_invalid_cert_id*********************************************/
+void should_set_bucket_custom_domain_invalid_cert_id(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_invalid_cert_id Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+    
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = customCertificateName;
+    domain_cert_config.certificate_id = "CertificateId15";
+    domain_cert_config.certificate_chain = customCertificateChain;
+    domain_cert_config.certificate = customCertificate;
+    domain_cert_config.private_key = customCertificatePrivateKey;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_InvalidCertIdLen) {
+        printf("should_set_bucket_custom_domain_invalid_cert_id successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_invalid_cert_id failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_no_cert_chain*********************************************/
+void should_set_bucket_custom_domain_no_cert_chain(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_no_cert_chain Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+    
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = customCertificateName;
+    domain_cert_config.certificate_id = customCertificateId;
+    domain_cert_config.certificate_chain = NULL;
+    domain_cert_config.certificate = customCertificate;
+    domain_cert_config.private_key = customCertificatePrivateKey;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_OK) {
+        printf("should_set_bucket_custom_domain_no_cert_chain successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_no_cert_chain failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_no_pk*********************************************/
+void should_set_bucket_custom_domain_no_pk(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_no_pk Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = customCertificateName;
+    domain_cert_config.certificate_id = customCertificateId;
+    domain_cert_config.certificate_chain = customCertificateChain;
+    domain_cert_config.certificate = customCertificate;
+    domain_cert_config.private_key = NULL;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_CertPKNotExist) {
+        printf("should_set_bucket_custom_domain_no_pk successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_no_pk failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_invalid_http_mode*********************************************/
+void should_set_bucket_custom_domain_invalid_http_mode(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_invalid_http_mode Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+    domain_cert_config.name = customCertificateName;
+    domain_cert_config.certificate = customCertificate;
+    domain_cert_config.certificate_id = customCertificateId;
+    domain_cert_config.certificate_chain = customCertificateChain;
+    domain_cert_config.private_key = customCertificatePrivateKey;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+    option.bucket_options.protocol = OBS_PROTOCOL_HTTP;
+
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_SecureConnectionRequiredForCustomDomainCertificate) {
+        printf("should_set_bucket_custom_domain_invalid_http_mode successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_invalid_http_mode failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_set_bucket_custom_domain_invalid_xml_length*********************************************/
+void should_set_bucket_custom_domain_invalid_xml_length(int argc, char** argv, int optindex)
+{
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_set_bucket_custom_domain_invalid_xml_length Bucket's name is == %s \n", bucket_name);
+    char* domain_name = argv[optindex++];
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        0,
+        &response_complete_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = &(domain_name[SET_DOMAIN_PREFIX_LEN]);
+    custom_domain_certificate_config domain_cert_config;
+
+    // generate random string
+    srand(time(NULL));
+    const int size = 13654;
+    char str[size + 1];
+    const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\r\n";
+    const int charset_size = sizeof(charset) - 1;
+    size_t i = 0;
+    while (i < size) {
+        int rand_index = rand() % charset_size;
+        char c = charset[rand_index];
+        // place \r\n 
+        if (c == '\r') {
+            if (i + 1 < size) {
+                str[i++] = c; // \r
+                str[i++] = '\n'; // \n
+            }
+        }
+        else {
+            str[i++] = c;
+        }
+    }
+    str[size] = '\0';
+
+    domain_cert_config.name = "cert.pem";
+    domain_cert_config.certificate = str;
+    domain_cert_config.certificate_id = "CeRt123456789012";
+    domain_cert_config.certificate_chain = str;
+    domain_cert_config.private_key = str;
+    custom_domain.custom_domain_certificate_config = &domain_cert_config;
+    set_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_MalformedXML) {
+        printf("should_set_bucket_custom_domain_invalid_xml_length successfully. \n");
+    }
+    else
+    {
+        printf("should_set_bucket_custom_domain_invalid_xml_length failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+/*********************** END OF SET BUCKET CUSTOM DOMAIN TEST BUNDLE*************************************/
+
+/*********************** GET BUCKET CUSTOM DOMAIN TEST BUNDLE*************************************/
+/***********************should_get_bucket_custom_domain*********************************************/
+void should_get_bucket_custom_domain(int argc, char** argv, int optindex)
+{
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+    char* bucket_name = argv[optindex++];
+    printf("should_get_bucket_custom_domain Bucket's name is == %s \n", bucket_name);
+
+    init_obs_options(&option);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_get_bucket_custom_domain_handler response_handler =
+    {
+        {&response_properties_callback,
+        &get_bucket_custom_domain_complete_callback },
+        &get_bucket_custom_domain_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+
+    CustomDomains domain_info;
+    memset_s(&domain_info, sizeof(domain_info), 0, sizeof(CustomDomains));
+    domain_info.ret_status = OBS_STATUS_BUTT;
+
+    get_bucket_custom_domain(&option, &response_handler, &domain_info);
+    if (domain_info.ret_status == OBS_STATUS_OK) {
+        printf("should_get_bucket_custom_domain successfully. \n");
+    }
+    else
+    {
+        printf("should_get_bucket_custom_domain failed(%s).\n", obs_get_status_name(domain_info.ret_status));
+    }
+}
+/***********************should_get_bucket_custom_domain_no_bucket_name*********************************************/
+void should_get_bucket_custom_domain_no_bucket_name(int argc, char** argv, int optindex)
+{
+    obs_options option;
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = NULL;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_get_bucket_custom_domain_handler response_handler =
+    {
+        {&response_properties_callback,
+        &get_bucket_custom_domain_complete_callback },
+        &get_bucket_custom_domain_callback
+    };
+
+    CustomDomains domain_info;
+    memset_s(&domain_info, sizeof(domain_info), 0, sizeof(CustomDomains));
+    domain_info.ret_status = OBS_STATUS_BUTT;
+    get_bucket_custom_domain(&option, &response_handler, &domain_info);
+    if (domain_info.ret_status == OBS_STATUS_InvalidBucketName) {
+        printf("should_get_bucket_custom_domain_no_bucket_name successfully. \n");
+    }
+    else
+    {
+        printf("should_get_bucket_custom_domain_no_bucket_name failed(%s).\n", obs_get_status_name(domain_info.ret_status));
+    }
+}
+/*********************** END OF GET BUCKET CUSTOM DOMAIN TEST BUNDLE*************************************/
+
+/*********************** DELETE BUCKET CUSTOM DOMAIN TEST BUNDLE*************************************/
+/***********************should_delete_bucket_custom_domain*********************************************/
+void should_delete_bucket_custom_domain(int argc, char** argv, int optindex)
+{
+    obs_options option;
+    obs_status ret_status = OBS_STATUS_BUTT;
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+    char* bucket_name = argv[optindex++];
+    printf("should_delete_bucket_custom_domain Bucket's name is == %s \n", bucket_name);
+
+    init_obs_options(&option);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        &response_properties_callback,
+        &response_complete_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    while (optindex < argc) {
+        char* param = argv[optindex++];
+        if (!strncmp(param, SET_DOMAIN_PREFIX, SET_DOMAIN_PREFIX_LEN)) {
+            custom_domain.domain_name = &(param[SET_DOMAIN_PREFIX_LEN]);
+            printf("domain is: %s\n", custom_domain.domain_name);
+        }
+    }
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    delete_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+    if (ret_status == OBS_STATUS_OK) {
+        printf("should_delete_bucket_custom_domain successfully. \n");
+    }
+    else
+    {
+        printf("should_delete_bucket_custom_domain failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_delete_bucket_custom_domain_no_bucket_name*********************************************/
+void should_delete_bucket_custom_domain_no_bucket_name(int argc, char** argv, int optindex)
+{
+    obs_options option;
+    obs_status ret_status = OBS_STATUS_BUTT;
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    init_obs_options(&option);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = NULL;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        &response_properties_callback,
+        &response_complete_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    delete_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_InvalidBucketName) {
+        printf("should_delete_bucket_custom_domain_no_bucket_name successfully. \n");
+    }
+    else
+    {
+        printf("should_delete_bucket_custom_domain_no_bucket_name failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+/***********************should_delete_bucket_custom_domain_null_domain*********************************************/
+void should_delete_bucket_custom_domain_null_domain(int argc, char** argv, int optindex)
+{
+    obs_options option;
+    obs_status ret_status = OBS_STATUS_BUTT;
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_delete_bucket_custom_domain_null_domain Bucket's name is == %s \n", bucket_name);
+
+    init_obs_options(&option);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        &response_properties_callback,
+        &response_complete_callback
+    };
+
+    delete_bucket_custom_domain(&option, NULL, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_InvalidCustomDomain) {
+        printf("should_delete_bucket_custom_domain_null_domain successfully. \n");
+    }
+    else
+    {
+        printf("should_delete_bucket_custom_domain_null_domain failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_delete_bucket_custom_domain_no_domain_name*********************************************/
+void should_delete_bucket_custom_domain_no_domain_name(int argc, char** argv, int optindex)
+{
+    obs_options option;
+    obs_status ret_status = OBS_STATUS_BUTT;
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_delete_bucket_custom_domain_no_domain_name Bucket's name is == %s \n", bucket_name);
+
+    init_obs_options(&option);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        &response_properties_callback,
+        &response_complete_callback
+    };
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = NULL;
+
+    delete_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_InvalidDomainName) {
+        printf("should_delete_bucket_custom_domain_no_domain_name successfully. \n");
+    }
+    else
+    {
+        printf("should_delete_bucket_custom_domain_no_domain_name failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+/***********************should_delete_bucket_custom_domain_invalid_domain_length*********************************************/
+void should_delete_bucket_custom_domain_invalid_domain_length(int argc, char** argv, int optindex)
+{
+    obs_options option;
+    obs_status ret_status = OBS_STATUS_BUTT;
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+    }
+
+    char* bucket_name = argv[optindex++];
+    printf("should_delete_bucket_custom_domain_invalid_domain_length Bucket's name is == %s \n", bucket_name);
+
+    init_obs_options(&option);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler =
+    {
+        &response_properties_callback,
+        &response_complete_callback
+    };
+
+    // generate random string
+    srand(time(NULL));
+    const int size = 8192;
+    char str[size + 1];
+    const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const int charset_size = sizeof(charset) - 1;
+    size_t i = 0;
+    while (i < size) {
+        int rand_index = rand() % charset_size;
+        char c = charset[rand_index];
+        str[i++] = c;
+    }
+    str[size] = '\0';
+
+    obs_custom_domain custom_domain;
+    memset_s(&custom_domain, sizeof(custom_domain), 0, sizeof(obs_custom_domain));
+    custom_domain.bucket_name = option.bucket_options.bucket_name;
+    custom_domain.domain_name = str;
+
+    delete_bucket_custom_domain(&option, &custom_domain, &response_handler, &ret_status);
+
+    if (ret_status == OBS_STATUS_InvalidParameter) {
+        printf("should_delete_bucket_custom_domain_invalid_domain_length successfully. \n");
+    }
+    else
+    {
+        printf("should_delete_bucket_custom_domain_invalid_domain_length failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+/*********************** END OF DELETE BUCKET CUSTOM DOMAIN TEST BUNDLE*************************************/
+
 
 /*********************test_get_cors_config*****************************************************/
 obs_status get_cors_info_callback(obs_bucket_cors_conf* bucket_cors_conf,
@@ -5135,6 +6473,23 @@ void uploadFileResultCallback(obs_status status,
     }
 }
 
+static obs_protocol get_protocol_from_argv_new(char* param)
+{
+    obs_protocol ret_protocol = OBS_PROTOCOL_HTTP;
+    char* val = &(param[PROTOCOL_PREFIX_LEN]);
+    printf("protocol is: %s\n", val);
+    if (!strcmp(val, "http")) {
+        ret_protocol = OBS_PROTOCOL_HTTP;
+    }
+    else if (!strcmp(val, "https")) {
+        ret_protocol = OBS_PROTOCOL_HTTPS;
+    }
+    else {
+        fprintf(stderr, "ERROR: Unknown protocol: %s.\n", val);
+    }
+
+    return ret_protocol;
+}
 
 static void test_upload_file(int argc, char **argv, int optindex)
 {
@@ -5190,6 +6545,9 @@ static void test_upload_file(int argc, char **argv, int optindex)
         }else if (!strncmp(param, UPLOAD_SLICE_SIZE, UPLOAD_SLICE_SIZE_LEN))
         {
             uploadFileInfo.part_size = convertInt(&(param[UPLOAD_SLICE_SIZE_LEN]), "uploadSliceSize");
+        }
+        else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+            option.bucket_options.protocol = get_protocol_from_argv_new(param);
         }
 		else if (!strncmp(param, USE_OBS_AUTH, USE_OBS_AUTH_LEN)) {
 			option.request_options.auth_switch = OBS_OBS_TYPE;
@@ -6391,8 +7749,70 @@ static void test_delete_bucket_trash(int argc, char ** argv, int optindex) {
 		printf("test_delete_bucket_trash failed(%s).\n", obs_get_status_name(ret_status));
 	}
 }
+
+void convert_escape_sequences(char *input, char *output) {
+    while (*input) {
+        if (*input == '\\' && *(input + 1) == 'r') {
+            *output++ = '\r';
+            input += 2;
+        } else if (*input == '\\' && *(input + 1) == 'n') {
+            *output++ = '\n';
+            input += 2;
+        } else {
+            *output++ = *input++;
+        }
+    }
+    *output = '\0';
+}
+
 int main(int argc, char **argv)
 {
+    FILE *fcustomCertificate = fopen("../customCertificate.txt", "rb");
+    if (fcustomCertificate == NULL) {
+        return -1;
+    }
+    fread(customCertificateTemp, sizeof(customCertificate), 1, fcustomCertificate);   
+ 
+    FILE *fCustomCertificatePrivateKey = fopen("../customCertificatePrivateKey.txt", "rb");
+    if (fCustomCertificatePrivateKey == NULL) {
+        return -1;
+    }
+    fread(customCertificatePrivateKeyTemp, sizeof(customCertificatePrivateKey), 1, fCustomCertificatePrivateKey);   
+ 
+    FILE *fcustomCertificateName = fopen("../customCertificateName.txt", "rb");
+    if (fcustomCertificateName == NULL) {
+        return -1;
+    }
+    fread(customCertificateName, sizeof(customCertificateName), 1, fcustomCertificateName);   
+ 
+    FILE *fcustomCertificateChain = fopen("../customCertificateChain.txt", "rb");
+    if (fcustomCertificateChain == NULL) {
+        return -1;
+    }
+    fread(customCertificateChainTemp, sizeof(customCertificateChain), 1, fcustomCertificateChain);   
+ 
+    FILE *fcustomCertificateDomainName = fopen("../customCertificateDomainName.txt", "rb");
+    if (fcustomCertificateDomainName == NULL) {
+        return -1;
+    }
+    fread(customCertificateDomainName, sizeof(customCertificateDomainName), 1, fcustomCertificateDomainName);  
+ 
+    FILE *fCustomCertificateBucketName = fopen("../customCertificateBucketName.txt", "rb");
+    if (fCustomCertificateBucketName == NULL) {
+        return -1;
+    }
+    fread(customCertificateBucketName, sizeof(customCertificateBucketName), 1, fCustomCertificateBucketName);  
+
+    FILE *fCustomCertificateId = fopen("../customCertificateId.txt", "rb");
+    if (fCustomCertificateId == NULL) {
+        return -1;
+    }
+    fread(customCertificateId, sizeof(customCertificateId), 1, fCustomCertificateId); 
+ 
+    convert_escape_sequences(customCertificateTemp, customCertificate);
+    convert_escape_sequences(customCertificatePrivateKeyTemp, customCertificatePrivateKey);
+    convert_escape_sequences(customCertificateChainTemp, customCertificateChain);
+
     int optind =1;
 	char* access_key_id_from_env = getenv("ACCESS_KEY_ID");
 	char* secret_access_key_id_from_env = getenv("SECRET_ACCESS_KEY_ID");
@@ -6524,6 +7944,79 @@ int main(int argc, char **argv)
     if (!strcmp(command, "get_bucket_acl"))
     {
         test_get_bucket_acl(argc, argv, optind);
+    }
+
+    else if (!strcmp(command, "should_set_bucket_custom_domain_no_bucket_name")) {
+        should_set_bucket_custom_domain_no_bucket_name(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_null_domain")) {
+        should_set_bucket_custom_domain_null_domain(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_no_domain_name")) {
+        should_set_bucket_custom_domain_no_domain_name(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_invalid_domain_length")) {
+        should_set_bucket_custom_domain_invalid_domain_length(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_invalid_length_in_cert_config")) {
+        should_set_bucket_custom_domain_invalid_length_in_cert_config(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_all_valid_values_in_cert_config")) {
+        should_set_bucket_custom_domain_all_valid_values_in_cert_config(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_real_cert_values_in_cert_config")) {
+        should_set_bucket_custom_domain_real_cert_values_in_cert_config(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_null_certname")) {
+        should_set_bucket_custom_domain_null_certname(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_certificate_name_aa")) {
+        should_set_bucket_custom_domain_certificate_name_aa(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_certificate_name_chinese")) {
+        should_set_bucket_custom_domain_certificate_name_chinese(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_no_cert_id")) {
+        should_set_bucket_custom_domain_no_cert_id(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_invalid_cert_id")) {
+        should_set_bucket_custom_domain_invalid_cert_id(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_no_cert_chain")) {
+        should_set_bucket_custom_domain_no_cert_chain(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_no_pk")) {
+        should_set_bucket_custom_domain_no_pk(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_invalid_http_mode")) {
+        should_set_bucket_custom_domain_invalid_http_mode(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain_invalid_xml_length")) {
+        should_set_bucket_custom_domain_invalid_xml_length(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_set_bucket_custom_domain")) {
+        should_set_bucket_custom_domain(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_get_bucket_custom_domain_no_bucket_name")) {
+        should_get_bucket_custom_domain_no_bucket_name(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_get_bucket_custom_domain")) {
+        should_get_bucket_custom_domain(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_delete_bucket_custom_domain_no_bucket_name")) {
+        should_delete_bucket_custom_domain_no_bucket_name(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_delete_bucket_custom_domain_null_domain")) {
+        should_delete_bucket_custom_domain_null_domain(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_delete_bucket_custom_domain_no_domain_name")) {
+        should_delete_bucket_custom_domain_no_domain_name(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_delete_bucket_custom_domain_invalid_domain_length")) {
+        should_delete_bucket_custom_domain_invalid_domain_length(argc, argv, optind);
+    }
+    else if (!strcmp(command, "should_delete_bucket_custom_domain")) {
+        should_delete_bucket_custom_domain(argc, argv, optind);
     }
 
     if (!strcmp(command, "set_object_acl_by_head"))

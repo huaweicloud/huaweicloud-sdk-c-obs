@@ -4,7 +4,7 @@ CXX = aarch64-linux-gnu-g++
 else
 CXX = g++
 endif
-CXXFLAGS = -fPIC -fstack-protector-all -Wl,-z,relro,-z,now
+CXXFLAGS = -fPIC -std=c++11 -fstack-protector-all -Wl,-z,relro,-z,now
 SHARED = -shared
 TARGET = libeSDKLogAPI.so
 ${warning spdlog_dir is ${spdlog_dir}}

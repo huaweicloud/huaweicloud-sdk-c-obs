@@ -29,7 +29,7 @@
 #include <time.h>
 #include <sys/time.h>
 #endif
-#include "../../../../platform/eSDK_LogAPI_V2.1.10/C/include/eSDKLogAPI.h"
+#include "eSDKLogAPI.h"
 
 #if defined __GNUC__ || defined LINUX
 #define PRODUCT "obs-sdk-c"

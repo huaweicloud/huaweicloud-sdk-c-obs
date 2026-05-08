@@ -71,7 +71,7 @@ void upload_part(const obs_options *options, char *key, obs_upload_part_info *up
     params.put_properties = put_properties;
     params.encryption_params = encryption_params;
     params.toObsCallback = handler->upload_data_callback;
-    params.toObsCallbackTotalSize = content_length;
+    params.toObsCallbackTotalSize = (int64_t)content_length;
     params.properties_callback = handler->response_handler.properties_callback;
     params.complete_callback = handler->response_handler.complete_callback;
     params.callback_data = callback_data;

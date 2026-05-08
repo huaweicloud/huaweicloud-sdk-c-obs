@@ -18,75 +18,58 @@
 #ifdef WIN32
 # pragma warning (disable:4127)
 #endif
-static obs_status errorXmlCallback(const char *elementPath, const char *data,
-                                 int dataLen, void *callback_data)
+static obs_status errorXmlCallback(const char *elementPath, const char *data, int dataLen, void *callback_data)
 {
     if (!data) {
         return OBS_STATUS_OK;
     }
 
-    error_parser *errorParser = (error_parser *) callback_data;
+    error_parser *errorParser = (error_parser *)callback_data;
 
     int fit;
 
-    COMMLOG(OBS_LOGERROR, "%s errorXml : %s : %.*s", __FUNCTION__,elementPath, dataLen, data);
+    COMMLOG(OBS_LOGERROR, "%s errorXml : %s : %.*s", __FUNCTION__, elementPath, dataLen, data);
 
     if (!strcmp(elementPath, "Error")) {
-    }
-    else if (!strcmp(elementPath, "Error/Code")) {
+    } else if (!strcmp(elementPath, "Error/Code")) {
         string_buffer_append(errorParser->code, data, dataLen, fit);
-    }
-    else if (!strcmp(elementPath, "Error/Message")) {
+    } else if (!strcmp(elementPath, "Error/Message")) {
         string_buffer_append(errorParser->message, data, dataLen, fit);
         errorParser->obsErrorDetails.message = errorParser->message;
-    }
-    else if (!strcmp(elementPath, "Error/Resource")) {
+    } else if (!strcmp(elementPath, "Error/Resource")) {
         string_buffer_append(errorParser->resource, data, dataLen, fit);
         errorParser->obsErrorDetails.resource = errorParser->resource;
-    }
-    else if (!strcmp(elementPath, "Error/FurtherDetails")) {
+    } else if (!strcmp(elementPath, "Error/FurtherDetails")) {
         string_buffer_append(errorParser->further_details, data, dataLen, fit);
-        errorParser->obsErrorDetails.further_details = 
-            errorParser->further_details;
-    }
-    else {
+        errorParser->obsErrorDetails.further_details = errorParser->further_details;
+    } else {
         if (strncmp(elementPath, "Error/", sizeof("Error/") - 1)) {
             return OBS_STATUS_OK;
         }
         const char *elementName = &(elementPath[sizeof("Error/") - 1]);
-        if (errorParser->obsErrorDetails.extra_details_count && 
-            !strcmp(elementName, 
-            errorParser->obsErrorDetails.extra_details[errorParser->obsErrorDetails.extra_details_count - 1].name))
-        {
-            string_multibuffer_append(errorParser->extraDetailsNamesValues,
-                                      data, dataLen, fit);
+        if (errorParser->obsErrorDetails.extra_details_count &&
+            !strcmp(elementName, errorParser->obsErrorDetails.extra_details[errorParser->obsErrorDetails.extra_details_count - 1].name)) {
+            string_multibuffer_append(errorParser->extraDetailsNamesValues, data, dataLen, fit);
             if (!fit) {
                 errorParser->obsErrorDetails.extra_details_count--;
             }
             return OBS_STATUS_OK;
         }
-        if (errorParser->obsErrorDetails.extra_details_count ==
-            sizeof(errorParser->extra_details)) {
+        if (errorParser->obsErrorDetails.extra_details_count == sizeof(errorParser->extra_details)) {
             return OBS_STATUS_OK;
         }
-        char *name = string_multibuffer_current
-            (errorParser->extraDetailsNamesValues);
+        char *name = string_multibuffer_current(errorParser->extraDetailsNamesValues);
         int nameLen = strlen(elementName);
-        string_multibuffer_add(errorParser->extraDetailsNamesValues,
-                               elementName, nameLen, fit);
+        string_multibuffer_add(errorParser->extraDetailsNamesValues, elementName, nameLen, fit);
         if (!fit) {
             return OBS_STATUS_OK;
         }
-        char *value = string_multibuffer_current
-            (errorParser->extraDetailsNamesValues);
-        string_multibuffer_add(errorParser->extraDetailsNamesValues,
-                               data, dataLen, fit);
+        char *value = string_multibuffer_current(errorParser->extraDetailsNamesValues);
+        string_multibuffer_add(errorParser->extraDetailsNamesValues, data, dataLen, fit);
         if (!fit) {
             return OBS_STATUS_OK;
         }
-        obs_name_value *nv = 
-            &(errorParser->extra_details
-              [errorParser->obsErrorDetails.extra_details_count++]);
+        obs_name_value *nv = &(errorParser->extra_details[errorParser->obsErrorDetails.extra_details_count++]);
         nv->name = name;
         nv->value = value;
     }

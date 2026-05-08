@@ -21,7 +21,8 @@
 #include "response_headers_handler.h"
 #include "util.h"
 #include "request_util.h"
-#include "pcre.h"
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include "pcre2.h"
 #include <openssl/ssl.h>
 #include "eSDKOBS.h"
 #if defined __GNUC__ || defined LINUX
@@ -29,7 +30,7 @@
 #include <pthread.h>
 #endif
 #define countof(array) (sizeof(array)/sizeof(array[0]))
-#define REQUEST_STACK_SIZE 100
+#define REQUEST_STACK_SIZE 200
 #define ARRAY_LENGTH_1024 1024
 
 int API_STACK_SIZE = 100;
@@ -83,7 +84,6 @@ void request_destroy(http_request *request)
     request_deinitialize(request);
     curl_easy_cleanup(request->curl);
     free(request);
-    request = NULL;
 }
 void set_openssl_callback(obs_openssl_switch switch_flag)
 {
@@ -527,6 +527,9 @@ static obs_status setup_curl(http_request *request,
 	if (params->request_option.curl_max_connects >= 0) {
 		curl_easy_setopt_safe(CURLOPT_MAXCONNECTS, params->request_option.curl_max_connects);
 	}
+	if (params->request_option.curl_max_age_conn >= 0) {
+		curl_easy_setopt_safe(CURLOPT_MAXAGE_CONN, params->request_option.curl_max_age_conn);
+	}
     curl_easy_setopt_safe(CURLOPT_NETRC, CURL_NETRC_IGNORED);
     setup_CheckCA(request, params, values);
 
@@ -637,9 +640,9 @@ static obs_status request_get(const request_params *params,
 #else
     WaitForSingleObject(hmutex, INFINITE);
 #endif
-    if ((current_request_cnt + 1) > request_online_max){
+    if ((current_request_cnt + 1) > request_online_max) {
         is_no_token = 1;
-    }else {
+    } else {
          current_request_cnt++;
         if (requestStackCountG) {
             request = requestStackG[--requestStackCountG];
@@ -650,7 +653,7 @@ static obs_status request_get(const request_params *params,
 #else
     ReleaseMutex(hmutex);
 #endif
-
+ 
     if (is_no_token)
     {
         COMMLOG(OBS_LOGWARN, "request is no token,cur token num=%u", current_request_cnt);
@@ -893,7 +896,7 @@ static void request_release(http_request **p_request)
 #else
     WaitForSingleObject(hmutex, INFINITE);
 #endif
-
+ 
     if (requestStackCountG == REQUEST_STACK_SIZE || request->status != OBS_STATUS_OK) {
         if (current_request_cnt > 0)
         {
@@ -1069,7 +1072,7 @@ int is_retry(http_request *request, int is_retry)
         {
             if (is_retry)
             {
-                uint64_t wait_time = pow(2, RETRY_NUM - is_retry + 1) * 50;
+                uint64_t wait_time = ((uint64_t)1 << (RETRY_NUM - is_retry + 1)) * 50;
 #ifdef WIN32
                 Sleep(wait_time);
 #else
@@ -1268,6 +1271,7 @@ void request_perform(const request_params *params)
     int is_true = 0;
     int retry = RETRY_NUM;
     COMMLOG(OBS_LOGINFO, "Enter request_perform object key= %s\n!", params->key);
+ 
 	if ((status = checkParameters(params)) != OBS_STATUS_OK) {
 		return_status(status);
 	}
@@ -1282,12 +1286,12 @@ void request_perform(const request_params *params)
     }
     stTempInfo.temp_auth_headers = authTmpActualHeaders;
     stTempInfo.tempAuthParams = authTmpParams;
-
+ 
     if ((status = compose_headers(params, &computed)) != OBS_STATUS_OK){
         COMMLOG(OBS_LOGERROR, "compose_headers failed in function: %s, line: %d", __FUNCTION__, __LINE__);
 		return_status(status);
     }
-
+ 
     COMMLOG(OBS_LOGINFO, "Enter request_perform object computed key= %s\n!", computed.urlEncodedKey);
     canonicalize_obs_headers(&computed, params->use_api);
     canonicalize_resource(params, computed.urlEncodedKey, computed.canonicalizedResource,
@@ -1306,7 +1310,7 @@ void request_perform(const request_params *params)
     {
         return_status(status);
     }
-
+ 
     if ((status = request_get(params, &computed, &request, &stTempInfo)) != OBS_STATUS_OK) {
         return_status(status);
     }
@@ -1320,7 +1324,7 @@ void request_perform(const request_params *params)
         request_release(&request);
         return_status(status);
     }
-
+ 
 	size_t errorBufferSize = CURL_ERROR_SIZE * sizeof(char);
 	char *errorBuffer = (char*)malloc(errorBufferSize);
 	if (errorBuffer == NULL) {
@@ -1335,9 +1339,9 @@ void request_perform(const request_params *params)
 		return_status(OBS_STATUS_Security_Function_Failed);
 	}
     setCurlErrorBuffer(request->curl, errorBuffer, errorBufferSize);
-
+ 
     request_set_opt_for_progress(request);
-
+ 
     char* accessmode = "Virtual Hosting";
     if (params->bucketContext.uri_style == OBS_URI_STYLE_PATH)
     {
@@ -1493,6 +1497,9 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
     }
 	if (request_options->curl_max_connects >= 0) {
 		easy_setopt_safe(CURLOPT_MAXCONNECTS, request_options->curl_max_connects);
+	}
+	if (request_options->curl_max_age_conn >= 0) {
+		easy_setopt_safe(CURLOPT_MAXAGE_CONN, request_options->curl_max_age_conn);
 	}
     setCurlErrorBuffer(curl, errorBuffer, errorBufferSize);
     COMMLOG(OBS_LOGWARN, "curl_easy_setopt curl path= %s",uri);

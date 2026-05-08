@@ -155,11 +155,11 @@ ifndef LIBOPENSSL_CFLAGS
 endif
 
 ifndef LIBPCRE_LIBS
-     LIBPCRE_LIBS := -L./../../../build/script/Provider/build/${includePath}/${pcre_version}/lib -lpcre
+     LIBPCRE_LIBS := -L./../../../build/script/Provider/build/${includePath}/${pcre_version}/lib -lpcre2-8
 endif
 
 ifndef LIBPCRE_CFLAGS
-     LIBPCRE_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/${pcre_version}/include/pcre
+     LIBPCRE_CFLAGS := -I./../../../build/script/Provider/build/${includePath}/${pcre_version}/include
 endif
 
 # add libsecurec by jwx329074 2016.09.18

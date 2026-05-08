@@ -19,6 +19,7 @@
 #include "FileMgr.h"
 #include "eSDKTool.h"
 #include <algorithm> 
+#include "eSDKLogAPI.h"
 
 #ifdef WIN32
 #include <Shlwapi.h>
@@ -343,6 +344,9 @@ namespace eSDK
 	}
 	int LoggerMgr::printRunlog(const std::string& product,int iLevel,const std::string& strcontent)
 	{
+		if (iLevel < GetRunLogLevel()) {
+            return RET_SUCCESS;
+        }
 		if (NULL == m_mutex)
 		{
 			return RET_NULL_POINTER;

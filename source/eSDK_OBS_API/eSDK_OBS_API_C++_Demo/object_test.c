@@ -17,7 +17,8 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <time.h>
+#include <sys/time.h>
+#include <float.h>
 
 #if defined __GNUC__ || defined LINUX
 #include <string.h>
@@ -335,6 +336,10 @@ FILE **uploadFilePool = NULL;
 #define USE_OBS_AUTH_LEN (sizeof(USE_OBS_AUTH) - 1)
 #define USE_S3_AUTH "use_s3_auth"
 #define USE_S3_AUTH_LEN (sizeof(USE_S3_AUTH) - 1)
+#define USE_CURL_VERBOSE_LOG "use_curl_verbose_log"
+#define USE_CURL_VERBOSE_LOG_LEN (sizeof(USE_CURL_VERBOSE_LOG) - 1)
+#define URI_STYLE "uri_style"
+#define URI_STYLE_LEN (sizeof(URI_STYLE) - 1)
 
 // posix add 
 #define BUCKET_QUOTA "quota="
@@ -388,7 +393,7 @@ static uint64_t convertInt(const char *str, const char *paramName)
         ret *= 10;
         ret += (*str++ - '0');
     }
-    printf("ret:%llu\n",ret);
+    printf("ret:%lu\n",ret);
     return ret;
 }
 
@@ -401,7 +406,128 @@ char *getCustomDomain(char* commandParams) {
 	char * customDomain = strstr(commandParams, "=");
 	return ++customDomain;
 }
- 
+
+// Forward declarations for helper functions
+static obs_protocol get_protocol_from_argv(char *param);
+
+// Common parameter parsing structure
+typedef struct {
+    bool use_curl_verbose_log;
+    int max_connect_time;
+    int thread_count;
+    int iterations;
+    int bucket_count;
+    bool has_thread_count;
+    bool has_iterations;
+    bool has_bucket_count;
+    // Fault injection parameters
+    bool enable_fault_injection;
+    char fault_ip[256];
+    int fault_duration;
+} test_params_t;
+
+// Initialize test parameters with default values
+static void init_test_params(test_params_t *params)
+{
+    params->use_curl_verbose_log = false;
+    params->max_connect_time = 0;
+    params->thread_count = 150;
+    params->iterations = 100;
+    params->bucket_count = 4;
+    params->has_thread_count = false;
+    params->has_iterations = false;
+    params->has_bucket_count = false;
+    params->enable_fault_injection = false;
+    params->fault_ip[0] = '\0';
+    params->fault_duration = 0;
+}
+
+// Parse common test parameters from command line
+static void parse_test_params(int argc, char **argv, int *optindex, test_params_t *params)
+{
+    while (*optindex < argc) {
+        char *param = argv[(*optindex)++];
+        if (!strncmp(param, USE_CURL_VERBOSE_LOG, USE_CURL_VERBOSE_LOG_LEN)) {
+            params->use_curl_verbose_log = true;
+            printf("CURL verbose log enabled\n");
+        } else if (!strncmp(param, MAX_CONNECT_TIME, MAX_CONNECT_TIME_LEN)) {
+            params->max_connect_time = atoi(&param[MAX_CONNECT_TIME_LEN]);
+            printf("Max connect time: %d seconds\n", params->max_connect_time);
+        } else if (!strncmp(param, "thread_count=", 13)) {
+            params->thread_count = atoi(&param[13]);
+            params->has_thread_count = true;
+            printf("Thread count: %d\n", params->thread_count);
+        } else if (!strncmp(param, "iterations=", 11)) {
+            params->iterations = atoi(&param[11]);
+            params->has_iterations = true;
+            printf("Iterations per thread: %d\n", params->iterations);
+        } else if (!strncmp(param, "bucket_count=", 13)) {
+            params->bucket_count = atoi(&param[13]);
+            params->has_bucket_count = true;
+            printf("Bucket count: %d\n", params->bucket_count);
+        } else if (!strncmp(param, "enable_fault_injection", 21)) {
+            params->enable_fault_injection = true;
+            printf("Fault injection enabled\n");
+        } else if (!strncmp(param, "fault_ip=", 9)) {
+            strncpy_s(params->fault_ip, sizeof(params->fault_ip), &param[9], sizeof(params->fault_ip) - 1);
+            printf("Fault injection IP: %s\n", params->fault_ip);
+        } else if (!strncmp(param, "fault_duration=", 15)) {
+            params->fault_duration = atoi(&param[15]);
+            printf("Fault injection duration: %d seconds\n", params->fault_duration);
+        } else {
+            // Unknown parameter, put it back
+            (*optindex)--;
+            break;
+        }
+    }
+}
+
+// Apply common options to obs_options
+static void apply_common_options(obs_options *option, const test_params_t *params)
+{
+    if (params->use_curl_verbose_log) {
+        option->request_options.curl_log_verbose = true;
+    }
+    if (params->max_connect_time > 0) {
+        option->request_options.curl_max_age_conn = params->max_connect_time;
+    }
+}
+
+// Parse standard obs options (protocol, cert, auth, etc.)
+static void parse_obs_options(obs_options *option, int argc, char **argv, int *optindex)
+{
+    while (*optindex < argc) {
+        char *param = argv[(*optindex)++];
+        if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+            option->bucket_options.protocol = get_protocol_from_argv(param);
+        } else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
+            option->bucket_options.certificate_info = ca_info;
+            option->bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+        } else if (!strncmp(param, USE_OBS_AUTH, USE_OBS_AUTH_LEN)) {
+            option->request_options.auth_switch = OBS_OBS_TYPE;
+        } else if (!strncmp(param, USE_S3_AUTH, USE_S3_AUTH_LEN)) {
+            option->request_options.auth_switch = OBS_S3_TYPE;
+        } else if (!strncmp(param, BUCKET_TYPE, BUCKET_TYPE_LEN)) {
+            option->bucket_options.bucket_type = get_bucket_type_from_argv(param);
+        } else if (!strncmp(param, USE_CURL_VERBOSE_LOG, USE_CURL_VERBOSE_LOG_LEN)) {
+            option->request_options.curl_log_verbose = true;
+        } else if (!strncmp(param, URI_STYLE, URI_STYLE_LEN)) {
+            const char *style = param + URI_STYLE_LEN + 1;
+            if (strcmp(style, "path") == 0) {
+                option->bucket_options.uri_style = OBS_URI_STYLE_PATH;
+            } else if (strcmp(style, "virtualhost") == 0) {
+                option->bucket_options.uri_style = OBS_URI_STYLE_VIRTUALHOST;
+            }
+        } else if (!strncmp(param, MAX_CONNECT_TIME, MAX_CONNECT_TIME_LEN)) {
+            option->request_options.curl_max_age_conn = atoi(&param[MAX_CONNECT_TIME_LEN]);
+        } else {
+            // Unknown parameter, put it back
+            (*optindex)--;
+            break;
+        }
+    }
+}
+
 static obs_status responsePropertiesCallback(const obs_response_properties *properties, void *callback_data)
 {
     (void) callback_data;
@@ -458,7 +584,7 @@ static void progress_callback(uint64_t now, uint64_t total, void* callback_data)
 {
     if (total)
     {
-        printf("progress is %llu%% \n", (now * 100) / total);
+        printf("progress is %lu%% \n", (now * 100) / total);
     }
 }
 // head object ---------------------------------------------------------------
@@ -1010,6 +1136,340 @@ static void test_delete_bucket_new(int argc, char **argv, int optindex)
     else
     {
         printf("delete bucket failed(%s).\n", obs_get_status_name(ret_status));
+    }
+}
+
+// Thread data structure for connection reuse test
+typedef struct {
+    int thread_id;
+    char bucket_name[256];
+    int create_result;
+    int head_result;
+    int delete_result;
+    bool use_curl_verbose_log;
+    double head_latency_sum;      // Sum of all head request latencies
+    int head_request_count;       // Number of head requests
+} thread_data_t;
+
+// Thread function to test connection reuse
+static void *test_connection_reuse_thread(void *arg)
+{
+    thread_data_t *data = (thread_data_t *)arg;
+    obs_options option;
+    obs_status ret_status = OBS_STATUS_BUTT;
+    struct timeval start_time, end_time;
+    int i;
+
+    printf("[Thread %d] Starting test for bucket: %s\n", data->thread_id, data->bucket_name);
+
+    // Initialize latency statistics
+    data->head_latency_sum = 0.0;
+    data->head_request_count = 0;
+
+    // Step 1: Create bucket
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = data->bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+    option.request_options.curl_log_verbose = data->use_curl_verbose_log;
+
+    obs_response_handler response_handler = { 0, &response_complete_callback };
+
+    printf("[Thread %d] Creating bucket...\n", data->thread_id);
+    create_bucket(&option, OBS_CANNED_ACL_PRIVATE, NULL, &response_handler, &ret_status);
+    data->create_result = (ret_status == OBS_STATUS_OK) ? 0 : -1;
+
+    if (ret_status == OBS_STATUS_OK) {
+        printf("[Thread %d] Create bucket success\n", data->thread_id);
+    } else {
+        printf("[Thread %d] Create bucket failed: %s\n", data->thread_id, obs_get_status_name(ret_status));
+        pthread_exit(NULL);
+    }
+
+    // Step 2: Head bucket 10 times (should reuse connection)
+    printf("[Thread %d] Heading bucket 10 times (checking connection reuse)...\n", data->thread_id);
+    for (i = 0; i < 50; i++) {
+        init_obs_options(&option);
+        option.bucket_options.host_name = HOST_NAME;
+        option.bucket_options.bucket_name = data->bucket_name;
+        option.bucket_options.access_key = ACCESS_KEY_ID;
+        option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+        option.bucket_options.uri_style = gDefaultURIStyle;
+        option.request_options.curl_log_verbose = data->use_curl_verbose_log;
+
+        obs_response_handler head_handler = { 0, &head_complete_callback };
+
+        gettimeofday(&start_time, NULL);
+        obs_head_bucket(&option, &head_handler, &ret_status);
+        gettimeofday(&end_time, NULL);
+
+        double latency = (end_time.tv_sec - start_time.tv_sec) * 1000.0 +
+                        (end_time.tv_usec - start_time.tv_usec) / 1000.0;
+
+        if (ret_status == OBS_STATUS_OK) {
+            data->head_latency_sum += latency;
+            data->head_request_count++;
+            printf("[Thread %d] Head bucket iteration %d success, latency: %.3f ms\n",
+                   data->thread_id, i + 1, latency);
+        } else {
+            printf("[Thread %d] Head bucket iteration %d failed: %s\n",
+                   data->thread_id, i + 1, obs_get_status_name(ret_status));
+            data->head_result = -1;
+            break;
+        }
+    }
+
+    if (data->head_request_count > 0 && ret_status == OBS_STATUS_OK) {
+        data->head_result = 0;
+        double avg_latency = data->head_latency_sum / data->head_request_count;
+        printf("[Thread %d] Head bucket completed, average latency: %.3f ms (%d requests)\n",
+               data->thread_id, avg_latency, data->head_request_count);
+    }
+
+    // Step 3: Delete bucket
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = data->bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+    option.request_options.curl_log_verbose = data->use_curl_verbose_log;
+
+    obs_response_handler delete_handler = { NULL, &response_complete_callback };
+
+    printf("[Thread %d] Deleting bucket...\n", data->thread_id);
+    delete_bucket(&option, &delete_handler, &ret_status);
+    data->delete_result = (ret_status == OBS_STATUS_OK) ? 0 : -1;
+
+    if (ret_status == OBS_STATUS_OK) {
+        printf("[Thread %d] Delete bucket success\n", data->thread_id);
+    } else {
+        printf("[Thread %d] Delete bucket failed: %s\n", data->thread_id, obs_get_status_name(ret_status));
+    }
+
+    printf("[Thread %d] Test completed\n", data->thread_id);
+    pthread_exit(NULL);
+}
+
+// Test function for connection reuse with 5 threads
+static void test_bucket_connection_reuse_new(int argc, char **argv, int optindex)
+{
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket_name_prefix\n");
+        return;
+    }
+
+    char *bucket_prefix = argv[optindex++];
+    printf("Bucket name prefix: %s\n", bucket_prefix);
+
+    // Parse command line parameters using common function
+    test_params_t params;
+    init_test_params(&params);
+    parse_test_params(argc, argv, &optindex, &params);
+
+    const int thread_count = 3;
+    pthread_t threads[thread_count];
+    thread_data_t thread_data[thread_count];
+    int i, rc;
+    int test_failed = 0;
+
+    printf("\n========== Starting Connection Reuse Test with %d Threads ==========\n", thread_count);
+
+    // Create 5 threads
+    for (i = 0; i < thread_count; i++) {
+        thread_data[i].thread_id = i + 1;
+        snprintf(thread_data[i].bucket_name, sizeof(thread_data[i].bucket_name),
+                 "%s-%d", bucket_prefix, i + 1);
+        thread_data[i].create_result = -1;
+        thread_data[i].head_result = -1;
+        thread_data[i].delete_result = -1;
+        thread_data[i].use_curl_verbose_log = params.use_curl_verbose_log;
+        thread_data[i].head_latency_sum = 0.0;
+        thread_data[i].head_request_count = 0;
+
+        printf("Creating thread %d for bucket: %s\n", i + 1, thread_data[i].bucket_name);
+        rc = pthread_create(&threads[i], NULL, test_connection_reuse_thread, &thread_data[i]);
+        if (rc) {
+            fprintf(stderr, "ERROR: Failed to create thread %d, return code: %d\n", i + 1, rc);
+            test_failed = 1;
+            break;
+        }
+    }
+
+    // Only wait for threads if all were created successfully
+    if (!test_failed) {
+        // Wait for all threads to complete
+        for (i = 0; i < thread_count; i++) {
+            rc = pthread_join(threads[i], NULL);
+            if (rc) {
+                fprintf(stderr, "ERROR: Failed to join thread %d, return code: %d\n", i + 1, rc);
+            }
+        }
+
+        // Print summary
+        printf("\n========== Test Summary ==========\n");
+        int success_count = 0;
+        int latency_check_passed = 1;
+        double total_avg_latency = 0.0;
+        int total_head_requests = 0;
+
+        for (i = 0; i < thread_count; i++) {
+            printf("Thread %d (bucket: %s):\n", thread_data[i].thread_id, thread_data[i].bucket_name);
+            printf("  Create bucket: %s\n", thread_data[i].create_result == 0 ? "SUCCESS" : "FAILED");
+            printf("  Head bucket:   %s\n", thread_data[i].head_result == 0 ? "SUCCESS" : "FAILED");
+            printf("  Delete bucket: %s\n", thread_data[i].delete_result == 0 ? "SUCCESS" : "FAILED");
+
+            if (thread_data[i].head_request_count > 0) {
+                double avg_latency = thread_data[i].head_latency_sum / thread_data[i].head_request_count;
+                printf("  Head requests: %d, Average latency: %.3f ms\n",
+                       thread_data[i].head_request_count, avg_latency);
+
+                if (avg_latency >= 20.0) {
+                    printf("  WARNING: Average latency >= 20ms (expected < 20ms)\n");
+                    latency_check_passed = 0;
+                } else {
+                    printf("  PASS: Average latency < 20ms\n");
+                }
+
+                total_avg_latency += avg_latency;
+                total_head_requests += thread_data[i].head_request_count;
+            }
+
+            if (thread_data[i].create_result == 0 && thread_data[i].head_result == 0 && thread_data[i].delete_result == 0) {
+                success_count++;
+            }
+        }
+
+        printf("\nTotal threads: %d\n", thread_count);
+        printf("Successful threads: %d\n", success_count);
+        printf("Failed threads: %d\n", thread_count - success_count);
+
+        if (total_head_requests > 0) {
+            printf("\nTotal head requests: %d\n", total_head_requests);
+            printf("Overall average latency: %.3f ms\n", total_avg_latency / thread_count);
+        }
+
+        if (success_count == thread_count && latency_check_passed) {
+            printf("\n========== All tests PASSED! Connection reuse verified. ==========\n");
+        } else if (success_count == thread_count) {
+            printf("\n========== Tests PASSED but latency check FAILED! ==========\n");
+        } else {
+            printf("\n========== Some tests FAILED! ==========\n");
+        }
+    }
+}
+
+
+// Test function for connection reuse timeout verification
+static void test_bucket_connection_reuse_timeout(int argc, char **argv, int optindex)
+{
+    obs_options option;
+    head_object_data data;
+    data.ret_status = OBS_STATUS_OK;
+    data.object_length = 0;
+    obs_status ret_status = OBS_STATUS_OK;
+    struct timeval start_time, end_time;
+    double head_latency[2] = {0.0, 0.0};
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket_name\n");
+        return;
+    }
+
+    char *bucket_name = argv[optindex++];
+    printf("Bucket's name is == %s \n", bucket_name);
+
+    init_obs_options(&option);
+
+    option.bucket_options.bucket_type = OBS_BUCKET_OBJECT;
+    option.bucket_options.uri_style = OBS_URI_STYLE_VIRTUALHOST;
+
+    // Parse obs options using common function
+    parse_obs_options(&option, argc, argv, &optindex);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    obs_response_handler response_handler = { 0, &response_complete_callback };
+    obs_response_handler head_response_handler = {&head_properties_callback, &head_complete_callback};
+
+    // Step 1: Create bucket with max connection reuse time set to 5 seconds
+    printf("=== Step 1: Create bucket with max connection reuse time = 5s ===\n");
+    option.request_options.curl_max_age_conn = 5;  // Set max connection reuse time to 5 seconds
+
+    create_bucket(&option, OBS_CANNED_ACL_PRIVATE, NULL, &response_handler, &ret_status);
+    if (ret_status == OBS_STATUS_OK) {
+        printf("Create bucket successfully.\n");
+    } else if (ret_status == OBS_STATUS_BucketAlreadyExists) {
+        printf("Bucket already exists, continuing with existing bucket.\n");
+    } else {
+        printf("Create bucket failed(%s).\n", obs_get_status_name(ret_status));
+        return;
+    }
+
+    // Step 2: Head bucket and record time
+    printf("\n=== Step 2: Head bucket and record time ===\n");
+    gettimeofday(&start_time, NULL);
+    obs_head_bucket(&option, &head_response_handler, &data);
+    gettimeofday(&end_time, NULL);
+
+    head_latency[0] = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + (end_time.tv_usec - start_time.tv_usec) / 1000.0;
+    printf("First head bucket latency: %.3f ms\n", head_latency[0]);
+
+    if (data.ret_status == OBS_STATUS_OK) {
+        printf("Head bucket successfully.\n");
+    } else {
+        printf("Head bucket failed(%s).\n", obs_get_status_name(data.ret_status));
+        return;
+    }
+
+    // Step 3: Sleep 6 seconds and head bucket again
+    printf("\n=== Step 3: Sleep 6 seconds and head bucket again ===\n");
+    sleep(6);
+    printf("Sleep completed.\n");
+
+    gettimeofday(&start_time, NULL);
+    obs_head_bucket(&option, &head_response_handler, &data);
+    gettimeofday(&end_time, NULL);
+
+    head_latency[1] = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + (end_time.tv_usec - start_time.tv_usec) / 1000.0;
+    printf("Second head bucket latency: %.3f ms\n", head_latency[1]);
+
+    if (data.ret_status == OBS_STATUS_OK) {
+        printf("Head bucket successfully.\n");
+    } else {
+        printf("Head bucket failed(%s).\n", obs_get_status_name(data.ret_status));
+        return;
+    }
+
+    // Step 4: Verify latency requirements
+    printf("\n=== Step 4: Verify latency requirements ===\n");
+    printf("First head latency: %.3f ms (expected < 20ms)\n", head_latency[0]);
+    printf("Second head latency: %.3f ms (expected > 20ms)\n", head_latency[1]);
+
+    int pass = 1;
+    if (head_latency[0] < 20.0) {
+        printf("PASS: First head latency (%.3f ms) is less than 20ms.\n", head_latency[0]);
+    } else {
+        printf("FAIL: First head latency (%.3f ms) is NOT less than 20ms.\n", head_latency[0]);
+        pass = 0;
+    }
+
+    if (head_latency[1] > 20.0) {
+        printf("PASS: Second head latency (%.3f ms) is greater than 20ms.\n", head_latency[1]);
+    } else {
+        printf("FAIL: Second head latency (%.3f ms) is NOT greater than 20ms.\n", head_latency[1]);
+        pass = 0;
+    }
+
+    if (pass) {
+        printf("\n========== All checks PASSED! Connection reuse timeout verified. ==========\n");
+    } else {
+        printf("\n========== Some checks FAILED! ==========\n");
     }
 }
 
@@ -3663,7 +4123,7 @@ static void test_set_bucket_quota_new(int argc, char **argv, int optindex)
     init_obs_options(&option);
     char *bucket_name = argv[optindex++];
     uint64_t bucketquota = atol(argv[optindex++]);
-    printf("Bucket's name is == %s, bucketquota= %llu. \n", bucket_name, bucketquota);
+    printf("Bucket's name is == %s, bucketquota= %lu. \n", bucket_name, bucketquota);
 
     option.bucket_options.host_name = HOST_NAME;
     option.bucket_options.bucket_name = bucket_name;
@@ -3750,8 +4210,7 @@ static void test_get_bucket_quota_new(int argc, char **argv, int optindex)
     get_bucket_quota(&option, &bucketquota, &response_handler, &ret_status);
 
     if (OBS_STATUS_OK == ret_status) {
-        printf("Bucket=%s  Quota=%llu \n get bucket quota successfully. \n ",
-            bucket_name, bucketquota);
+        printf("Bucket=%s  Quota=%lu \n get bucket quota successfully. \n ", bucket_name, bucketquota);
     }
     else
     {
@@ -5067,7 +5526,7 @@ static void test_concurrent_copy_part(int argc, char **argv, int optindex)
 static double g_progress = 0;
 void test_progress_callback(double progress, uint64_t uploadedSize, uint64_t fileTotalSize, void *callback_data){
     if (progress == 100 || (g_progress < progress && progress - g_progress > 2)) {
-        printf("test_progress_callback progress=%f  uploadedSize=%llu fileTotalSize=%llu  callback_data=%p\n", progress, uploadedSize, fileTotalSize, callback_data);
+        printf("test_progress_callback progress=%f  uploadedSize=%lu fileTotalSize=%lu  callback_data=%p\n", progress, uploadedSize, fileTotalSize, callback_data);
         g_progress = progress;
     }
 }
@@ -6384,11 +6843,10 @@ void test_truncate_object_new(int argc, char **argv, int optindex)
     };
     truncate_object(&option, key, object_length, &responseHandler, &ret_status); 
     if (OBS_STATUS_OK == ret_status) {
-        printf("truncate_object %s for length %llu successfully.\n", key, object_length);
+        printf("truncate_object %s for length %lu successfully.\n", key, object_length);
     }
     else {
-        printf("truncate_object %s for length %llu failed(%s).\n", key, object_length,
-            obs_get_status_name(ret_status));
+        printf("truncate_object %s for length %lu failed(%s).\n", key, object_length, obs_get_status_name(ret_status));
     }
     return;
 }
@@ -6432,7 +6890,7 @@ void test_set_bucket_policy_from_file(int argc, char** argv, int optind)
 			// buffer is full!
 			fseek(fp, 0L, SEEK_END);  // 将文件指针移到文件结尾
 			long size = ftell(fp);  // 获取文件大小
-			fprintf(stderr, "\nERROR: length of bucket_policy in file is %l exceed buffer limit %d"
+			fprintf(stderr, "\nERROR: length of bucket_policy in file is %ld exceed buffer limit %d"
 				", can't upload! please make it shorter and try again",
 				size, MAX_NON_COMPRESSED_BUCKET_POLICY_LENGTH - 1);
 
@@ -6447,7 +6905,7 @@ void test_set_bucket_policy_from_file(int argc, char** argv, int optind)
 		// 处理缓存中剩余的内容
 		// ...
 		printf("Bucket_policy you trying to set is:\n %s \n", bucket_policy_buffer);
-		printf("Length of bucket_policy you trying to set is: %d. \n", strlen(bucket_policy_buffer));
+		printf("Length of bucket_policy you trying to set is: %ld. \n", strlen(bucket_policy_buffer));
 		fprintf(stderr, "\n\nNOTICE: MAX length of bucket policy(in COMPRESSED json style) is %d!\n\n",
 			MAX_COMPRESSED_BUCKET_POLICY_LENGTH);
 	}
@@ -6824,6 +7282,488 @@ static void test_delete_bucket_trash(int argc, char ** argv, int optindex) {
 	}
 }
 
+// list bucket latency test ---------------------------------------------------
+static obs_status list_service_callback(const char *owner_id,
+                                        const char *owner_display_name,
+                                        const char *bucket_name,
+                                        int64_t creation_date, void *callback_data)
+{
+    (void)owner_id;
+    (void)owner_display_name;
+    (void)bucket_name;
+    (void)creation_date;
+    (void)callback_data;
+    return OBS_STATUS_OK;
+}
+
+static void list_service_complete_callback(obs_status status,
+                                            const obs_error_details *error,
+                                            void *callback_data)
+{
+    list_service_data *data = (list_service_data *)callback_data;
+    data->ret_status = status;
+}
+
+// bucket latency test ---------------------------------------------------------------
+static void test_bucket_latency(int argc, char **argv, int optindex)
+{
+    obs_options option;
+    head_object_data data;
+    data.ret_status = OBS_STATUS_OK;
+    data.object_length = 0;
+    struct timeval start_time, end_time;
+    double head_latency[2] = {0.0, 0.0};
+
+    if (optindex == argc) {
+        fprintf(stderr, "\nERROR: Missing parameter: bucket\n");
+        return;
+    }
+
+    char *bucket_name = argv[optindex++];
+    printf("Bucket's name is == %s \n", bucket_name);
+
+    init_obs_options(&option);
+
+    option.bucket_options.bucket_type = OBS_BUCKET_OBJECT;
+    option.bucket_options.uri_style = OBS_URI_STYLE_VIRTUALHOST;
+
+    // Parse obs options using common function
+    parse_obs_options(&option, argc, argv, &optindex);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    // Step 1: Head bucket twice with specified URI style and measure latency
+    printf("=== Step 1: Head bucket with %s style ===\n",
+           option.bucket_options.uri_style == OBS_URI_STYLE_VIRTUALHOST ? "virtual host" : "path");
+    printf("Host: %s, Bucket: %s\n", HOST_NAME, bucket_name);
+    obs_response_handler head_response_handler = {&head_properties_callback, &head_complete_callback};
+
+    for (int ix = 0; ix < 2; ix++) {
+        printf("\n--- Request %d ---\n", ix + 1);
+        printf("URI Style: %s\n", option.bucket_options.uri_style == OBS_URI_STYLE_VIRTUALHOST ? "VIRTUALHOST" : "PATH");
+        gettimeofday(&start_time, NULL);
+        obs_head_bucket(&option, &head_response_handler, &data);
+        gettimeofday(&end_time, NULL);
+
+        head_latency[ix] = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + (end_time.tv_usec - start_time.tv_usec) / 1000.0;
+
+        printf("Head bucket (iteration %d) latency: %.3f ms\n", ix + 1, head_latency[ix]);
+
+        if (data.ret_status == OBS_STATUS_OK) {
+            printf("head bucket successfully (iteration %d).\n", ix + 1);
+        } else {
+            printf("head bucket failed(%s) (iteration %d).\n", obs_get_status_name(data.ret_status), ix + 1);
+        }
+    }
+
+    // Step 2: Verify latency reduction (second head should be 80% lower than first)
+    printf("=== Step 2: Verify latency reduction ===\n");
+    double latency_reduction = ((head_latency[0] - head_latency[1]) / head_latency[0]) * 100.0;
+    printf("Latency reduction: %.2f%% (from %.3f ms to %.3f ms)\n", latency_reduction, head_latency[0], head_latency[1]);
+
+    if (head_latency[1] < head_latency[0] * 0.2) {
+        printf("PASS: Second head latency is less than 20%% of first head latency (reduced by more than 80%%).\n");
+    } else {
+        printf("FAIL: Second head latency is NOT less than 20%% of first head latency (expected reduction > 80%%).\n");
+    }
+    printf("\n");
+}
+
+static void test_list_bucket_latency(int argc, char **argv, int optindex)
+{
+    obs_options option;
+    list_service_data data;
+    data.headerPrinted = 0;
+    data.allDetails = 0;
+    data.ret_status = OBS_STATUS_OK;
+    struct timeval start_time, end_time;
+    double list_latency[2] = {0.0, 0.0};
+
+    init_obs_options(&option);
+
+    option.bucket_options.bucket_type = OBS_BUCKET_OBJECT;
+    option.bucket_options.uri_style = OBS_URI_STYLE_VIRTUALHOST;
+
+    // Parse obs options using common function
+    parse_obs_options(&option, argc, argv, &optindex);
+
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+
+    // Step 1: List bucket twice with specified URI style and measure latency
+    printf("=== Step 1: List bucket with %s style ===\n",
+           option.bucket_options.uri_style == OBS_URI_STYLE_VIRTUALHOST ? "virtual host" : "path");
+    printf("Host: %s\n", HOST_NAME);
+    obs_list_service_handler list_service_handler = {
+        {&head_properties_callback, &list_service_complete_callback}, &list_service_callback};
+
+    for (int ix = 0; ix < 2; ix++) {
+        printf("\n--- Request %d ---\n", ix + 1);
+        printf("URI Style: %s\n", option.bucket_options.uri_style == OBS_URI_STYLE_VIRTUALHOST ? "VIRTUALHOST" : "PATH");
+        gettimeofday(&start_time, NULL);
+        list_bucket(&option, &list_service_handler, &data);
+        gettimeofday(&end_time, NULL);
+
+        list_latency[ix] = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + (end_time.tv_usec - start_time.tv_usec) / 1000.0;
+
+        printf("List bucket (iteration %d) latency: %.3f ms\n", ix + 1, list_latency[ix]);
+
+        if (data.ret_status == OBS_STATUS_OK) {
+            printf("list bucket successfully (iteration %d).\n", ix + 1);
+        } else {
+            printf("list bucket failed(%s) (iteration %d).\n", obs_get_status_name(data.ret_status), ix + 1);
+        }
+    }
+
+    // Step 2: Verify latency reduction (second list should be 80% lower than first)
+    printf("=== Step 2: Verify latency reduction ===\n");
+    double latency_reduction = ((list_latency[0] - list_latency[1]) / list_latency[0]) * 100.0;
+    printf("Latency reduction: %.2f%% (from %.3f ms to %.3f ms)\n", latency_reduction, list_latency[0], list_latency[1]);
+
+    if (list_latency[1] < list_latency[0] * 0.2) {
+        printf("PASS: Second list latency is less than 20%% of first list latency (reduced by more than 80%%).\n");
+    } else {
+        printf("FAIL: Second list latency is NOT less than 20%% of first list latency (expected reduction > 80%%).\n");
+    }
+    printf("\n");
+}
+
+// Thread data structure for concurrent head bucket test
+typedef struct {
+    int thread_id;
+    int iterations;
+    int bucket_count;
+    char **bucket_names;
+    double head_latency_sum;
+    int head_request_count;
+    int success_count;
+    int fail_count;
+    bool use_curl_verbose_log;
+} concurrent_head_bucket_data_t;
+
+// Thread function for concurrent head bucket test
+static void *concurrent_head_bucket_thread(void *arg)
+{
+    concurrent_head_bucket_data_t *data = (concurrent_head_bucket_data_t *)arg;
+    obs_options option;
+    obs_status ret_status = OBS_STATUS_BUTT;
+    obs_response_handler response_handler = {0, &head_complete_callback};
+    struct timeval start_time, end_time;
+
+    data->head_latency_sum = 0.0;
+    data->head_request_count = 0;
+    data->success_count = 0;
+    data->fail_count = 0;
+
+    // Seed random number generator for this thread
+    unsigned int seed = time(NULL) + data->thread_id;
+    srand(seed);
+
+    for (int i = 0; i < data->iterations; i++) {
+        // Randomly select a bucket
+        int bucket_index = rand() % data->bucket_count;
+        char *bucket_name = data->bucket_names[bucket_index];
+
+        init_obs_options(&option);
+        option.bucket_options.host_name = HOST_NAME;
+        option.bucket_options.bucket_name = bucket_name;
+        option.bucket_options.access_key = ACCESS_KEY_ID;
+        option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+        option.bucket_options.uri_style = gDefaultURIStyle;
+        option.request_options.curl_log_verbose = data->use_curl_verbose_log;
+
+        gettimeofday(&start_time, NULL);
+        obs_head_bucket(&option, &response_handler, &ret_status);
+        gettimeofday(&end_time, NULL);
+
+        double latency = (end_time.tv_sec - start_time.tv_sec) * 1000.0 +
+                        (end_time.tv_usec - start_time.tv_usec) / 1000.0;
+        data->head_latency_sum += latency;
+        data->head_request_count++;
+
+        if (ret_status == OBS_STATUS_OK) {
+            data->success_count++;
+        } else {
+            data->fail_count++;
+        }
+    }
+
+    return NULL;
+}
+
+// Common function to create multiple buckets
+static int create_multiple_buckets(char **bucket_names, int bucket_count)
+{
+    obs_options option;
+    obs_status ret_status = OBS_STATUS_OK;
+    obs_response_handler response_handler = {&response_properties_callback, &response_complete_callback};
+    int success_count = 0;
+
+    for (int i = 0; i < bucket_count; i++) {
+        init_obs_options(&option);
+        option.bucket_options.host_name = HOST_NAME;
+        option.bucket_options.bucket_name = bucket_names[i];
+        option.bucket_options.access_key = ACCESS_KEY_ID;
+        option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+        option.bucket_options.uri_style = gDefaultURIStyle;
+
+        create_bucket(&option, OBS_CANNED_ACL_PRIVATE, NULL, &response_handler, &ret_status);
+
+        if (ret_status == OBS_STATUS_OK) {
+            printf("Created bucket: %s\n", bucket_names[i]);
+            success_count++;
+        } else if (ret_status == OBS_STATUS_BucketAlreadyExists) {
+            printf("Bucket already exists: %s\n", bucket_names[i]);
+            success_count++;
+        } else {
+            printf("Failed to create bucket %s: %s\n", bucket_names[i], obs_get_status_name(ret_status));
+        }
+    }
+
+    return success_count;
+}
+
+// Common function to allocate bucket names
+static char **allocate_bucket_names(int bucket_count, const char *prefix)
+{
+    char **bucket_names = (char **)malloc(bucket_count * sizeof(char *));
+    if (!bucket_names) {
+        return NULL;
+    }
+
+    for (int i = 0; i < bucket_count; i++) {
+        bucket_names[i] = (char *)malloc(256 * sizeof(char));
+        if (!bucket_names[i]) {
+            for (int j = 0; j < i; j++) {
+                free(bucket_names[j]);
+            }
+            free(bucket_names);
+            return NULL;
+        }
+        snprintf(bucket_names[i], 256, "%s-%d", prefix, i);
+    }
+
+    return bucket_names;
+}
+
+// Common function to free bucket names
+static void free_bucket_names(char **bucket_names, int bucket_count)
+{
+    if (!bucket_names) return;
+    for (int i = 0; i < bucket_count; i++) {
+        if (bucket_names[i]) {
+            free(bucket_names[i]);
+        }
+    }
+    free(bucket_names);
+}
+
+// Fault injection thread data structure
+typedef struct {
+    char fault_ip[256];
+    int fault_duration;
+} fault_injection_data_t;
+
+// Fault injection thread function using iptables
+static void *fault_injection_thread(void *arg)
+{
+    fault_injection_data_t *data = (fault_injection_data_t *)arg;
+    char command[512];
+    int ret;
+
+    printf("[Fault Injection] Starting fault injection for IP: %s, duration: %d seconds\n",
+           data->fault_ip, data->fault_duration);
+
+    // Add iptables rule to drop packets to the target IP
+    snprintf(command, sizeof(command),
+             "iptables -A OUTPUT -d %s -j DROP 2>&1", data->fault_ip);
+    printf("[Fault Injection] Executing: %s\n", command);
+    ret = system(command);
+    if (ret == 0) {
+        printf("[Fault Injection] Successfully added iptables rule to drop packets to %s\n", data->fault_ip);
+    } else {
+        printf("[Fault Injection] Failed to add iptables rule (return code: %d)\n", ret);
+        printf("[Fault Injection] Note: This may require root privileges\n");
+    }
+
+    // Wait for the specified duration
+    printf("[Fault Injection] Waiting for %d seconds...\n", data->fault_duration);
+    sleep(data->fault_duration);
+
+    // Remove iptables rule to restore connectivity
+    snprintf(command, sizeof(command),
+             "iptables -D OUTPUT -d %s -j DROP 2>&1", data->fault_ip);
+    printf("[Fault Injection] Executing: %s\n", command);
+    ret = system(command);
+    if (ret == 0) {
+        printf("[Fault Injection] Successfully removed iptables rule, connectivity restored\n");
+    } else {
+        printf("[Fault Injection] Failed to remove iptables rule (return code: %d)\n", ret);
+    }
+
+    printf("[Fault Injection] Fault injection completed\n");
+    return NULL;
+}
+
+static void test_concurrent_head_bucket(int argc, char **argv, int optindex)
+{
+    test_params_t params;
+    init_test_params(&params);
+
+    // Parse command line arguments
+    parse_test_params(argc, argv, &optindex, &params);
+
+    printf("=== Concurrent Head Bucket Test ===\n");
+    printf("Thread count: %d\n", params.thread_count);
+    printf("Iterations per thread: %d\n", params.iterations);
+    printf("Bucket count: %d\n", params.bucket_count);
+    if (params.use_curl_verbose_log) {
+        printf("CURL verbose log: enabled\n");
+    }
+    if (params.max_connect_time > 0) {
+        printf("Max connect time: %d seconds\n", params.max_connect_time);
+    }
+    if (params.enable_fault_injection) {
+        printf("Fault injection: enabled\n");
+        printf("Fault injection IP: %s\n", params.fault_ip);
+        printf("Fault injection duration: %d seconds\n", params.fault_duration);
+    }
+    printf("Total operations: %d\n", params.thread_count * params.iterations);
+    printf("\n");
+
+    // Allocate bucket names
+    char **bucket_names = allocate_bucket_names(params.bucket_count, "concurrent-head-bucket-test");
+    if (!bucket_names) {
+        printf("Failed to allocate memory for bucket names.\n");
+        return;
+    }
+
+    // Step 1: Create buckets
+    printf("=== Step 1: Creating %d buckets ===\n", params.bucket_count);
+    create_multiple_buckets(bucket_names, params.bucket_count);
+    printf("\n");
+
+    // Step 2: Create threads and run concurrent head bucket operations
+    printf("=== Step 2: Running concurrent head bucket operations ===\n");
+
+    pthread_t *threads = (pthread_t *)malloc(params.thread_count * sizeof(pthread_t));
+    concurrent_head_bucket_data_t *thread_data = (concurrent_head_bucket_data_t *)malloc(
+        params.thread_count * sizeof(concurrent_head_bucket_data_t));
+    pthread_t fault_thread = 0;
+    fault_injection_data_t fault_data;
+
+    if (!threads || !thread_data) {
+        printf("Failed to allocate memory for threads.\n");
+        if (threads) free(threads);
+        if (thread_data) free(thread_data);
+        free_bucket_names(bucket_names, params.bucket_count);
+        return;
+    }
+
+    // Start fault injection thread if enabled
+    if (params.enable_fault_injection) {
+        if (params.fault_ip[0] == '\0' || params.fault_duration <= 0) {
+            printf("Error: Fault injection enabled but fault_ip or fault_duration not specified.\n");
+            printf("Please provide fault_ip=<ip> and fault_duration=<seconds> parameters.\n");
+            free(threads);
+            free(thread_data);
+            free_bucket_names(bucket_names, params.bucket_count);
+            return;
+        }
+
+        strncpy_s(fault_data.fault_ip, sizeof(fault_data.fault_ip), params.fault_ip, sizeof(fault_data.fault_ip) - 1);
+        fault_data.fault_duration = params.fault_duration;
+
+        if (pthread_create(&fault_thread, NULL, fault_injection_thread, &fault_data) != 0) {
+            printf("Failed to create fault injection thread.\n");
+        } else {
+            printf("Fault injection thread started.\n\n");
+        }
+    }
+
+    struct timeval test_start_time, test_end_time;
+    gettimeofday(&test_start_time, NULL);
+
+    for (int i = 0; i < params.thread_count; i++) {
+        thread_data[i].thread_id = i;
+        thread_data[i].iterations = params.iterations;
+        thread_data[i].bucket_count = params.bucket_count;
+        thread_data[i].bucket_names = bucket_names;
+        thread_data[i].use_curl_verbose_log = params.use_curl_verbose_log;
+
+        if (pthread_create(&threads[i], NULL, concurrent_head_bucket_thread, &thread_data[i]) != 0) {
+            printf("Failed to create thread %d.\n", i);
+        }
+    }
+
+    // Wait for all threads to complete
+    for (int i = 0; i < params.thread_count; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    // Wait for fault injection thread to complete
+    if (fault_thread != 0) {
+        pthread_join(fault_thread, NULL);
+        printf("\nFault injection thread completed.\n");
+    }
+
+    gettimeofday(&test_end_time, NULL);
+
+    // Step 3: Calculate and print statistics
+    printf("\n=== Step 3: Statistics ===\n");
+    double total_test_latency = (test_end_time.tv_sec - test_start_time.tv_sec) * 1000.0 +
+                               (test_end_time.tv_usec - test_start_time.tv_usec) / 1000.0;
+    printf("Total test time: %.3f ms\n", total_test_latency);
+
+    int total_success = 0;
+    int total_fail = 0;
+    double total_latency = 0.0;
+    double min_latency = DBL_MAX;
+    double max_latency = 0.0;
+
+    printf("\nPer-thread statistics:\n");
+    printf("Thread ID | Avg Latency (ms) | Success | Fail\n");
+    printf("---------|------------------|---------|------\n");
+
+    for (int i = 0; i < params.thread_count; i++) {
+        double avg_latency = thread_data[i].head_latency_sum / thread_data[i].head_request_count;
+        printf("%8d | %16.3f | %7d | %4d\n",
+               thread_data[i].thread_id, avg_latency, thread_data[i].success_count, thread_data[i].fail_count);
+
+        total_success += thread_data[i].success_count;
+        total_fail += thread_data[i].fail_count;
+        total_latency += thread_data[i].head_latency_sum;
+
+        if (avg_latency < min_latency) {
+            min_latency = avg_latency;
+        }
+        if (avg_latency > max_latency) {
+            max_latency = avg_latency;
+        }
+    }
+
+    double overall_avg_latency = total_latency / (params.thread_count * params.iterations);
+    printf("\nOverall statistics:\n");
+    printf("Total operations: %d\n", params.thread_count * params.iterations);
+    printf("Total success: %d\n", total_success);
+    printf("Total fail: %d\n", total_fail);
+    printf("Success rate: %.2f%%\n", (double)total_success / (params.thread_count * params.iterations) * 100.0);
+    printf("Overall average latency: %.3f ms\n", overall_avg_latency);
+    printf("Min average latency per thread: %.3f ms\n", min_latency);
+    printf("Max average latency per thread: %.3f ms\n", max_latency);
+    printf("Total test time: %.3f ms\n", total_test_latency);
+    printf("\n");
+
+    // Cleanup
+    free(threads);
+    free(thread_data);
+    free_bucket_names(bucket_names, params.bucket_count);
+}
+
 int main(int argc, char **argv)
 {
     while (1) {
@@ -7094,10 +8034,18 @@ int main(int argc, char **argv)
 	}
 	else if (!strcmp(command, "delete_bucket_trash")) {
 		test_delete_bucket_trash(argc, argv, optind);
-	}
-    
+	} else if (!strcmp(command, "bucket_latency")) {
+        test_bucket_latency(argc, argv, optind);
+    } else if (!strcmp(command, "list_bucket_latency")) {
+        test_list_bucket_latency(argc, argv, optind);
+    } else if (!strcmp(command, "bucket_connection_reuse")) {
+        test_bucket_connection_reuse_new(argc, argv, optind);
+    } else if (!strcmp(command, "bucket_connection_reuse_timeout")) {
+        test_bucket_connection_reuse_timeout(argc, argv, optind);
+    } else if (!strcmp(command, "concurrent_head_bucket")) {
+        test_concurrent_head_bucket(argc, argv, optind);
+    }
+
     deinitialize_break_point_lock();
     obs_deinitialize();
 }
-
-

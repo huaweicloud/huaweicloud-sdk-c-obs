@@ -70,14 +70,15 @@
 
 #define string_multibuffer_add(smb, str, len, all_fit)                  \
     do {                                                                \
-        smb##Size += (snprintf_s(&(smb[smb##Size]), sizeof(smb) - smb##Size,    \
-                               sizeof(smb) - smb##Size,                 \
-                               "%.*s", (int) (len), str) + 1);          \
+        int ret = snprintf_s(&(smb[smb##Size]), sizeof(smb) - smb##Size, \
+                             sizeof(smb) - smb##Size, "%.*s", (int) (len), str); \
+        if (ret >= 0) {                                                 \
+            smb##Size += (ret + 1);                                     \
+        }                                                               \
         if (smb##Size > (int) sizeof(smb)) {                            \
             smb##Size = sizeof(smb);                                    \
             all_fit = 0;                                                \
-        }                                                               \
-        else {                                                          \
+        } else {                                                        \
             all_fit = 1;                                                \
         }                                                               \
     } while (0)

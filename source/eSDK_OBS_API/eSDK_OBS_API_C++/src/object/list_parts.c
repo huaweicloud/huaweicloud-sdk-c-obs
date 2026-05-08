@@ -101,7 +101,7 @@ int parse_xmlnode_list_parts_withPart(list_parts_data *lpData, const char *eleme
     if (!strcmp(elementPath, "ListPartsResult/Part/PartNumber"))
     {
         parts_info *parts = &(lpData->parts[lpData->parts_count]);
-        parts->part_number = atoi(data);
+        parts->part_number = (unsigned int)atoi(data);
     }
     else if (!strcmp(elementPath, "ListPartsResult/Part/LastModified"))
     {
@@ -146,7 +146,7 @@ int parse_xmlnode_list_parts_notPart(list_parts_data *lpData, const char *elemen
     }
     else if (!strcmp(elementPath, "ListPartResult/NextPartNumberMarker"))
     {
-        lpData->nextpart_number_marker = atoi(data);
+        lpData->nextpart_number_marker = (unsigned int)atoi(data);
     }
     else if (!strcmp(elementPath, "ListPartResult/IsTruncated"))
     {

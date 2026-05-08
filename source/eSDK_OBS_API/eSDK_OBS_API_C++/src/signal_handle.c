@@ -35,7 +35,7 @@ static void handle_SIGPIPE(int signal, siginfo_t *siginfo, void *u_contxt)
 	return;
 }
 void set_sigaction_for_sigpipe(void){
-    struct sigaction sigact;
+    struct sigaction sigact = {0};
 	sigact.sa_sigaction = handle_SIGPIPE;
    	sigact.sa_flags = SA_SIGINFO;
    	int sigemptysetResult = memset_s(&sigact.sa_mask,sizeof(sigact.sa_mask),0,sizeof(sigact.sa_mask));
@@ -45,7 +45,7 @@ void set_sigaction_for_sigpipe(void){
 }
 
 void unset_sigaction_for_sigpipe(void){
-    struct sigaction sigact;
+    struct sigaction sigact = {0};
 	sigact.sa_sigaction = NULL;
    	sigact.sa_flags = SA_SIGINFO;
    	int sigemptysetResult = memset_s(&sigact.sa_mask,sizeof(sigact.sa_mask),0,sizeof(sigact.sa_mask));

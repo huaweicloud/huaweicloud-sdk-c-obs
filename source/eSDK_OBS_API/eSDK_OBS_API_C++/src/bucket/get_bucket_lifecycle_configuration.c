@@ -20,7 +20,7 @@ obs_status parse_xml_get_lifecycle(get_lifecycle_config_data *gblcDataEx,
     const char *element_path, const char *data, int data_len)
 {
     int fit = 1;
-    int nIndex = gblcDataEx->blcc_number - 1;
+    int nIndex = (int)(gblcDataEx->blcc_number) - 1;
     int transitionIndex = gblcDataEx->blcc_data[nIndex]->transition_num;
     int nonCurrentVersionTransitionIndex = gblcDataEx->blcc_data[nIndex]->noncurrent_version_transition_num;
 
@@ -71,7 +71,7 @@ static obs_status get_lifecycle_config_xml_callback(const char *element_path, co
     int data_len, void *callback_data)
 {
     get_lifecycle_config_data *gblcDataEx = (get_lifecycle_config_data *)callback_data;
-    int nIndex = gblcDataEx->blcc_number - 1;
+    int nIndex = (int)(gblcDataEx->blcc_number) - 1;
 
     if (data)
     {
@@ -139,11 +139,11 @@ static get_lifecycle_config_data* init_get_lifecycle_data(obs_lifecycle_handler 
     return gblcDataEx;
 }
 
-static obs_status make_get_lifecycle_callback(get_lifecycle_config_data *gblcDataEx)
+obs_status make_get_lifecycle_callback(get_lifecycle_config_data *gblcDataEx)
 {
     obs_status iRet = OBS_STATUS_OK;
 
-    int nCount = gblcDataEx->blcc_number - 1;
+    int nCount = (int)(gblcDataEx->blcc_number) - 1;
     if (nCount < 1)
     {
         COMMLOG(OBS_LOGERROR, "Invalid Malloc Parameter.");
@@ -168,7 +168,7 @@ static obs_status make_get_lifecycle_callback(get_lifecycle_config_data *gblcDat
         buckLifeCycleConf[i].prefix = gblcDataEx->blcc_data[i]->prefix;
         buckLifeCycleConf[i].status = gblcDataEx->blcc_data[i]->status;
         buckLifeCycleConf[i].noncurrent_version_days = gblcDataEx->blcc_data[i]->nonCurrentVerionDays;
-        buckLifeCycleConf[i].transition_num = gblcDataEx->blcc_data[i]->transition_num;
+        buckLifeCycleConf[i].transition_num = (unsigned int)gblcDataEx->blcc_data[i]->transition_num;
         buckLifeCycleConf[i].transition = (obs_lifecycle_transtion*)malloc(
             sizeof(obs_lifecycle_transtion) * (gblcDataEx->blcc_data[i]->transition_num));
         if (NULL == buckLifeCycleConf[i].transition)
@@ -189,7 +189,7 @@ static obs_status make_get_lifecycle_callback(get_lifecycle_config_data *gblcDat
                 gblcDataEx->blcc_data[i]->arrTransitionData[j].storage_class, gblcDataEx->use_api);
         }
 
-        buckLifeCycleConf[i].noncurrent_version_transition_num = gblcDataEx->blcc_data[i]->noncurrent_version_transition_num;
+        buckLifeCycleConf[i].noncurrent_version_transition_num = (unsigned int)gblcDataEx->blcc_data[i]->noncurrent_version_transition_num;
         buckLifeCycleConf[i].noncurrent_version_transition = (obs_lifecycle_noncurrent_transtion*)malloc(
             sizeof(obs_lifecycle_noncurrent_transtion) * gblcDataEx->blcc_data[i]->noncurrent_version_transition_num);
         if (NULL == buckLifeCycleConf[i].noncurrent_version_transition)
@@ -222,6 +222,7 @@ static obs_status make_get_lifecycle_callback(get_lifecycle_config_data *gblcDat
         CHECK_NULL_FREE(buckLifeCycleConf[i].noncurrent_version_transition);
         CHECK_NULL_FREE(buckLifeCycleConf[i].transition);
     }
+    CHECK_NULL_FREE(buckLifeCycleConf);
 
 
     return iRet;

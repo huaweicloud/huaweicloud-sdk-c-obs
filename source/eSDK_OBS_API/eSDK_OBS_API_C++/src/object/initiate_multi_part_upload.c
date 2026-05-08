@@ -73,8 +73,10 @@ static void initiate_multi_part_upload_complete_callback(obs_status requestStatu
         imuData->uploadID);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
-    (void)(*(imuData->responseCompleteCallback))
-        (requestStatus, s3ErrorDetails, imuData->callback_data);
+	if (imuData->responseCompleteCallback) {
+		(void)(*(imuData->responseCompleteCallback))
+			(requestStatus, s3ErrorDetails, imuData->callback_data);
+	}
 
     simplexml_deinitialize(&(imuData->simpleXml));
 

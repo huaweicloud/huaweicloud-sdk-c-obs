@@ -694,44 +694,38 @@ void LOG_LEVEL_INIT(unsigned int *logLevel, uint64_t logLevelLen)
 
 int LOG_INIT(void)
 {
-    unsigned int logLevel[LOG_CATEGORY] = { 0 };
-	LOG_LEVEL_INIT(logLevel, LOG_CATEGORY);
+    unsigned int logLevel[LOG_CATEGORY] = {0};
+    LOG_LEVEL_INIT(logLevel, LOG_CATEGORY);
 
-	char* buf = getPathBuffer(MAX_MSG_SIZE);
+    char *buf = getPathBuffer(MAX_MSG_SIZE);
+    char *confPath = getPathBuffer(MAX_MSG_SIZE);
+    char *logPath = getPathBuffer(MAX_MSG_SIZE);
+    char *tempLogPath = getPathBuffer(MAX_MSG_SIZE);
 
-    char* confPath = getPathBuffer(MAX_MSG_SIZE);
-
-    char* logPath = getPathBuffer(MAX_MSG_SIZE);
-
-    char* tempLogPath = getPathBuffer(MAX_MSG_SIZE);
-
-    if (NULL == tempLogPath || NULL == buf 
-		|| NULL == confPath || NULL == logPath)
-    {
+    if (NULL == tempLogPath || NULL == buf || NULL == confPath || NULL == logPath) {
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
         CHECK_NULL_FREE(logPath);
+        CHECK_NULL_FREE(tempLogPath);
         return -1;
     }
 
-	errno_t err = EOK;
+    errno_t err = EOK;
 #if defined __GNUC__ || defined LINUX
     GetConfPath(buf);
-    if(USER_SET_OBS_LOG_PATH[0] != 0 ) {
-        err = memcpy_s(buf, sizeof(char)*OBS_LOG_PATH_LEN, USER_SET_OBS_LOG_PATH, OBS_LOG_PATH_LEN);
-		CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
-    }
-    else {        
+    if (USER_SET_OBS_LOG_PATH[0] != 0) {
+        err = memcpy_s(buf, sizeof(char) * OBS_LOG_PATH_LEN, USER_SET_OBS_LOG_PATH, OBS_LOG_PATH_LEN);
+        CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    } else {
         getCurrentPath(buf);
     }
-    err = memcpy_s(confPath, sizeof(char)*MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
-	CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
-    strcat_s(confPath, sizeof(char)*MAX_MSG_SIZE, "/OBS.ini");
-	
-	FILE* confPathFile = fopen(confPath, "r");
-    if(NULL == confPathFile) 
-    {
-		checkAndLogStrError(SYMBOL_NAME_STR(fopen), __FUNCTION__, __LINE__);
+    err = memcpy_s(confPath, sizeof(char) * MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    strcat_s(confPath, sizeof(char) * MAX_MSG_SIZE, "/OBS.ini");
+
+    FILE *confPathFile = fopen(confPath, "r");
+    if (NULL == confPathFile) {
+        checkAndLogStrError(SYMBOL_NAME_STR(fopen), __FUNCTION__, __LINE__);
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
         CHECK_NULL_FREE(logPath);
@@ -739,14 +733,14 @@ int LOG_INIT(void)
         return -1;
     }
     fclose(confPathFile);
-	
+
     GetIniSectionItem(SECTION_PATH, PATH_VALUE, confPath, tempLogPath);
     tempLogPath[MAX_MSG_SIZE - 1] = '\0';
-    err = memcpy_s(logPath, sizeof(char)*MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
-	CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
+    err = memcpy_s(logPath, sizeof(char) * MAX_MSG_SIZE, buf, MAX_MSG_SIZE);
+    CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     err = EOK;
-    err = strcat_s(logPath, sizeof(char)*MAX_MSG_SIZE, "/");
+    err = strcat_s(logPath, sizeof(char) * MAX_MSG_SIZE, "/");
     err = GET_LOG_PATH(logPath, tempLogPath);
     if (err != EOK) {
         CHECK_NULL_FREE(buf);
@@ -756,49 +750,44 @@ int LOG_INIT(void)
         return -1;
     }
 #elif defined WIN32
-	err = EOK;
+    err = EOK;
     GetConfPath(buf);
 
-    char* currentPath = getPathBuffer(MAX_MSG_SIZE);
-	int ret = SetConfPath(currentPath, buf, confPath, logPath, tempLogPath);
-	if (ret)
-	{
+    char *currentPath = getPathBuffer(MAX_MSG_SIZE);
+    int ret = SetConfPath(currentPath, buf, confPath, logPath, tempLogPath);
+    if (ret) {
         CHECK_NULL_FREE(buf);
         CHECK_NULL_FREE(confPath);
         CHECK_NULL_FREE(logPath);
         CHECK_NULL_FREE(tempLogPath);
         CHECK_NULL_FREE(currentPath);
-		return ret;
-	}
+        return ret;
+    }
     CHECK_NULL_FREE(currentPath);
 
 #endif
 
-  //  tempLogPath[0] = '\0';
-  //  GetIniSectionItem("ProductConfig", "support_API", confPath, tempLogPath);
 #if defined ANDROID
     int iRet = LogInitForAndroid(PRODUCT, confPath, logLevel, LOG_CATEGORY, logPath);
 #elif defined WIN32
 
-	int iRet = 0;
-	if (get_file_path_code() == ANSI_CODE) {
-		wchar_t* confPathW = GetWcharFromChar(confPath);
-		wchar_t* logPathW = GetWcharFromChar(logPath);
-		if (confPathW == NULL || logPathW == NULL) {
-			CHECK_NULL_FREE(confPathW);
-			CHECK_NULL_FREE(logPathW);
-			iRet = -1;
-		}
-		else {
-			iRet = LogInit_W(PRODUCT, confPathW, logLevel, LOG_CATEGORY, logPathW);
-			CHECK_NULL_FREE(confPathW);
-			CHECK_NULL_FREE(logPathW);
-		}
-		
-	}
-	else if (get_file_path_code() == UNICODE_CODE) {
-		iRet = LogInit_W(PRODUCT, (const wchar_t*)confPath, logLevel, LOG_CATEGORY, (const wchar_t*)logPath);
-	}
+    int iRet = 0;
+    if (get_file_path_code() == ANSI_CODE) {
+        wchar_t *confPathW = GetWcharFromChar(confPath);
+        wchar_t *logPathW = GetWcharFromChar(logPath);
+        if (confPathW == NULL || logPathW == NULL) {
+            CHECK_NULL_FREE(confPathW);
+            CHECK_NULL_FREE(logPathW);
+            iRet = -1;
+        } else {
+            iRet = LogInit_W(PRODUCT, confPathW, logLevel, LOG_CATEGORY, logPathW);
+            CHECK_NULL_FREE(confPathW);
+            CHECK_NULL_FREE(logPathW);
+        }
+
+    } else if (get_file_path_code() == UNICODE_CODE) {
+        iRet = LogInit_W(PRODUCT, (const wchar_t *)confPath, logLevel, LOG_CATEGORY, (const wchar_t *)logPath);
+    }
 #else
     int iRet = LogInit(PRODUCT, confPath, logLevel, LOG_CATEGORY, logPath);
 #endif
@@ -806,9 +795,8 @@ int LOG_INIT(void)
     CHECK_NULL_FREE(confPath);
     CHECK_NULL_FREE(logPath);
     CHECK_NULL_FREE(tempLogPath);
-	
-    if(iRet)
-    {
+
+    if (iRet) {
         return -1;
     }
     return 0;
@@ -870,7 +858,7 @@ char* getLevelStr(OBS_LOGLEVEL level) {
 void OBSLogPrintf(OBS_LOGLEVEL level, char* acMsg, size_t acMsgLen) {
 	char time_ms[OBS_LOG_TIME_LEN] = { 0 };
 	print_current_time_ms(time_ms, OBS_LOG_TIME_LEN);
-	long currentTid = thread_id();
+	long currentTid = (long)thread_id();
 	char* levelStr = getLevelStr(level);
 	printf("[%s] [tid:%ld] [obs-sdk-c.printLog] [%s] |%s\n", time_ms, currentTid, levelStr, acMsg);
 }

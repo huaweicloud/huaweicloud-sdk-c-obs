@@ -42,12 +42,13 @@ fi
 #export iconv_version=iconv-1.15
 #export libxml2_version=libxml2-2.9.9
 #else
-export openssl_version=openssl-1.1.1w
-export curl_version=curl-8.11.1
-export pcre_version=pcre-8.45
-export iconv_version=iconv-1.15
-export libxml2_version=libxml2-2.9.9
-export cjson_version=cjson-1.7.18
+export openssl_version=openssl-3.0.9
+export curl_version=curl-8.19.0
+export pcre_version=pcre2-pcre2-10.46
+export iconv_version=iconv-1.18
+export libxml2_version=libxml2-2.14.0
+export cjson_version=cjson-1.7.19
+export spdlog_version=spdlog-v1.15.3
 #fi
 #export nghttp2_version=nghttp2-1.32.0
 # **************************************************************************** #
@@ -126,8 +127,8 @@ mkdir cmake-build
 cd cmake-build
 mkdir cmake
 cd cmake
-cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DSPDLOG_VERSION=${SPDLOG_VERSION}
-make 
+cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DSPDLOG_VERSION=${spdlog_version}
+make -j
 
 if [ 0 -ne $? ];then
     echo 'make failed in build.sh'
@@ -164,15 +165,16 @@ fi
 cp -f inc/eSDKOBS.h include
 cp -f cmake-build/cmake/lib/*.so lib
 cp -f ./../../../platform/libboundscheck/include/* include
+cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/C/include/*.h include
 cp -f ./../../../platform/libboundscheck/lib/linux/*.so lib
 cp -af ./../../../platform/eSDK_LogAPI_V2.1.10/C/linux_64/libeSDKLogAPI.so lib
 cp -af ./../../../build/script/Provider/build/linux/${curl_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/linux/${libxml2_version}/lib/* lib
-cp -af ./../../../build/script/Provider/build/linux/${openssl_version}/lib/* lib 
+cp -af ./../../../build/script/Provider/build/linux/${openssl_version}/lib64/* lib 
 cp -af ./../../../build/script/Provider/build/linux/${pcre_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/linux/${iconv_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/linux/${cjson_version}/lib/* lib
-cp -af ./../../../build/script/Provider/build/linux/${SPDLOG_VERSION}/lib/* lib
+cp -af ./../../../build/script/Provider/build/linux/${spdlog_version}/lib/* lib
 cp -f ./../../../build/script/Provider/build/linux/${cjson_version}/include/cJSON.h include
 #cp -f ./../../../build/script/Provider/build/linux/${nghttp2_version}/lib/* lib 
 cp -f Makefile_obs demo/Makefile

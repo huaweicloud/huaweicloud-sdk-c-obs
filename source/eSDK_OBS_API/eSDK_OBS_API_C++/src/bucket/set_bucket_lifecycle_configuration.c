@@ -14,7 +14,21 @@
 */
 #include "bucket.h"
 #include "request_util.h"
-#include <openssl/md5.h> 
+#include <openssl/md5.h>
+
+static char * g_storage_class_s3[OBS_STORAGE_CLASS_BUTT] = 
+{
+    "STANDARD",
+    "STANDARD_IA",
+    "GLACIER"
+};
+
+static char * g_storage_class_obs[OBS_STORAGE_CLASS_BUTT] = 
+{
+    "STANDARD",
+    "WARM",
+    "COLD"
+};
 
 void add_xml_element_expiration(set_lifecycle_data* sblcData, obs_lifecycle_conf* bucket_lifecycle_conf, unsigned int i)
 {
@@ -278,8 +292,7 @@ void set_bucket_lifecycle_configuration(const obs_options *options,
 
     if (NULL == bucket_lifecycle_conf || 0 == blcc_number)
     {
-        COMMLOG(OBS_LOGERROR, "bucket_lifecycle_conf(%p) or blcc_number(%d) is invalid.",
-            bucket_lifecycle_conf, blcc_number);
+        COMMLOG(OBS_LOGERROR, "bucket_lifecycle_conf or blcc_number(%d) is invalid.", blcc_number);
         (void)(*(handler->complete_callback))(OBS_STATUS_InvalidParameter, 0, callback_data);
         return;
     }
