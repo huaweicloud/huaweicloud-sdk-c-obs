@@ -4,6 +4,8 @@
 
 ### Version 3.26.3
 
+> Warning: v3.26.3 is optimized for non-Windows environments only. Windows support is not included.
+
 **New Features:**
 
 1. Added support for custom domain names and certificates (Create, Get, and Delete).
