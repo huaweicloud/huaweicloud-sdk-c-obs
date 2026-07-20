@@ -14,6 +14,7 @@
 */
 #include "bucket.h"
 #include "request_util.h"
+#include "util.h"
 #include <openssl/md5.h> 
 #define OBS_MAX_CORS_COUNT 65536
 
@@ -185,29 +186,10 @@ static void free_obs_bucket_cors_conf(obs_bucket_cors_conf* bucketCorsConf, int 
     int i = 0;
     for (i = 0; i < conf_num; i++)
     {
-        if (bucketCorsConf[i].allowed_method)
-        {
-            free(bucketCorsConf[i].allowed_method);
-            bucketCorsConf[i].allowed_method = NULL;
-        }
-
-        if (bucketCorsConf[i].allowed_origin)
-        {
-            free(bucketCorsConf[i].allowed_origin);
-            bucketCorsConf[i].allowed_origin = NULL;
-        }
-
-        if (bucketCorsConf[i].allowed_header)
-        {
-            free(bucketCorsConf[i].allowed_header);
-            bucketCorsConf[i].allowed_header = NULL;
-        }
-
-        if (bucketCorsConf[i].expose_header)
-        {
-            free(bucketCorsConf[i].expose_header);
-            bucketCorsConf[i].expose_header = NULL;
-        }
+        CHECK_NULL_FREE(bucketCorsConf[i].allowed_method);
+        CHECK_NULL_FREE(bucketCorsConf[i].allowed_origin);
+        CHECK_NULL_FREE(bucketCorsConf[i].allowed_header);
+        CHECK_NULL_FREE(bucketCorsConf[i].expose_header);
     }
 
     free(bucketCorsConf);

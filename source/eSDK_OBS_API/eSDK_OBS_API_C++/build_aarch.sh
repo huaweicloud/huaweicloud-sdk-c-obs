@@ -24,12 +24,39 @@ G_THIRTY_DIR=$G_CWD/../../../build/script/Provider
 L_THIRTY_DIR=../../../build/script/Provider
 
 #----------------------- functions ---------------------#
-L_PACKAGE_NAME=$1
-L_PRODUCT_TYPE=`echo $2 | tr A-Z a-z`
-L_PRODUCT=`echo $3 | tr A-Z a-z`
+L_PACKAGE_NAME=
+L_PRODUCT_TYPE=release
+L_PRODUCT=
+ENABLE_ASAN=OFF
+
+# 解析所有参数
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --enable_asan)
+            ENABLE_ASAN=ON
+            shift
+            ;;
+        release|debug)
+            L_PRODUCT_TYPE=`echo $1 | tr A-Z a-z`
+            shift
+            ;;
+        openssl-oldversion)
+            L_PRODUCT=$1
+            shift
+            ;;
+        *)
+            if [ -z "$L_PACKAGE_NAME" ]; then
+                L_PACKAGE_NAME=$1
+            else
+                L_PRODUCT=$1
+            fi
+            shift
+            ;;
+    esac
+done
 
 CMAKE_BUILD_TYPE=Release
-if [ "debug" == "$2" ];then
+if [ "debug" == "$L_PRODUCT_TYPE" ];then
     G_BUILD_OPTION=debug
     CMAKE_BUILD_TYPE=Debug
 	export DEBUG=debug
@@ -42,8 +69,8 @@ fi
 #export iconv_version=iconv-1.15
 #export libxml2_version=libxml2-2.9.9
 #else
-export openssl_version=openssl-3.0.9
-export curl_version=curl-8.19.0
+export openssl_version=tongsuo-8.4.0
+export curl_version=curl-v2025.3.9-SM
 export pcre_version=pcre2-pcre2-10.46
 export iconv_version=iconv-1.18
 export libxml2_version=libxml2-2.14.0
@@ -130,7 +157,7 @@ mkdir cmake-build
 cd cmake-build
 mkdir cmake
 cd cmake
-cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DSPDLOG_VERSION=${spdlog_version}
+cmake $G_CWD/../../../ -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DSPDLOG_VERSION=${spdlog_version} -DENABLE_ASAN=${ENABLE_ASAN}
 make 
 
 if [ 0 -ne $? ];then
@@ -167,7 +194,7 @@ cp -f ./../../../platform/libboundscheck/lib/arm/*.so lib
 cp -f ./../../../platform/eSDK_LogAPI_V2.1.10/C/aarch64/libeSDKLogAPI.so lib
 cp -af ./../../../build/script/Provider/build/arm/${curl_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/arm/${libxml2_version}/lib/* lib
-cp -af ./../../../build/script/Provider/build/arm/${openssl_version}/lib64/* lib 
+cp -af ./../../../build/script/Provider/build/arm/${openssl_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/arm/${pcre_version}/lib/* lib 
 cp -af ./../../../build/script/Provider/build/arm/${iconv_version}/lib/* lib
 cp -af ./../../../build/script/Provider/build/arm/${cjson_version}/lib/* lib

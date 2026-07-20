@@ -43,8 +43,7 @@ obs_status init_set_bucket_version_data(const char *version_status, update_bucke
     mark = pcre_replace(version_status, &replace_status);
     if (mark)
     {
-        free(replace_status);
-        replace_status = NULL;
+        CHECK_NULL_FREE(replace_status);
     }
 
     tmplen = snprintf_s((version_data->doc) + (version_data->docLen), sizeof((version_data->doc)) - (version_data->docLen),

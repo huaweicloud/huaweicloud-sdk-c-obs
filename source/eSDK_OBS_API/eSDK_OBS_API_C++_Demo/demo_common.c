@@ -481,7 +481,7 @@ obs_status get_bucket_custom_domain_callback(int domain_count,
     return OBS_STATUS_OK;
 }
 
-void get_bucket_custom_domain_complete_callback(obs_status status,
+void demo_get_bucket_custom_domain_complete_callback(obs_status status,
     const obs_error_details* error,
     void* callback_data)
 {
@@ -494,7 +494,7 @@ void get_bucket_custom_domain_complete_callback(obs_status status,
 }
 
 
-obs_status get_bucket_tagging_callback(int tagging_count, obs_name_value *tagging_list, void *callback_data)
+obs_status get_bucket_tagging_callback(unsigned int tagging_count, obs_name_value *tagging_list, void *callback_data)
 {
     if (callback_data == NULL) {
         printf("callback_data is NULL.\n");
@@ -518,7 +518,7 @@ obs_status get_bucket_tagging_callback(int tagging_count, obs_name_value *taggin
     return OBS_STATUS_OK;
 }
 
-void get_tagging_complete_callback(obs_status status,
+void demo_get_tagging_complete_callback(obs_status status,
                                      const obs_error_details *error, 
                                      void *callback_data)
 {

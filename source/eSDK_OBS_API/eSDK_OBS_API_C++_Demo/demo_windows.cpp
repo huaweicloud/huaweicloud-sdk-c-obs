@@ -1717,7 +1717,7 @@ static void get_bucket_custom_domain_complete_callback(obs_status status,
 }
 
 
-obs_status get_bucket_tagging_callback(int tagging_count, obs_name_value *tagging_list, void *callback_data)
+obs_status get_bucket_tagging_callback(unsigned int tagging_count, obs_name_value *tagging_list, void *callback_data)
 {
     int tag_num = 0;
 

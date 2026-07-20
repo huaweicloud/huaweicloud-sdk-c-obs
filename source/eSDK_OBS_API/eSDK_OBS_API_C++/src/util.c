@@ -86,18 +86,13 @@ char* string_To_UTF8(const char* strSource)
     if (NULL == pBuf)
     {
         COMMLOG(OBS_LOGERROR, "Malloc pBuf failed!");
-        free(pwBuf);     
-        pwBuf=NULL;
+        CHECK_NULL_FREE(pwBuf);
         return NULL;
     }
     memset_s(pBuf, sizeof(char) * (nLen + 1), 0, nLen + 1);
 
     WideCharToMultiByte(CP_UTF8, 0, pwBuf, -1, pBuf, nLen, NULL, NULL);
-    if (pwBuf)
-    {
-        free(pwBuf);
-        pwBuf = NULL;
-    }
+    CHECK_NULL_FREE(pwBuf);
 
     return pBuf;
 }
@@ -127,8 +122,7 @@ char* UTF8_To_String(const char* strSource)
     if (NULL == str)
     {
         COMMLOG(OBS_LOGERROR, "Malloc str failed!");
-        free(wstr);        
-        wstr=NULL;
+        CHECK_NULL_FREE(wstr);
         return NULL;
     }
     int ret = memset_s(str, sizeof(char) * strLen, 0, nLen + 1);
@@ -148,89 +142,57 @@ char* UTF8_To_String(const char* strSource)
     }
     WideCharToMultiByte(CP_ACP, 0, wstr, -1, str, nLen, NULL, NULL);
 
-    if(wstr) 
-    {
-        free(wstr);
-        wstr = NULL;
-    }
+    CHECK_NULL_FREE(wstr);
 
     return str;
 }
 #else
-char* string_To_UTF8(const char* pSource)
+static char* iconv_convert(const char *pSource, const char *from_enc, const char *to_enc, const char *func_name)
 {
     size_t i_length = strlen(pSource);
     size_t o_length = (i_length + 1) * 2;
     char* pmbs = (char*)malloc(o_length);
-	
-	if (pmbs == NULL)
-	{
-		COMMLOG(OBS_LOGERROR, "string_To_UTF8: Malloc str failed!");
-		return NULL;
-	}
-	
+
+    if (pmbs == NULL)
+    {
+        COMMLOG(OBS_LOGERROR, "%s: Malloc str failed!", func_name);
+        return NULL;
+    }
+
     memset_s(pmbs, o_length, 0, o_length);
-    char* result = pmbs; 
+    char* result = pmbs;
     size_t retsize;
     iconv_t cd;
-    cd = iconv_open("UTF-8", "GBK");
-    if((iconv_t)-1 == cd) { 
-        perror("iconv_open error"); 
+    cd = iconv_open(to_enc, from_enc);
+    if((iconv_t)-1 == cd) {
+        perror("iconv_open error");
         free(pmbs);
         pmbs = NULL;
         iconv_close(cd);
-        return NULL; 
+        return NULL;
     }
 
     retsize = iconv(cd, (char**)&pSource, &i_length, (char**)&pmbs, &o_length);
     if((size_t)-1 == retsize) {
-        perror("iconv error"); 
+        perror("iconv error");
         free(pmbs);
         pmbs = NULL;
         iconv_close(cd);
-        return NULL;    
+        return NULL;
     }
 
     iconv_close(cd);
     return result;
 }
 
+char* string_To_UTF8(const char* pSource)
+{
+    return iconv_convert(pSource, "GBK", "UTF-8", "string_To_UTF8");
+}
+
 char* UTF8_To_String(const char* pSource)
 {
-    size_t i_length = strlen(pSource);
-    size_t o_length = (i_length + 1) * 2;
-    char* pmbs = (char*)malloc(o_length);
-	
-	if (pmbs == NULL)
-	{
-		COMMLOG(OBS_LOGERROR, "UTF8_To_String: Malloc str failed!");
-		return NULL;
-	}
-	
-    memset_s(pmbs, o_length, 0, o_length);
-    char* result = pmbs;  
-    size_t retsize;
-    iconv_t cd;
-    cd = iconv_open("GBK", "UTF-8");
-    if((iconv_t)-1 == cd) { 
-        perror("iconv_open error"); 
-        free(pmbs);
-        pmbs = NULL;
-        iconv_close(cd);
-        return NULL; 
-    }
-
-    retsize = iconv(cd, (char**)&pSource, &i_length, (char**)&pmbs, &o_length);
-    if((size_t)-1 == retsize) {
-        perror("iconv error"); 
-        free(pmbs);
-        pmbs = NULL;
-        iconv_close(cd);
-        return NULL;    
-    }
-
-    iconv_close(cd);
-    return result;
+    return iconv_convert(pSource, "UTF-8", "GBK", "UTF8_To_String");
 }
 #endif
 

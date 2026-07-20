@@ -16,58 +16,50 @@
 #include "request_util.h"
 #include <openssl/md5.h> 
 
+static const char* g_s3_event_strings[] = {
+    NULL,                                                   /* SMN_EVENT_NULL */
+    "s3:ObjectCreated:*",                                   /* SMN_EVENT_OBJECT_CREATED_ALL */
+    "s3:ObjectCreated:Put",                                 /* SMN_EVENT_OBJECT_CREATED_PUT */
+    "s3:ObjectCreated:Post",                                /* SMN_EVENT_OBJECT_CREATED_POST */
+    "s3:ObjectCreated:Copy",                                /* SMN_EVENT_OBJECT_CREATED_COPY */
+    "s3:ObjectCreated:CompleteMultipartUpload",              /* SMN_EVENT_OBJECT_CREATED_COMPLETE_MULTIPART_UPLOAD */
+    "s3:ObjectRemoved:*",                                   /* SMN_EVENT_OBJECT_REMOVED_ALL */
+    "s3:ObjectRemoved:Delete",                              /* SMN_EVENT_OBJECT_REMOVED_DELETE */
+    "s3:ObjectRemoved:DeleteMarkerCreated",                 /* SMN_EVENT_OBJECT_REMOVED_DELETE_MARKER_CREATED */
+    "s3:ReducedRedundancyLostObject"                        /* SMN_EVENT_REDUCED_REDUNDANCY_LOST_OBJECT */
+};
+
+#define G_S3_EVENT_STRINGS_SIZE (sizeof(g_s3_event_strings) / sizeof(g_s3_event_strings[0]))
+
 static char* get_event_string_s3(obs_smn_event_enum event)
 {
-    switch (event)
-    {
-    case SMN_EVENT_OBJECT_CREATED_ALL:
-        return "s3:ObjectCreated:*";
-    case SMN_EVENT_OBJECT_CREATED_PUT:
-        return "s3:ObjectCreated:Put";
-    case SMN_EVENT_OBJECT_CREATED_POST:
-        return "s3:ObjectCreated:Post";
-    case SMN_EVENT_OBJECT_CREATED_COPY:
-        return "s3:ObjectCreated:Copy";
-    case SMN_EVENT_OBJECT_CREATED_COMPLETE_MULTIPART_UPLOAD:
-        return "s3:ObjectCreated:CompleteMultipartUpload";
-    case SMN_EVENT_OBJECT_REMOVED_ALL:
-        return "s3:ObjectRemoved:*";
-    case SMN_EVENT_OBJECT_REMOVED_DELETE:
-        return "s3:ObjectRemoved:Delete";
-    case SMN_EVENT_OBJECT_REMOVED_DELETE_MARKER_CREATED:
-        return "s3:ObjectRemoved:DeleteMarkerCreated";
-    case SMN_EVENT_REDUCED_REDUNDANCY_LOST_OBJECT:
-        return "s3:ReducedRedundancyLostObject";
-    default:
+    if (event <= 0 || (unsigned int)event >= G_S3_EVENT_STRINGS_SIZE) {
         return NULL;
     }
+    return (char*)g_s3_event_strings[event];
 }
+
+static const char* g_obs_event_strings[] = {
+    NULL,                                                   /* SMN_EVENT_NULL */
+    "ObjectCreated:*",                                      /* SMN_EVENT_OBJECT_CREATED_ALL */
+    "ObjectCreated:Put",                                    /* SMN_EVENT_OBJECT_CREATED_PUT */
+    "ObjectCreated:Post",                                   /* SMN_EVENT_OBJECT_CREATED_POST */
+    "ObjectCreated:Copy",                                   /* SMN_EVENT_OBJECT_CREATED_COPY */
+    "ObjectCreated:CompleteMultipartUpload",                 /* SMN_EVENT_OBJECT_CREATED_COMPLETE_MULTIPART_UPLOAD */
+    "ObjectRemoved:*",                                      /* SMN_EVENT_OBJECT_REMOVED_ALL */
+    "ObjectRemoved:Delete",                                 /* SMN_EVENT_OBJECT_REMOVED_DELETE */
+    "ObjectRemoved:DeleteMarkerCreated",                    /* SMN_EVENT_OBJECT_REMOVED_DELETE_MARKER_CREATED */
+    "ReducedRedundancyLostObject"                            /* SMN_EVENT_REDUCED_REDUNDANCY_LOST_OBJECT */
+};
+
+#define G_OBS_EVENT_STRINGS_SIZE (sizeof(g_obs_event_strings) / sizeof(g_obs_event_strings[0]))
 
 static char* get_event_string_obs(obs_smn_event_enum event)
 {
-    switch (event)
-    {
-    case SMN_EVENT_OBJECT_CREATED_ALL:
-        return "ObjectCreated:*";
-    case SMN_EVENT_OBJECT_CREATED_PUT:
-        return "ObjectCreated:Put";
-    case SMN_EVENT_OBJECT_CREATED_POST:
-        return "ObjectCreated:Post";
-    case SMN_EVENT_OBJECT_CREATED_COPY:
-        return "ObjectCreated:Copy";
-    case SMN_EVENT_OBJECT_CREATED_COMPLETE_MULTIPART_UPLOAD:
-        return "ObjectCreated:CompleteMultipartUpload";
-    case SMN_EVENT_OBJECT_REMOVED_ALL:
-        return "ObjectRemoved:*";
-    case SMN_EVENT_OBJECT_REMOVED_DELETE:
-        return "ObjectRemoved:Delete";
-    case SMN_EVENT_OBJECT_REMOVED_DELETE_MARKER_CREATED:
-        return "ObjectRemoved:DeleteMarkerCreated";
-    case SMN_EVENT_REDUCED_REDUNDANCY_LOST_OBJECT:
-        return "ReducedRedundancyLostObject";
-    default:
+    if (event <= 0 || (unsigned int)event >= G_OBS_EVENT_STRINGS_SIZE) {
         return NULL;
     }
+    return (char*)g_obs_event_strings[event];
 }
 
 static char* get_filter_rule_string(obs_smn_filter_rule_enum rule_name)

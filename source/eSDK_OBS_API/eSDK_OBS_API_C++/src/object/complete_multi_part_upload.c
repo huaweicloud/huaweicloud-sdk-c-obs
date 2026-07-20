@@ -224,13 +224,8 @@ static void complete_multi_part_upload_complete_callback(obs_status requestStatu
 			(requestStatus, s3ErrorDetails, cmuData->callback_data);
 	}
     simplexml_deinitialize(&(cmuData->simpleXml));
-    if (NULL != cmuData->doc)
-    {
-        free(cmuData->doc);
-        cmuData->doc = NULL;
-    }
-    free(cmuData);
-    cmuData = NULL;
+    CHECK_NULL_FREE(cmuData->doc);
+    CHECK_NULL_FREE(cmuData);
     COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
 
 }

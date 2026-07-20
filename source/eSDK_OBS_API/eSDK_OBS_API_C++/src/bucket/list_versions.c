@@ -14,8 +14,14 @@
 */
 #include "bucket.h"
 #include "request_util.h"
-#include <openssl/md5.h> 
+#include "util.h"
+#include <openssl/md5.h>
 #define OBS_MAX_STR_TMP_SIZE 65536
+
+static int is_encoding_type_url(list_versions_data *lvData)
+{
+    return (lvData->encoding_type[0] && !strcmp(lvData->encoding_type, "url"));
+}
 
 static void initialize_list_versions(list_bucket_versions *versions)
 {
@@ -38,6 +44,14 @@ static obs_status make_list_versions_callback(list_versions_data *lvData)
 
     int is_truncated = (!strcmp(lvData->is_truncated, "true") ||
         !strcmp(lvData->is_truncated, "1")) ? 1 : 0;
+
+    // URL decode fields if EncodingType is "url"
+    if (is_encoding_type_url(lvData)) {
+        url_decode_buffer(lvData->next_key_marker, sizeof(lvData->next_key_marker));
+        url_decode_buffer(lvData->prefix, sizeof(lvData->prefix));
+        url_decode_buffer(lvData->key_marker, sizeof(lvData->key_marker));
+        url_decode_buffer(lvData->delimiter, sizeof(lvData->delimiter));
+    }
 
     obs_list_versions *list_versions_info = (obs_list_versions*)malloc(sizeof(obs_list_versions));
     if (NULL == list_versions_info)
@@ -78,6 +92,10 @@ static obs_status make_list_versions_callback(list_versions_data *lvData)
     for (i = 0; i < list_versions_info->versions_count; i++)
     {
         list_bucket_versions *versionSrc = &(lvData->versions[i]);
+        // URL decode key if encoding-type=url
+        if (is_encoding_type_url(lvData)) {
+            url_decode_buffer(versionSrc->key, sizeof(versionSrc->key));
+        }
         list_versions_info->versions[i].key = versionSrc->key;
         list_versions_info->versions[i].version_id = versionSrc->version_id;
         list_versions_info->versions[i].is_latest = versionSrc->is_latest;
@@ -99,6 +117,10 @@ static obs_status make_list_versions_callback(list_versions_data *lvData)
     list_versions_info->common_prefixes_count = lvData->common_prefixes_count;
     for (i = 0; i < list_versions_info->common_prefixes_count; i++)
     {
+        // URL decode common_prefix if encoding-type=url
+        if (is_encoding_type_url(lvData)) {
+            url_decode_buffer(lvData->common_prefixes[i].prefix, sizeof(lvData->common_prefixes[i].prefix));
+        }
         list_versions_info->common_prefixes[i] = lvData->common_prefixes[i].prefix;
     }
 
@@ -150,6 +172,9 @@ obs_status parse_xml_list_versions(list_versions_data *version_data, const char 
     }
     else_if(!strcmp(element_path, "ListVersionsResult/MaxKeys")) {
         string_buffer_append(version_data->max_keys, data, data_len, fit);
+    }
+    else_if(!strcmp(element_path, "ListVersionsResult/EncodingType")) {
+        string_buffer_append(version_data->encoding_type, data, data_len, fit);
     }
     else_if(!strcmp(element_path, "ListVersionsResult/Version/Key") ||
         !strcmp(element_path, "ListVersionsResult/DeleteMarker/Key"))
@@ -332,7 +357,7 @@ static void list_versions_complete_callback(obs_status requestStatus,
 
 
 static obs_status set_versions_query_params(const char *prefix, const char *key_marker, const char *delimiter,
-    int maxkeys, const char *version_id_marker, char* query_params)
+    int maxkeys, const char *version_id_marker, const char *encoding_type, char* query_params)
 {
     string_buffer(queryParams, QUERY_STRING_LEN);
     string_buffer_initialize(queryParams);
@@ -367,6 +392,11 @@ static obs_status set_versions_query_params(const char *prefix, const char *key_
         safe_append_status("version-id-marker", version_id_marker, strlen(version_id_marker));
     }
 
+    if (encoding_type)
+    {
+        safe_append_status("encoding-type", encoding_type, strlen(encoding_type));
+    }
+
     errno_t err = EOK;
     err = memcpy_s(query_params, QUERY_STRING_LEN, queryParams, QUERY_STRING_LEN);
     CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
@@ -375,8 +405,9 @@ static obs_status set_versions_query_params(const char *prefix, const char *key_
 }
 
 
-void list_versions(const obs_options *options, const char *prefix, const char *key_marker, const char *delimiter,
-    int maxkeys, const char *version_id_marker, obs_list_versions_handler *handler, void *callback_data)
+static void list_versions_internal(const obs_options *options, const char *prefix, const char *key_marker,
+    const char *delimiter, int maxkeys, const char *version_id_marker, const char *encoding_type,
+    obs_list_versions_handler *handler, void *callback_data)
 {
     request_params params;
     char queryParams[QUERY_STRING_LEN + 1] = { 0 };
@@ -391,7 +422,7 @@ void list_versions(const obs_options *options, const char *prefix, const char *k
     }
 
     obs_status ret_status = set_versions_query_params(prefix, key_marker, delimiter, maxkeys,
-        version_id_marker, queryParams);
+        version_id_marker, encoding_type, queryParams);
     if (OBS_STATUS_OK != ret_status)
     {
         (void)(*(handler->response_handler.complete_callback))(ret_status, 0, callback_data);
@@ -417,6 +448,7 @@ void list_versions(const obs_options *options, const char *prefix, const char *k
     string_buffer_initialize(lvData->is_truncated);
     string_buffer_initialize(lvData->next_key_marker);
     string_buffer_initialize(lvData->next_versionId_marker);
+    string_buffer_initialize(lvData->encoding_type);
     initialize_list_versions_data(lvData);
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
@@ -442,4 +474,28 @@ void list_versions(const obs_options *options, const char *prefix, const char *k
     request_perform(&params);
 
     COMMLOG(OBS_LOGINFO, "list_bucket_versions finish!");
+}
+
+
+void list_versions(const obs_options *options, const char *prefix, const char *key_marker, const char *delimiter,
+    int maxkeys, const char *version_id_marker, obs_list_versions_handler *handler, void *callback_data)
+{
+    list_versions_internal(options, prefix, key_marker, delimiter, maxkeys,
+        version_id_marker, NULL, handler, callback_data);
+}
+
+
+void list_versions_with_params(const obs_options *options,
+    const obs_list_versions_params *params,
+    obs_list_versions_handler *handler, void *callback_data)
+{
+    if (!params || !handler) {
+        if (handler) {
+            (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidParameter, 0, callback_data);
+        }
+        COMMLOG(OBS_LOGERROR, "params or handler is NULL !");
+        return;
+    }
+    list_versions_internal(options, params->prefix, params->key_marker, params->delimiter,
+        params->maxkeys, params->version_id_marker, params->encoding_type, handler, callback_data);
 }

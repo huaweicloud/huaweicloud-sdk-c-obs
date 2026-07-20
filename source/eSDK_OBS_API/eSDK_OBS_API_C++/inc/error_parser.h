@@ -18,6 +18,7 @@
 #include "eSDKOBS.h"
 #include "simplexml.h"
 #include "string_buffer.h"
+#include "cJSON.h"
 
 
 #define EXTRA_DETAILS_SIZE 8
@@ -31,6 +32,12 @@ typedef struct error_parser
     simple_xml errorXmlParser;
 
     int errorXmlParserInitialized;
+
+    /* JSON error response support (OEF proxy returns JSON instead of XML) */
+    int isJsonError;
+    char *jsonErrorBuf;
+    int jsonErrorBufLen;
+    int jsonErrorBufSize;
 
     string_buffer(code, 1024);
 

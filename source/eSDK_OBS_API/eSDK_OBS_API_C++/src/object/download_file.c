@@ -15,7 +15,8 @@
 #include "object.h"
 #include "request_util.h"
 #include "file_utils.h"
-#include <openssl/md5.h> 
+#include "../crc64/crc64.h"
+#include <openssl/md5.h>
 
 #include <fcntl.h>
 #include <sys/types.h>
@@ -87,6 +88,9 @@ static obs_status GetObjectMetadataPropertiesCallback_Intern(const obs_response_
     if (properties->storage_class) {
         pstFileInfo->storage_class = getStorageClassEnum(properties->storage_class);
     }
+
+    /* 保存服务器返回的CRC64值 */
+    pstFileInfo->crc64 = properties->crc64;
 
     return OBS_STATUS_OK;
 }
@@ -418,6 +422,7 @@ int setDownloadpartList(download_file_summary *pstDownLoadFileSummaryNew, uint64
         pstdownloadPartListTemp->start_byte = downloadPartsize * (uint64_t)i;
         pstdownloadPartListTemp->part_size = downloadPartsize;
         pstdownloadPartListTemp->downloadStatus = DOWNLOAD_NOTSTART;
+        pstdownloadPartListTemp->crc64 = 0;  /* 初始化CRC64为0 */
         memset_s(pstdownloadPartListTemp->etag, MAX_SIZE_ETAG, 0, MAX_SIZE_ETAG);
         if (i == 0)
         {
@@ -446,6 +451,7 @@ int setDownloadpartList(download_file_summary *pstDownLoadFileSummaryNew, uint64
         pstdownloadPartListTemp->start_byte = downloadPartsize * (uint64_t)i;
         pstdownloadPartListTemp->part_size = lastPartSize;
         pstdownloadPartListTemp->downloadStatus = DOWNLOAD_NOTSTART;
+        pstdownloadPartListTemp->crc64 = 0;  /* 初始化CRC64为0 */
         pstdownloadPartListTemp->next = NULL;
         memset_s(pstdownloadPartListTemp->etag, MAX_SIZE_ETAG, 0, MAX_SIZE_ETAG);
 
@@ -761,6 +767,13 @@ static obs_status DownloadPartCompletePropertiesCallback
         errno_t err = strcpy_s(cbd->pstDownloadFilePartInfo->etag, MAX_SIZE_ETAG, properties->etag);
         CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
     }
+    /* 保存服务器返回的CRC64值（每个分段都会返回相同的对象总CRC64） */
+    if (properties->crc64 != 0)
+    {
+        cbd->pstDownloadFilePartInfo->crc64 = properties->crc64;
+        COMMLOG(OBS_LOGINFO, "DownloadPartCompletePropertiesCallback: part[%d] crc64=%llu\n",
+                cbd->pstDownloadFilePartInfo->part_num, properties->crc64);
+    }
     if (cbd->enableCheckPoint)
     {
         char pathToUpdate[1024];
@@ -874,6 +887,39 @@ static obs_status getObjectPartDataCallback(int buffer_size, const char *buffer,
         OBS_STATUS_AbortedByCallback : OBS_STATUS_OK);
 }
 
+static void downloadProgressCallbackInternal(double progress, uint64_t dlnow, uint64_t dltotal, void *callback_data)
+{
+    (void)progress;
+    download_file_callback_data *cbd = (download_file_callback_data *)callback_data;
+    download_file_progress_info *progressInfo = cbd->progressInfo;
+
+    if (!progressInfo || !cbd->progressCallback) {
+        return;
+    }
+
+    // 计算总下载大小（多线程汇总）
+    uint64_t total_download = 0;
+    progressInfo->progressArr[cbd->progressIndex] = dlnow;
+    for (int i = 0; i < progressInfo->arrSize; i++) {
+        total_download += progressInfo->progressArr[i];
+    }
+
+    // 计算当前进度百分比（整数，0-100）
+    int current_percent = (int)(100.0 * total_download / progressInfo->totalFileSize);
+    if (current_percent > 100) {
+        current_percent = 100;
+    }
+
+    // downloadedSize 复用为上次回调的进度百分比
+    // 仅当进度增量>=1%时才回调，最多回调100次
+    int last_percent = (int)progressInfo->downloadedSize;
+    if (current_percent - last_percent >= 1) {
+        progressInfo->downloadedSize = (uint64_t)current_percent;
+        (cbd->progressCallback)((double)(100.0 * total_download / progressInfo->totalFileSize),
+                              total_download, progressInfo->totalFileSize, cbd->callbackDataIn);
+    }
+}
+
 #if defined (WIN32)
 unsigned __stdcall DownloadThreadProc_win32(void* param)
 {
@@ -912,7 +958,8 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
         {
             {&DownloadPartCompletePropertiesCallback,
             &downloadPartCompleteCallback},
-            &getObjectPartDataCallback
+            &getObjectPartDataCallback,
+            pstPara->pstDownloadParams->progress_callback ? &downloadProgressCallbackInternal : NULL
         };
 
         sprintf_s(strPartNum, ARRAY_LENGTH_16, "%d", part_num + 1);
@@ -928,6 +975,9 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
         data.taskHandler = 0;
         data.pstDownloadFilePartInfo = pstPara->pstDownloadFilePartInfo;
         data.xmlWriteMutex = pstPara->xmlWriteMutex;
+        data.progressCallback = pstPara->pstDownloadParams->progress_callback;
+        data.progressInfo = pstPara->pstDownloadParams->progressInfo;
+        data.progressIndex = pstPara->progressIndex;
 
         pstEncrypParam = pstPara->pstDownloadParams->pstServerSideEncryptionParams;
 
@@ -952,7 +1002,14 @@ unsigned __stdcall DownloadThreadProc_win32(void* param)
         object_info.version_id = pstPara->pstDownloadParams->version_id;
         pstPara->pstDownloadFilePartInfo->downloadStatus = DOWNLOADING;
 
-        obs_get_conditions get_conditions = *(pstPara->pstDownloadParams->get_conditions);
+        // Initialize get_conditions safely with proper defaults
+        obs_get_conditions get_conditions;
+        init_get_properties(&get_conditions);
+
+        if (pstPara->pstDownloadParams->get_conditions) {
+            get_conditions = *(pstPara->pstDownloadParams->get_conditions);
+        }
+
         get_conditions.start_byte = pstPara->pstDownloadFilePartInfo->start_byte;
         get_conditions.byte_count = part_size;
         COMMLOG(OBS_LOGINFO, "get_object partnum[%d] start:%ld size:%ld", part_num, get_conditions.start_byte, get_conditions.byte_count);
@@ -1009,7 +1066,8 @@ void * DownloadThreadProc_linux(void* param)
         {
             {&DownloadPartCompletePropertiesCallback,
             &downloadPartCompleteCallback},
-            &getObjectPartDataCallback
+            &getObjectPartDataCallback,
+            pstPara->pstDownloadParams->progress_callback ? &downloadProgressCallbackInternal : NULL
         };
 
         ret = sprintf_s(strPartNum, ARRAY_LENGTH_16, "%d", part_num + 1);
@@ -1025,6 +1083,9 @@ void * DownloadThreadProc_linux(void* param)
         data.taskHandler = 0;
         data.pstDownloadFilePartInfo = pstPara->pstDownloadFilePartInfo;
         data.xmlWriteMutex = pstPara->xmlWriteMutex;
+        data.progressCallback = pstPara->pstDownloadParams->progress_callback;
+        data.progressInfo = pstPara->pstDownloadParams->progressInfo;
+        data.progressIndex = pstPara->progressIndex;
 
 
         if (data.enableCheckPoint == 1)
@@ -1049,7 +1110,14 @@ void * DownloadThreadProc_linux(void* param)
         object_info.version_id = pstPara->pstDownloadParams->version_id;
         pstPara->pstDownloadFilePartInfo->downloadStatus = DOWNLOADING;
 
-        obs_get_conditions get_conditions = *(pstPara->pstDownloadParams->get_conditions);
+        // Initialize get_conditions safely with proper defaults
+        obs_get_conditions get_conditions;
+        init_get_properties(&get_conditions);
+
+        if (pstPara->pstDownloadParams->get_conditions) {
+            get_conditions = *(pstPara->pstDownloadParams->get_conditions);
+        }
+
         get_conditions.start_byte = pstPara->pstDownloadFilePartInfo->start_byte;
         get_conditions.byte_count = part_size;
         COMMLOG(OBS_LOGINFO, "get_object partnum[%d] start:%ld size:%ld", part_num, get_conditions.start_byte, get_conditions.byte_count);
@@ -1096,11 +1164,7 @@ void startDownloadThreadsWin32(HANDLE *arrHandle, download_file_proc_data *downl
     {
         CloseHandle(arrHandle[i]);
     }
-    if (arrHandle)
-    {
-        free(arrHandle);
-        arrHandle = NULL;
-    }
+    CHECK_NULL_FREE(arrHandle);
 
 }
 #endif
@@ -1127,11 +1191,7 @@ void startDownloadThreadsLinux(download_file_proc_data *downloadFileProcDataList
             COMMLOG(OBS_LOGWARN, "startDownloadThreads join thread failed i[%d]\n", i);
         }
     }
-    if (arrThread)
-    {
-        free(arrThread);
-        arrThread = NULL;
-    }
+    CHECK_NULL_FREE(arrThread);
 
 }
 #endif
@@ -1179,12 +1239,22 @@ void startDownloadThreads(download_params * pstDownloadParams,
 #endif
     memset_s(downloadFileProcDataList, sizeof(download_file_proc_data)*partCount, 0, sizeof(download_file_proc_data)*partCount);
 
+    // Initialize progress index
+    int progressIndex = 0;
+
     for (i = 0; i < partCount; i++)
     {
         pstDownloadFileProcData->pstDownloadParams = pstDownloadParams;
         pstDownloadFileProcData->pstDownloadFilePartInfo = pstOnePartInfo;
         pstDownloadFileProcData->callBackData = callback_data;
         pstDownloadFileProcData->xmlWriteMutex = xmlwrite_mutex;
+        // Set progress index per thread for progress tracking
+        if (pstDownloadParams->progress_callback && pstDownloadParams->progressInfo != NULL) {
+            download_file_progress_info *progressInfo = pstDownloadParams->progressInfo;
+            if (progressInfo->progressArr && progressIndex < progressInfo->arrSize) {
+                pstDownloadFileProcData->progressIndex = progressIndex++;
+            }
+        }
         pstOnePartInfo = pstOnePartInfo->next;
         pstDownloadFileProcData++;
     }
@@ -1196,11 +1266,7 @@ void startDownloadThreads(download_params * pstDownloadParams,
     startDownloadThreadsLinux(downloadFileProcDataList, arrThread, partCount, err);
 #endif
 
-    if (downloadFileProcDataList)
-    {
-        free(downloadFileProcDataList);
-        downloadFileProcDataList = NULL;
-    }
+    CHECK_NULL_FREE(downloadFileProcDataList);
 }
 
 int isAllDownLoadPartSuccessPrev(download_file_part_info *ptrDownloadPartPrev)
@@ -1311,7 +1377,7 @@ void combinePartsFileSuccess(download_file_part_info *partNode, const char *chec
     remove_file(fileNameTemp);
 }
 
-int combinePartsFile(const char * fileName, download_file_part_info * downloadPartList, const char * check_point_file, void *xmlwrite_mutex)
+int combinePartsFile(const char * fileName, download_file_part_info * downloadPartList, const char * check_point_file, void *xmlwrite_mutex, uint64_t expected_crc64)
 {
     download_file_part_info * partNode = downloadPartList;
     char* fileNameTemp = getPathBuffer(LENGTH_1024);
@@ -1325,6 +1391,7 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
     int writeSuccess = 1;
     int is_true = 0;
     int ret = 0;
+    uint64_t computed_crc64 = 0;
 
     is_true = ((fileName == NULL) || (downloadPartList == NULL));
     if (is_true)
@@ -1455,6 +1522,21 @@ int combinePartsFile(const char * fileName, download_file_part_info * downloadPa
     if (is_true)
     {
         (void)remove_file(fileName);
+		CHECK_NULL_FREE(fileNameTemp);
+        return -1;
+    }
+
+    /* CRC64校验：如果服务器返回了CRC64值，则验证下载文件的CRC64 */
+    if (expected_crc64 != 0 && writeSuccess == 1) {
+        computed_crc64 = obs_compute_file_crc64(fileName);
+        if (computed_crc64 != expected_crc64) {
+            COMMLOG(OBS_LOGERROR, "CRC64 validation failed: expected=%llu, computed=%llu\n",
+                    expected_crc64, computed_crc64);
+            (void)remove_file(fileName);
+            CHECK_NULL_FREE(fileNameTemp);
+            return -2;  /* CRC64校验失败 */
+        }
+        COMMLOG(OBS_LOGINFO, "CRC64 validation passed: %llu\n", computed_crc64);
     }
 
 	CHECK_NULL_FREE(fileNameTemp);
@@ -1477,6 +1559,7 @@ int setDownloadReturnPartList(download_file_part_info *partListIntern, obs_downl
         partListReturnTemp->part_size = partInfoNode->part_size;
         partListReturnTemp->start_byte = partInfoNode->start_byte;
         partListReturnTemp->status_return = partInfoNode->downloadStatus;
+        partListReturnTemp->crc64 = partInfoNode->crc64;  /* 传递CRC64值 */
         partInfoNode = partInfoNode->next;
         partListReturnTemp++;
     }
@@ -1614,20 +1697,54 @@ int get_download_isfirst_time_read(download_file_summary *downloadFileInfoOld,
 void download_complete_handle_success(obs_download_file_configuration *download_file_config,
                                       download_file_part_info *pstDownloadFilePartInfoList, char *checkpointFile,
                                       obs_download_file_response_handler *handler, void *callback_data,
-                                      const char *storeFile, int retVal, void *xmlwrite_mutex)
+                                      const char *storeFile, int retVal, void *xmlwrite_mutex, uint64_t expected_crc64)
 {
     char *pstCheckPoint = download_file_config->enable_check_point ? checkpointFile : NULL;
     COMMLOG(OBS_LOGINFO, "%s all parts download success\n", "DownloadFile");
-    retVal = combinePartsFile(storeFile, pstDownloadFilePartInfoList, pstCheckPoint, xmlwrite_mutex);
+    retVal = combinePartsFile(storeFile, pstDownloadFilePartInfoList, pstCheckPoint, xmlwrite_mutex, expected_crc64);
     if (retVal == 0) {
         char strReturn[1024] = {0};
         int ret = sprintf_s(strReturn, ARRAY_LENGTH_1024, "DownloadFile %s success\n", storeFile);
         CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
         COMMLOG(OBS_LOGINFO, "DonwloadFlie combine success\n");
         if (handler->download_file_callback) {
-            handler->download_file_callback(OBS_STATUS_OK, strReturn, 0, NULL, callback_data);
+            /* 计算分段数量并返回分段信息（包含CRC64值） */
+            int partCount = 0;
+            download_file_part_info *partNode = pstDownloadFilePartInfoList;
+            while (partNode) {
+                partCount++;
+                partNode = partNode->next;
+            }
+            COMMLOG(OBS_LOGINFO, "download_complete_handle_success: partCount=%d\n", partCount);
+
+            /* 转换并返回分段信息 */
+            obs_download_file_part_info *partListReturn = NULL;
+            int convertResult = setDownloadReturnPartList(pstDownloadFilePartInfoList, &partListReturn, partCount);
+            if (convertResult == 0) {
+                /* 打印第一个分段的CRC64值用于调试 */
+                if (partListReturn && partCount > 0) {
+                    COMMLOG(OBS_LOGINFO, "download_complete_handle_success: part[0] crc64=%llu\n",
+                            partListReturn[0].crc64);
+                }
+                handler->download_file_callback(OBS_STATUS_OK, strReturn, partCount, partListReturn, callback_data);
+                free(partListReturn);
+            } else {
+                /* 转换失败时，使用旧的方式调用 */
+                COMMLOG(OBS_LOGERROR, "download_complete_handle_success: failed to convert part list\n");
+                handler->download_file_callback(OBS_STATUS_OK, strReturn, 0, NULL, callback_data);
+            }
         }
         remove_file(checkpointFile);
+    } else if (retVal == -2) {
+        /* CRC64校验失败 */
+        COMMLOG(OBS_LOGERROR, "DownloadFile CRC64 validation failed\n");
+        if (download_file_config->enable_check_point == 0) {
+            removeTempFiles(storeFile, pstDownloadFilePartInfoList, 1);
+        }
+        if (handler->download_file_callback) {
+            handler->download_file_callback(OBS_STATUS_InvalidCRC64, "DownloadFile CRC64 validation failed\n", 0, NULL,
+                                            callback_data);
+        }
     } else {
         COMMLOG(OBS_LOGERROR, "DownloadFile combine failed\n");
         if (download_file_config->enable_check_point == 0) {
@@ -1657,17 +1774,13 @@ void download_complete_handle_noSuccess(obs_download_file_configuration *downloa
     {
         removeTempFiles(storeFile, pstDownloadFilePartInfoList, 1);
     }
-    if (partListReturn)
-    {
-        free(partListReturn);
-        partListReturn = NULL;
-    }
+    CHECK_NULL_FREE(partListReturn);
 }
 
 void download_complete_handle(download_file_part_info *pstPartInfoListDone,
                               obs_download_file_configuration *download_file_config, char *checkpointFile,
                               const char *storeFile, obs_download_file_response_handler *handler, void *callback_data,
-                              int partCount, void *xmlwrite_mutex)
+                              int partCount, void *xmlwrite_mutex, uint64_t expected_crc64)
 {
     int retVal = -1;
     download_file_part_info *pstDownloadFilePartInfoList = NULL;
@@ -1675,7 +1788,7 @@ void download_complete_handle(download_file_part_info *pstPartInfoListDone,
     pstDownloadFilePartInfoList = pstPartInfoListDone;
     if (isAllDownLoadPartsSuccess(pstDownloadFilePartInfoList)) {
         download_complete_handle_success(download_file_config, pstDownloadFilePartInfoList, checkpointFile, handler,
-                                         callback_data, storeFile, retVal, xmlwrite_mutex);
+                                         callback_data, storeFile, retVal, xmlwrite_mutex, expected_crc64);
     } else {
         download_complete_handle_noSuccess(download_file_config, pstDownloadFilePartInfoList, storeFile, handler,
                                            callback_data, partCount, retVal);
@@ -1688,13 +1801,11 @@ int download_file_win32(obs_download_file_configuration *download_file_config,
     download_file_part_info *pstPartInfoListDone, download_file_part_info *pstPartInfoListNotDone,
     download_params stDownloadParams, int partCountToProc, char* checkpointFile,
     obs_download_file_response_handler *handler, void *callback_data,
-    char *storeFile, int partCount)
+    char *storeFile, int partCount, uint64_t expected_crc64)
 {
     CRITICAL_SECTION  mutexThreadCheckpoint;
-    if (download_file_config->enable_check_point)
-    {
-        InitializeCriticalSection(&mutexThreadCheckpoint);
-    }
+    // Always initialize critical section to avoid NULL pointer access
+    InitializeCriticalSection(&mutexThreadCheckpoint);
     while (pstPartInfoListNotDone)
     {
         int ret = GetDownloadPartListToProcess(&pstPartInfoListDone, &pstPartInfoListNotDone,
@@ -1708,27 +1819,24 @@ int download_file_win32(obs_download_file_configuration *download_file_config,
         }
     }
     download_complete_handle(pstPartInfoListDone, download_file_config, checkpointFile, storeFile,
-        handler, callback_data, partCount, &mutexThreadCheckpoint);
-    if (download_file_config->enable_check_point)
-    {
-        DeleteCriticalSection(&mutexThreadCheckpoint);
-    }
+        handler, callback_data, partCount, &mutexThreadCheckpoint, expected_crc64);
+
+    // Always delete critical section
+    DeleteCriticalSection(&mutexThreadCheckpoint);
     return partCountToProc;
 }
-#endif 
+#endif
 
 #if defined __GNUC__ || defined LINUX
 int download_file_linux(obs_download_file_configuration *download_file_config,
     download_file_part_info *pstPartInfoListDone, download_file_part_info *pstPartInfoListNotDone,
     download_params stDownloadParams, int partCountToProc, char* checkpointFile,
     obs_download_file_response_handler *handler, void *callback_data,
-    char *storeFile, int partCount)
+    char *storeFile, int partCount, uint64_t expected_crc64)
 {
     pthread_mutex_t mutexThreadCheckpoint;
-    if (download_file_config->enable_check_point)
-    {
-        pthread_mutex_init(&mutexThreadCheckpoint, NULL);
-    }
+    // Always initialize mutex to avoid NULL pointer access
+    pthread_mutex_init(&mutexThreadCheckpoint, NULL);
     while (pstPartInfoListNotDone)
     {
         int ret = GetDownloadPartListToProcess(&pstPartInfoListDone, &pstPartInfoListNotDone,
@@ -1742,11 +1850,10 @@ int download_file_linux(obs_download_file_configuration *download_file_config,
         }
     }
     download_complete_handle(pstPartInfoListDone, download_file_config, checkpointFile, storeFile,
-        handler, callback_data, partCount, &mutexThreadCheckpoint);
-    if (download_file_config->enable_check_point)
-    {
-        pthread_mutex_destroy(&mutexThreadCheckpoint);
-    }
+        handler, callback_data, partCount, &mutexThreadCheckpoint, expected_crc64);
+
+    // Always destroy mutex
+    pthread_mutex_destroy(&mutexThreadCheckpoint);
     return partCountToProc;
 }
 #endif 
@@ -1917,22 +2024,60 @@ void download_file(const obs_options *options, char *key, char* version_id,
     stDownloadParams.pstServerSideEncryptionParams = encryption_params;
     stDownloadParams.response_handler = &(handler->response_handler);
     stDownloadParams.get_conditions = get_conditions;
+    stDownloadParams.progress_callback = handler->progress_callback;
+    stDownloadParams.totalFileSize = downLoadFileInfo.objectLength;
+    stDownloadParams.downloadedSize = 0;
     download_file_config->task_num =
         download_file_config->task_num == 0 ? MAX_THREAD_NUM : download_file_config->task_num;
     partCountToProc = 0;
 
+    // Initialize progress info if progress callback is set
+    download_file_progress_info *progressInfo = NULL;
+    if (handler->progress_callback) {
+        progressInfo = (download_file_progress_info *)malloc(sizeof(download_file_progress_info));
+        if (progressInfo) {
+            progressInfo->arrSize = partCount;
+            progressInfo->progressArr = (uint64_t *)malloc(sizeof(uint64_t) * partCount);
+            if (progressInfo->progressArr) {
+                memset_s(progressInfo->progressArr, sizeof(uint64_t) * partCount, 0, sizeof(uint64_t) * partCount);
+                progressInfo->totalFileSize = downLoadFileInfo.objectLength;
+                progressInfo->downloadedSize = 0;
+                stDownloadParams.progressInfo = progressInfo;
+            } else {
+                free(progressInfo);
+                progressInfo = NULL;
+            }
+        }
+    }
+
 #ifdef WIN32
     partCountToProc =
         download_file_win32(download_file_config, pstPartInfoListDone, pstPartInfoListNotDone, stDownloadParams,
-                            partCountToProc, checkpointFile, handler, callback_data, storeFile, partCount);
+                            partCountToProc, checkpointFile, handler, callback_data, storeFile, partCount, downLoadFileInfo.crc64);
 #endif
 
 #if defined __GNUC__ || defined LINUX
     partCountToProc =
         download_file_linux(download_file_config, pstPartInfoListDone, pstPartInfoListNotDone, stDownloadParams,
-                            partCountToProc, checkpointFile, handler, callback_data, storeFile, partCount);
+                            partCountToProc, checkpointFile, handler, callback_data, storeFile, partCount, downLoadFileInfo.crc64);
 #endif
     CHECK_NULL_FREE(storeFile);
     CHECK_NULL_FREE(checkpointFile);
     CHECK_NULL_FREE(pstDownloadFilePartInfoListOrigin);
+
+    // Ensure 100% progress callback is always invoked after download completes
+    if (handler->progress_callback && stDownloadParams.progressInfo != NULL) {
+        download_file_progress_info *finalProgressInfo = stDownloadParams.progressInfo;
+        if (finalProgressInfo) {
+            int last_percent = (int)finalProgressInfo->downloadedSize;
+            if (last_percent < 100) {
+                (handler->progress_callback)(100.0, finalProgressInfo->totalFileSize,
+                    finalProgressInfo->totalFileSize, callback_data);
+            }
+            if (finalProgressInfo->progressArr) {
+                free(finalProgressInfo->progressArr);
+            }
+            free(finalProgressInfo);
+        }
+    }
 }

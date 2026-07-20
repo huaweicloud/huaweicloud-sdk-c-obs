@@ -61,6 +61,8 @@ FILE **uploadFilePool = NULL;
 #define USE_KMS "use_kms="
 #define USE_KMS_LEN (sizeof(USE_KMS) - 1)
 
+#define THREAD_COUNT 3
+
 #define USE_SSEC "use_ssec="
 #define USE_SSEC_LEN (sizeof(USE_SSEC) - 1)
 
@@ -91,6 +93,8 @@ FILE **uploadFilePool = NULL;
 #define VERSIONIDMARKER_PREFIX_LEN (sizeof(VERSIONIDMARKER_PREFIX) - 1)
 #define MAXKEYS_PREFIX "maxkeys="
 #define MAXKEYS_PREFIX_LEN (sizeof(MAXKEYS_PREFIX) - 1)
+#define ENCODING_TYPE_PREFIX "encoding_type="
+#define ENCODING_TYPE_PREFIX_LEN (sizeof(ENCODING_TYPE_PREFIX) - 1)
 #define MAXUPLOADS_PREFIX "maxuploads="
 #define MAXUPLOADS_PREFIX_LEN (sizeof(MAXUPLOADS_PREFIX) - 1)
 #define FILENAME_PREFIX "file_name="
@@ -112,6 +116,8 @@ FILE **uploadFilePool = NULL;
 #define EXPIRES_PREFIX_LEN (sizeof(EXPIRES_PREFIX) - 1)
 #define X_AMZ_META_PREFIX "x-amz-meta-"
 #define X_AMZ_META_PREFIX_LEN (sizeof(X_AMZ_META_PREFIX) - 1)
+#define CUSTOM_HEADER_PREFIX "custom_header="
+#define CUSTOM_HEADER_PREFIX_LEN (sizeof(CUSTOM_HEADER_PREFIX) - 1)
 #define USE_SERVER_SIDE_ENCRYPTION_PREFIX "useServerSideEncryption="
 #define USE_SERVER_SIDE_ENCRYPTION_PREFIX_LEN \
     (sizeof(USE_SERVER_SIDE_ENCRYPTION_PREFIX) - 1)
@@ -341,6 +347,49 @@ FILE **uploadFilePool = NULL;
 #define URI_STYLE "uri_style"
 #define URI_STYLE_LEN (sizeof(URI_STYLE) - 1)
 
+#define SERVER_CERT_PATH "server_cert_path="
+#define SERVER_CERT_PATH_LEN (sizeof(SERVER_CERT_PATH) - 1)
+
+#define CLIENT_SIGN_CERT_PATH "client_sign_cert_path="
+#define CLIENT_SIGN_CERT_PATH_LEN (sizeof(CLIENT_SIGN_CERT_PATH) - 1)
+#define CLIENT_SIGN_KEY_PATH "client_sign_key_path="
+#define CLIENT_SIGN_KEY_PATH_LEN (sizeof(CLIENT_SIGN_KEY_PATH) - 1)
+
+#define CLIENT_ENC_CERT_PATH "client_enc_cert_path="
+#define CLIENT_ENC_CERT_PATH_LEN (sizeof(CLIENT_ENC_CERT_PATH) - 1)
+#define CLIENT_ENC_KEY_PATH "client_enc_key_path="
+#define CLIENT_ENC_KEY_PATH_LEN (sizeof(CLIENT_ENC_KEY_PATH) - 1)
+
+#define BUCKET_CNAME "bucket_cname="
+#define BUCKET_CNAME_LEN (sizeof(BUCKET_CNAME) - 1)
+
+#define CLIENT_AUTH_SWITCH "client_auth_switch"
+#define CLIENT_AUTH_SWITCH_LEN (sizeof(CLIENT_AUTH_SWITCH) - 1)
+
+#define GM_MODE_SWITCH "gm_mode_switch"
+#define GM_MODE_SWITCH_LEN (sizeof(GM_MODE_SWITCH) - 1)
+
+#define SSL_VERSION "ssl_version="
+#define SSL_VERSION_LEN (sizeof(SSL_VERSION) - 1)
+
+#define SSL_CIPHER_LIST "ssl_cipher_list="
+#define SSL_CIPHER_LIST_LEN (sizeof(SSL_CIPHER_LIST) - 1)
+
+#define SSL_VERIFY_HOST "ssl_verify_host"
+#define SSL_VERIFY_HOST_LEN (sizeof(SSL_VERIFY_HOST) - 1)
+
+#define SSL_VERIFY_PEER "ssl_verify_peer"
+#define SSL_VERIFY_PEER_LEN (sizeof(SSL_VERIFY_PEER) - 1)
+
+#define OUTGOING_INTERFACE "outgoing_interface="
+#define OUTGOING_INTERFACE_LEN (sizeof(OUTGOING_INTERFACE) - 1)
+
+#define LOCAL_PORT "local_port="
+#define LOCAL_PORT_LEN (sizeof(LOCAL_PORT) - 1)
+
+#define LOCAL_PORT_RANGE "local_port_range="
+#define LOCAL_PORT_RANGE_LEN (sizeof(LOCAL_PORT_RANGE) - 1)
+
 // posix add 
 #define BUCKET_QUOTA "quota="
 #define BUCKET_QUOTA_LEN (sizeof(BUCKET_QUOTA) - 1)
@@ -382,6 +431,110 @@ static struct option longOptionsG[] =
 
 
 /********************公共函数******************************************/
+// 全局自定义头域存储
+#define MAX_CUSTOM_HEADERS 10
+static obs_name_value g_custom_headers[MAX_CUSTOM_HEADERS];
+static int g_custom_headers_count = 0;
+
+static int parse_custom_header(char *param, obs_options *options) {
+    if (!strncmp(param, CUSTOM_HEADER_PREFIX, CUSTOM_HEADER_PREFIX_LEN)) {
+        if (g_custom_headers_count >= MAX_CUSTOM_HEADERS) {
+            fprintf(stderr, "\nERROR: Too many custom headers (max %d)\n", MAX_CUSTOM_HEADERS);
+            return 1;
+        }
+        char *name = &(param[CUSTOM_HEADER_PREFIX_LEN]);
+        char *value = name;
+        while (*value && (*value != ':')) {
+            value++;
+        }
+        if (*value != ':') {
+            fprintf(stderr, "\nERROR: Invalid custom_header format, expected custom_header=name:value\n");
+            return 1;
+        }
+        *value++ = '\0';
+        g_custom_headers[g_custom_headers_count].name = name;
+        g_custom_headers[g_custom_headers_count].value = value;
+        g_custom_headers_count++;
+        options->request_options.custom_headers = g_custom_headers;
+        options->request_options.custom_headers_count = g_custom_headers_count;
+        return 1;
+    }
+    return 0;
+}
+
+static void reset_custom_headers() {
+    g_custom_headers_count = 0;
+}
+
+static int parse_common_params(char *param, obs_options *options) {
+    
+    // 绑定自定义域名
+    if (!strncmp(param, BUCKET_CNAME, BUCKET_CNAME_LEN)){
+        options->bucket_options.host_name = &(param[BUCKET_CNAME_LEN]);
+        options->bucket_options.useCname = true;
+        options->bucket_options.uri_style = OBS_URI_STYLE_PATH;
+        options->bucket_options.protocol = OBS_PROTOCOL_HTTPS;
+    }
+    // CA证书
+    else if (!strncmp(param, SERVER_CERT_PATH, SERVER_CERT_PATH_LEN)) {
+        options->request_options.server_cert_path = &(param[SERVER_CERT_PATH_LEN]);
+    }
+    // 客户端证书开关
+    else if (!strncmp(param, CLIENT_AUTH_SWITCH, CLIENT_AUTH_SWITCH_LEN)){
+        options->request_options.client_auth_switch = OBS_CLIENT_AUTH_OPEN;
+    }
+    // 客户端证书
+    else if (!strncmp(param, CLIENT_SIGN_CERT_PATH, CLIENT_SIGN_CERT_PATH_LEN)) {
+        options->request_options.client_sign_cert_path = &(param[CLIENT_SIGN_CERT_PATH_LEN]);
+    }
+    else if (!strncmp(param, CLIENT_SIGN_KEY_PATH, CLIENT_SIGN_KEY_PATH_LEN)) {
+        options->request_options.client_sign_key_path = &(param[CLIENT_SIGN_KEY_PATH_LEN]);
+    }
+    // 国密开关
+    else if (!strncmp(param, GM_MODE_SWITCH, GM_MODE_SWITCH_LEN)){
+        options->request_options.gm_mode_switch = OBS_GM_MODE_OPEN;
+    }
+    // 国密证书
+    else if (!strncmp(param, CLIENT_ENC_CERT_PATH, CLIENT_ENC_CERT_PATH_LEN)) {
+        options->request_options.client_enc_cert_path = &(param[CLIENT_ENC_CERT_PATH_LEN]);
+    }
+    else if (!strncmp(param, CLIENT_ENC_KEY_PATH, CLIENT_ENC_KEY_PATH_LEN)) {
+        options->request_options.client_enc_key_path = &(param[CLIENT_ENC_KEY_PATH_LEN]);
+    }
+    // SSL版本
+    else if (!strncmp(param, SSL_VERSION, SSL_VERSION_LEN)) {
+        options->request_options.ssl_version = atoi(&param[SSL_VERSION_LEN]);
+    }
+    // SSL套件
+    else if (!strncmp(param, SSL_CIPHER_LIST, SSL_CIPHER_LIST_LEN)) {
+        options->request_options.ssl_cipher_list = &(param[SSL_CIPHER_LIST_LEN]);
+    }
+    // 是否开启域名认证
+    else if (!strncmp(param, SSL_VERIFY_HOST, SSL_VERIFY_HOST_LEN)) {
+        options->request_options.ssl_verify_host = OBS_SSL_VERIFYHOST_OPEN;
+    }
+    // 是否开启服务端认证
+    else if (!strncmp(param, SSL_VERIFY_PEER, SSL_VERIFY_PEER_LEN)) {
+        options->request_options.ssl_verify_peer = OBS_SSL_VERIFYPEER_OPEN;
+    }
+    // 指定网卡
+    else if (!strncmp(param, OUTGOING_INTERFACE, OUTGOING_INTERFACE_LEN)) {
+        options->request_options.outgoing_interface = &(param[OUTGOING_INTERFACE_LEN]);
+    }
+    // 指定起始端口
+    else if (!strncmp(param, LOCAL_PORT, LOCAL_PORT_LEN)) {
+        options->request_options.local_port = atoi(&(param[LOCAL_PORT_LEN]));
+    }
+    // 指定端口范围
+    else if (!strncmp(param, LOCAL_PORT_RANGE, LOCAL_PORT_RANGE_LEN)) {
+        options->request_options.local_port_range = atoi(&(param[LOCAL_PORT_RANGE_LEN]));
+    }
+    else if (parse_custom_header(param, options)) {
+        return 1;
+    }
+    return 0; // 未匹配到公共参数
+}
+
 static uint64_t convertInt(const char *str, const char *paramName)
 {
     uint64_t ret = 0;
@@ -587,6 +740,7 @@ static void progress_callback(uint64_t now, uint64_t total, void* callback_data)
         printf("progress is %lu%% \n", (now * 100) / total);
     }
 }
+
 // head object ---------------------------------------------------------------
 static void test_head_object_new(int argc, char **argv, int optindex)
 {
@@ -617,6 +771,9 @@ static void test_head_object_new(int argc, char **argv, int optindex)
     while (optindex < argc)
     {
         char *param = argv[optindex ++];
+
+      
+
         if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) 
         {
             option.bucket_options.certificate_info = ca_info;       
@@ -668,6 +825,11 @@ static void test_head_bucket_new(int argc, char **argv, int optindex)
     while (optindex < argc)
     {
         char *param = argv[optindex ++];
+
+        if (parse_common_params(param, &option)) {
+            continue; 
+        }
+
         if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) 
         {
            option.bucket_options.certificate_info = ca_info;       
@@ -696,7 +858,7 @@ static void test_head_bucket_new(int argc, char **argv, int optindex)
 static void test_batch_delete_new(int argc, char **argv, int optindex)
 {
     char *bucket_name = argv[optindex++];
-    char *key_file = argv[optindex];
+    char *key_file = argv[optindex++];
     printf("Bucket's name is == %s \n", bucket_name);
     int num = 0;
     int i = 0;
@@ -710,6 +872,17 @@ static void test_batch_delete_new(int argc, char **argv, int optindex)
     option.bucket_options.access_key = ACCESS_KEY_ID;
     option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
     option.bucket_options.uri_style = gDefaultURIStyle;
+
+    while (optindex < argc) {
+        char *param = argv[optindex++];
+        if (parse_common_params(param, &option)) {
+            continue;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
+    }
+
     obs_object_info objectinfo[OBS_MAX_DELETE_OBJECT_NUMBER];
     
     FILE *fd = fopen(key_file, "r");
@@ -1269,16 +1442,15 @@ static void test_bucket_connection_reuse_new(int argc, char **argv, int optindex
     init_test_params(&params);
     parse_test_params(argc, argv, &optindex, &params);
 
-    const int thread_count = 3;
-    pthread_t threads[thread_count];
-    thread_data_t thread_data[thread_count];
+    pthread_t threads[THREAD_COUNT];
+    thread_data_t thread_data[THREAD_COUNT];
     int i, rc;
     int test_failed = 0;
 
-    printf("\n========== Starting Connection Reuse Test with %d Threads ==========\n", thread_count);
+    printf("\n========== Starting Connection Reuse Test with %d Threads ==========\n", THREAD_COUNT);
 
     // Create 5 threads
-    for (i = 0; i < thread_count; i++) {
+    for (i = 0; i < THREAD_COUNT; i++) {
         thread_data[i].thread_id = i + 1;
         snprintf(thread_data[i].bucket_name, sizeof(thread_data[i].bucket_name),
                  "%s-%d", bucket_prefix, i + 1);
@@ -1301,7 +1473,7 @@ static void test_bucket_connection_reuse_new(int argc, char **argv, int optindex
     // Only wait for threads if all were created successfully
     if (!test_failed) {
         // Wait for all threads to complete
-        for (i = 0; i < thread_count; i++) {
+        for (i = 0; i < THREAD_COUNT; i++) {
             rc = pthread_join(threads[i], NULL);
             if (rc) {
                 fprintf(stderr, "ERROR: Failed to join thread %d, return code: %d\n", i + 1, rc);
@@ -1315,7 +1487,7 @@ static void test_bucket_connection_reuse_new(int argc, char **argv, int optindex
         double total_avg_latency = 0.0;
         int total_head_requests = 0;
 
-        for (i = 0; i < thread_count; i++) {
+        for (i = 0; i < THREAD_COUNT; i++) {
             printf("Thread %d (bucket: %s):\n", thread_data[i].thread_id, thread_data[i].bucket_name);
             printf("  Create bucket: %s\n", thread_data[i].create_result == 0 ? "SUCCESS" : "FAILED");
             printf("  Head bucket:   %s\n", thread_data[i].head_result == 0 ? "SUCCESS" : "FAILED");
@@ -1342,18 +1514,18 @@ static void test_bucket_connection_reuse_new(int argc, char **argv, int optindex
             }
         }
 
-        printf("\nTotal threads: %d\n", thread_count);
+        printf("\nTotal threads: %d\n", THREAD_COUNT);
         printf("Successful threads: %d\n", success_count);
-        printf("Failed threads: %d\n", thread_count - success_count);
+        printf("Failed threads: %d\n", THREAD_COUNT - success_count);
 
         if (total_head_requests > 0) {
             printf("\nTotal head requests: %d\n", total_head_requests);
-            printf("Overall average latency: %.3f ms\n", total_avg_latency / thread_count);
+            printf("Overall average latency: %.3f ms\n", total_avg_latency / THREAD_COUNT);
         }
 
-        if (success_count == thread_count && latency_check_passed) {
+        if (success_count == THREAD_COUNT && latency_check_passed) {
             printf("\n========== All tests PASSED! Connection reuse verified. ==========\n");
-        } else if (success_count == thread_count) {
+        } else if (success_count == THREAD_COUNT) {
             printf("\n========== Tests PASSED but latency check FAILED! ==========\n");
         } else {
             printf("\n========== Some tests FAILED! ==========\n");
@@ -1724,6 +1896,9 @@ static void test_append_object_new(int argc, char **argv, int optindex)
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
         }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -1915,6 +2090,9 @@ static void test_put_object_new(int argc, char **argv, int optindex)
         else if (!strncmp(param, MAX_CONNECT_TIME, MAX_CONNECT_TIME_LEN)) {
 			option.request_options.connect_time = convertInt(&(param[MAX_CONNECT_TIME_LEN]), "max_connect_time");
 		}
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -2141,6 +2319,9 @@ void test_get_object_new(int argc, char **argv, int optindex)
         else if (!strncmp(param, MAX_CONNECT_TIME, MAX_CONNECT_TIME_LEN)) {
 			option.request_options.connect_time = convertInt(&(param[MAX_CONNECT_TIME_LEN]), "max_connect_time");
 		}
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -2196,6 +2377,11 @@ static void test_delete_object_new(int argc, char **argv, int optindex)
     memset_s(&object_info,sizeof(object_info), 0, sizeof(obs_object_info));
     while (optindex < argc) {
         char *param = argv[optindex++];
+
+        if (parse_common_params(param, &option)) {
+            continue; 
+        }
+
         if (!strncmp(param, KEY_PREFIX, KEY_PREFIX_LEN)) {
             object_info.key = &(param[KEY_PREFIX_LEN]);
         }
@@ -2214,6 +2400,9 @@ static void test_delete_object_new(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -2286,6 +2475,9 @@ static void test_list_bucket_object_new(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -2365,6 +2557,9 @@ static void test_get_object_metadata(int argc, char **argv, int optindex)
         else if (!strncmp(param, SSEC_CUSTOMER_KEY, SSEC_CUSTOMER_KEY_LEN)) {
             encryption_params.ssec_customer_key = &(param[SSEC_CUSTOMER_KEY_LEN]);
         }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -2436,6 +2631,9 @@ void test_list_bucket_new_s3(int argc, char **argv, int optindex)
         else if (!strncmp(param, BUCKET_LIST_TYPE, BUCKET_LIST_TYPE_LEN)) {
             option.bucket_options.bucket_list_type = get_list_type_from_argv(&(param[BUCKET_LIST_TYPE_LEN]));
         }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -2480,6 +2678,9 @@ void test_list_bucket_new_obs(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, BUCKET_LIST_TYPE, BUCKET_LIST_TYPE_LEN)) {
             option.bucket_options.bucket_list_type = get_list_type_from_argv(&(param[BUCKET_LIST_TYPE_LEN]));
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -2537,6 +2738,9 @@ void test_list_bucket_new(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, BUCKET_LIST_TYPE, BUCKET_LIST_TYPE_LEN)) {
             option.bucket_options.bucket_list_type = get_list_type_from_argv(&(param[BUCKET_LIST_TYPE_LEN]));
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -2641,6 +2845,9 @@ static void test_init_upload_part_new(int argc, char **argv, int optindex)
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
         }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -2704,6 +2911,9 @@ static void test_list_versions_new(int argc, char **argv, int optindex)
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
         }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -2726,6 +2936,265 @@ static void test_list_versions_new(int argc, char **argv, int optindex)
     else
     {
         printf("list versions failed(%s).\n", obs_get_status_name(data.ret_status));
+    }
+}
+
+// list_object_encoding ---------------------------------------------------------
+static void test_list_object_encoding(int argc, char **argv, int optindex)
+{
+    char *bucket_name = argv[optindex++];
+    printf("Bucket's name is == %s \n", bucket_name);
+    obs_options option;
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+    char *prefix = 0, *marker = 0, *delimiter = 0, *encoding_type = 0;
+    int maxkeys = 0, allDetails = 0;
+    while (optindex < argc) {
+        char *param = argv[optindex++];
+        if (!strncmp(param, PREFIX_PREFIX, PREFIX_PREFIX_LEN)) {
+            prefix = &(param[PREFIX_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, MARKER_PREFIX, MARKER_PREFIX_LEN)) {
+            marker = &(param[MARKER_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, MAXKEYS_PREFIX, MAXKEYS_PREFIX_LEN)) {
+            maxkeys = convertInt(&(param[MAXKEYS_PREFIX_LEN]), "maxkeys");
+        }
+        else if (!strncmp(param, DELIMITER_PREFIX, DELIMITER_PREFIX_LEN)) {
+            delimiter = &(param[DELIMITER_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, ENCODING_TYPE_PREFIX, ENCODING_TYPE_PREFIX_LEN)) {
+            encoding_type = &(param[ENCODING_TYPE_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+            option.bucket_options.protocol = get_protocol_from_argv(param);
+        }
+        else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
+            option.bucket_options.certificate_info = &(param[CERTIFICATE_INFO_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+            option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+        else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+            option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else {
+            fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
+        }
+    }
+    obs_list_objects_params params;
+    memset_s(&params, sizeof(params), 0, sizeof(params));
+    params.prefix = prefix;
+    params.marker = marker;
+    params.delimiter = delimiter;
+    params.maxkeys = maxkeys;
+    params.encoding_type = encoding_type;
+    list_object_callback_data data;
+    memset_s(&data, sizeof(data), 0, sizeof(list_object_callback_data));
+    snprintf_s(data.next_marker, sizeof(data.next_marker),
+        sizeof(data.next_marker)-1, "%s", marker);
+    data.keyCount = 0;
+    data.allDetails = allDetails;
+    data.is_truncated = 0;
+    obs_list_objects_handler list_bucket_objects_handler =
+    {
+        { NULL, &list_object_complete_callback},
+        &list_objects_callback
+    };
+    list_bucket_objects_with_params(&option, &params, &list_bucket_objects_handler, &data);
+    if (OBS_STATUS_OK == data.ret_status) {
+        printf("list object with encoding successfully. \n");
+    }
+    else
+    {
+        printf("list object with encoding failed(%s).\n", obs_get_status_name(data.ret_status));
+    }
+}
+
+// list_versions_encoding ---------------------------------------------------------
+static void test_list_versions_encoding(int argc, char **argv, int optindex)
+{
+    char *bucket_name = argv[optindex++];
+    printf("Bucket's name is == %s \n", bucket_name);
+    obs_options option;
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+    char *prefix = 0, *key_marker = 0, *delimiter = 0, *version_id_marker = NULL, *encoding_type = 0;
+    int maxkeys = 0;
+    while (optindex < argc) {
+        char *param = argv[optindex++];
+        if (!strncmp(param, PREFIX_PREFIX, PREFIX_PREFIX_LEN)) {
+            prefix = &(param[PREFIX_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, KEY_MARKER_PREFIX, KEY_MARKER_PREFIX_LEN)) {
+            key_marker = &(param[KEY_MARKER_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, MAXKEYS_PREFIX, MAXKEYS_PREFIX_LEN)) {
+            maxkeys = convertInt(&(param[MAXKEYS_PREFIX_LEN]), "maxkeys");
+        }
+        else if (!strncmp(param, DELIMITER_PREFIX, DELIMITER_PREFIX_LEN)) {
+            delimiter = &(param[DELIMITER_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, VERSIONIDMARKER_PREFIX, VERSIONIDMARKER_PREFIX_LEN)) {
+            version_id_marker = &(param[VERSIONIDMARKER_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, ENCODING_TYPE_PREFIX, ENCODING_TYPE_PREFIX_LEN)) {
+            encoding_type = &(param[ENCODING_TYPE_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+            option.bucket_options.protocol = get_protocol_from_argv(param);
+        }
+        else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
+            option.bucket_options.certificate_info = &(param[CERTIFICATE_INFO_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, USE_OBS_AUTH,USE_OBS_AUTH_LEN)){
+            option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+        else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
+            option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else {
+            fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
+        }
+    }
+    obs_list_versions_params params;
+    memset_s(&params, sizeof(params), 0, sizeof(params));
+    params.prefix = prefix;
+    params.key_marker = key_marker;
+    params.delimiter = delimiter;
+    params.maxkeys = maxkeys;
+    params.version_id_marker = version_id_marker;
+    params.encoding_type = encoding_type;
+    obs_list_versions_handler list_versions_handler =
+    {
+        { &response_properties_callback, &list_versions_complete_callback },
+        &listVersionsCallback
+    };
+    list_versions_callback_data data;
+    memset_s(&data, sizeof(data), 0, sizeof(list_versions_callback_data));
+    list_versions_with_params(&option, &params, &list_versions_handler, &data);
+    if (OBS_STATUS_OK == data.ret_status) {
+        printf("list versions with encoding successfully. \n");
+    }
+    else
+    {
+        printf("list versions with encoding failed(%s).\n", obs_get_status_name(data.ret_status));
+    }
+}
+
+// delete_all_versions ---------------------------------------------------------
+#define DEL_VER_KEY_LEN 1024
+#define DEL_VER_VID_LEN 256
+typedef struct delete_all_versions_data
+{
+    char keys[OBS_MAX_DELETE_OBJECT_NUMBER][DEL_VER_KEY_LEN];
+    char version_ids[OBS_MAX_DELETE_OBJECT_NUMBER][DEL_VER_VID_LEN];
+    obs_object_info objects[OBS_MAX_DELETE_OBJECT_NUMBER];
+    int count;
+    obs_status ret_status;
+} delete_all_versions_data;
+
+static obs_status collectVersionsCallback(int is_truncated, const char *next_key_marker,
+        const char *next_versionId_marker, const obs_list_versions *list_versions, void *callback_data)
+{
+    delete_all_versions_data *data = (delete_all_versions_data *)callback_data;
+    int i;
+    for (i = 0; i < list_versions->versions_count; i++) {
+        if (data->count >= OBS_MAX_DELETE_OBJECT_NUMBER) break;
+        obs_version *v = &(list_versions->versions[i]);
+        if (v->key && v->key[0]) {
+            snprintf_s(data->keys[data->count], DEL_VER_KEY_LEN, DEL_VER_KEY_LEN - 1, "%s", v->key);
+            if (v->version_id && v->version_id[0]) {
+                snprintf_s(data->version_ids[data->count], DEL_VER_VID_LEN, DEL_VER_VID_LEN - 1, "%s", v->version_id);
+                data->objects[data->count].version_id = data->version_ids[data->count];
+            } else {
+                data->version_ids[data->count][0] = '\0';
+                data->objects[data->count].version_id = NULL;
+            }
+            data->objects[data->count].key = data->keys[data->count];
+            data->count++;
+        }
+    }
+    return OBS_STATUS_OK;
+}
+
+static void do_delete_versions(obs_options *option, delete_all_versions_data *data)
+{
+    int i, ok_count = 0, fail_count = 0;
+    for (i = 0; i < data->count; i++) {
+        obs_status ret_status = OBS_STATUS_BUTT;
+        obs_object_info object_info;
+        memset_s(&object_info, sizeof(object_info), 0, sizeof(object_info));
+        object_info.key = data->objects[i].key;
+        object_info.version_id = data->objects[i].version_id;
+        obs_response_handler handler = { &response_properties_callback, &response_complete_callback };
+        delete_object(option, &object_info, &handler, &ret_status);
+        if (OBS_STATUS_OK == ret_status) ok_count++;
+        else {
+            fail_count++;
+            printf("delete object key=%s version_id=%s failed(%s)\n",
+                object_info.key, object_info.version_id ? object_info.version_id : "null",
+                obs_get_status_name(ret_status));
+        }
+    }
+    printf("delete_all_versions done. success=%d failed=%d total=%d\n", ok_count, fail_count, data->count);
+}
+
+static void test_delete_all_versions(int argc, char **argv, int optindex)
+{
+    char *bucket_name = argv[optindex++];
+    printf("Bucket's name is == %s \n", bucket_name);
+    obs_options option;
+    init_obs_options(&option);
+    option.bucket_options.host_name = HOST_NAME;
+    option.bucket_options.bucket_name = bucket_name;
+    option.bucket_options.access_key = ACCESS_KEY_ID;
+    option.bucket_options.secret_access_key = SECRET_ACCESS_KEY;
+    option.bucket_options.uri_style = gDefaultURIStyle;
+    char *prefix = 0;
+    while (optindex < argc) {
+        char *param = argv[optindex++];
+        if (!strncmp(param, PREFIX_PREFIX, PREFIX_PREFIX_LEN)) {
+            prefix = &(param[PREFIX_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, PROTOCOL_PREFIX, PROTOCOL_PREFIX_LEN)) {
+            option.bucket_options.protocol = get_protocol_from_argv(param);
+        }
+        else if (!strncmp(param, CERTIFICATE_INFO_PREFIX, CERTIFICATE_INFO_PREFIX_LEN)) {
+            option.bucket_options.certificate_info = &(param[CERTIFICATE_INFO_PREFIX_LEN]);
+        }
+        else if (!strncmp(param, USE_OBS_AUTH, USE_OBS_AUTH_LEN)){
+            option.request_options.auth_switch = OBS_OBS_TYPE;
+        }
+        else if (!strncmp(param, USE_S3_AUTH, USE_S3_AUTH_LEN)){
+            option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+    }
+    obs_list_versions_params params;
+    memset_s(&params, sizeof(params), 0, sizeof(params));
+    params.prefix = prefix;
+    params.encoding_type = "url";
+    obs_list_versions_handler list_versions_handler =
+    {
+        { &response_properties_callback, &list_versions_complete_callback },
+        &collectVersionsCallback
+    };
+    delete_all_versions_data data;
+    memset_s(&data, sizeof(data), 0, sizeof(data));
+    list_versions_with_params(&option, &params, &list_versions_handler, &data);
+    if (data.count > 0) {
+        do_delete_versions(&option, &data);
+    }
+    else {
+        printf("no versions to delete.\n");
     }
 }
 
@@ -2792,6 +3261,9 @@ void test_set_bucket_policy(int argc, char **argv, int optindex)
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
         }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -2841,6 +3313,9 @@ void test_get_bucket_policy(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -2893,6 +3368,9 @@ void test_delete_bucket_policy(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -3107,6 +3585,9 @@ static void test_set_bucket_lifecycle_new(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -3809,6 +4290,9 @@ obs_acl_group* set_grant_acl(int argc, char **argv, int optindex, obs_options* o
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option->request_options.auth_switch = OBS_S3_TYPE;
         }
+        else if (parse_custom_header(param, option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -4049,7 +4533,7 @@ void test_get_bucket_tagging_new(int argc, char **argv, int optindex)
     
      obs_get_bucket_tagging_handler response_handler = 
     {
-         {&response_properties_callback, &get_tagging_complete_callback}, 
+         {&response_properties_callback, &demo_get_tagging_complete_callback}, 
             &get_bucket_tagging_callback
     };
 
@@ -4351,6 +4835,9 @@ void test_object_option(int argc, char **argv, int optindex)
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
         }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -4437,6 +4924,9 @@ void test_bucket_option(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -4554,6 +5044,9 @@ void test_set_bucket_cors(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -5279,6 +5772,9 @@ static void test_concurrent_upload_part(int argc, char **argv, int optindex)
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
         }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -5427,6 +5923,9 @@ static void test_concurrent_copy_part(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -5671,6 +6170,11 @@ static void test_upload_file(int argc, char **argv, int optindex)
 
     while (optindex < argc) {
         char *param = argv[optindex ++];
+
+        if (parse_common_params(param, &option)) {
+        continue; 
+        }
+
         if (!strncmp(param, FILENAME_PREFIX, FILENAME_PREFIX_LEN)) {
             filename = &(param[FILENAME_PREFIX_LEN]);
         }
@@ -5709,6 +6213,9 @@ static void test_upload_file(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, SSEC_CUSTOMER_KEY, SSEC_CUSTOMER_KEY_LEN)) {
             encryption_params.ssec_customer_key = &(param[SSEC_CUSTOMER_KEY_LEN]);
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -5794,6 +6301,11 @@ static void test_download_file(int argc, char **argv, int optindex)
 
     while (optindex < argc) {
         char *param = argv[optindex ++];
+
+        if (parse_common_params(param, &option)) {
+            continue; 
+        }
+
         if (!strncmp(param, FILENAME_PREFIX, FILENAME_PREFIX_LEN)) {
             filename = &(param[FILENAME_PREFIX_LEN]);
         }
@@ -5820,6 +6332,9 @@ static void test_download_file(int argc, char **argv, int optindex)
             option.request_options.auth_switch = OBS_OBS_TYPE;
         }else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -6197,6 +6712,9 @@ static void test_put_object_with_encrypt(int argc, char **argv, int optindex)
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
         }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -6373,6 +6891,9 @@ void test_get_object_with_encrypt(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -6551,6 +7072,9 @@ static void test_set_notification_configuration_new(int argc, char **argv, int o
         else if (!strncmp(param, USE_S3_AUTH,USE_S3_AUTH_LEN)){
             option.request_options.auth_switch = OBS_S3_TYPE;
         }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
+        }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
         }
@@ -6696,6 +7220,9 @@ static void test_modify_object_new(int argc, char **argv, int optindex)
         }
         else if (!strncmp(param, OBJECT_POSITION, OBJECT_POSITION_LEN)) {
             position = convertInt(&(param[OBJECT_POSITION_LEN]), "modify_position");;
+        }
+        else if (parse_custom_header(param, &option)) {
+            // custom_header parsed
         }
         else {
             fprintf(stderr, "\nERROR: Unknown param: %s\n", param);
@@ -7819,6 +8346,7 @@ int main(int argc, char **argv)
     initialize_break_point_lock();
 
     // bucket test
+    reset_custom_headers();
     if (!strcmp(command, "create_bucket")) {
          test_create_bucket_new(argc, argv, optind);
     }
@@ -7840,6 +8368,15 @@ int main(int argc, char **argv)
     }
     else if (!strcmp(command, "list_versions")) {
         test_list_versions_new(argc, argv, optind);
+    }
+    else if (!strcmp(command, "list_object_encoding")) {
+        test_list_object_encoding(argc, argv, optind);
+    }
+    else if (!strcmp(command, "list_versions_encoding")) {
+        test_list_versions_encoding(argc, argv, optind);
+    }
+    else if (!strcmp(command, "delete_all_versions")) {
+        test_delete_all_versions(argc, argv, optind);
     }
     else if (!strcmp(command, "set_bucket_policy")) {
         test_set_bucket_policy(argc, argv, optind);

@@ -142,7 +142,6 @@ const char *obs_get_status_name(obs_status status)
         handlecase(NoSuchVersion); 
         handlecase(NotImplemented);
         handlecase(NotSignedUp);
-        handlecase(NotSuchBucketPolicy);
         handlecase(OperationAborted);
         handlecase(PermanentRedirect);
         handlecase(PreconditionFailed);
@@ -169,8 +168,7 @@ const char *obs_get_status_name(obs_status status)
         handlecase(HttpErrorConflict);
         handlecase(InsufficientStorageSpace);
         handlecase(NoSuchWebsiteConfiguration);
-        handlecase(NoSuchBucketPolicy);
-        handlecase(NoSuchCORSConfiguration);
+        handlecase(NotSuchBucketPolicy);
         handlecase(HttpErrorUnknown);
         handlecase(InArrearOrInsufficientBalance);
         handlecase(NoSuchTagSet);
@@ -198,6 +196,13 @@ const char *obs_get_status_name(obs_status status)
         handlecase(InvalidCertIdLen);
         handlecase(HttpNotSecure);
         handlecase(SecureConnectionRequiredForCustomDomainCertificate);
+        handlecase(NoSuchDisConfiguration);
+        handlecase(NoSuchCompressConfiguration);
+        handlecase(NoSuchReplicationConfiguration);
+        handlecase(NoSuchInventoryConfiguration);
+        handlecase(NoSuchEncryptionConfiguration);
+        handlecase(InvalidCRC64);
+        handlecase(CRC64TooLong);
         handlecase(BUTT);
     }
 
@@ -256,11 +261,33 @@ void init_obs_options(obs_options *options)
     options->request_options.bbr_switch = OBS_BBR_CLOSE;
     options->request_options.auth_switch = OBS_NEGOTIATION_TYPE;
     options->request_options.buffer_size = 16 * 1024L;
-    options->request_options.server_cert_path = NULL;
     options->request_options.curl_log_verbose = false;
     options->request_options.forbid_reuse_tcp = false;
     options->request_options.curl_max_connects = DEFAULT_MAXCONNECTS;
     options->request_options.curl_max_age_conn = DEFAULT_MAXAGE_CONN;
+
+    options->request_options.ssl_verify_host = OBS_SSL_VERIFYHOST_CLOSE;
+    options->request_options.ssl_verify_peer = OBS_SSL_VERIFYPEER_CLOSE;
+    options->request_options.ssl_version = 0;
+    // === 服务端认证配置 ===
+    options->request_options.server_cert_path = NULL;
+    // === 客户端认证配置 ===
+    options->request_options.client_auth_switch = OBS_CLIENT_AUTH_CLOSE;
+    options->request_options.client_sign_cert_path = NULL;
+    options->request_options.client_sign_key_path = NULL;
+    options->request_options.password_callback = NULL;
+    options->request_options.password_callback_context = NULL;
+    // === 国密配置 ===
+    options->request_options.gm_mode_switch = OBS_GM_MODE_CLOSE;
+    options->request_options.client_enc_cert_path = NULL;
+    options->request_options.client_enc_key_path = NULL;
+    // === 本地源地址/端口绑定配置 ===
+    options->request_options.outgoing_interface = NULL;
+    options->request_options.local_port = 0;
+    options->request_options.local_port_range = 1;
+    // 自定义头域
+    options->request_options.custom_headers_count = 0;
+    options->request_options.custom_headers = NULL;
 
     options->bucket_options.access_key = NULL;
     options->bucket_options.secret_access_key = NULL;
@@ -400,6 +427,11 @@ void init_put_properties(obs_put_properties *put_properties)
     put_properties->domain_config = NULL;
     put_properties->metadata_action = OBS_NO_METADATA_ACTION;
     init_server_callback(&(put_properties->server_callback));
+
+    /* CRC64 相关字段初始化 */
+    put_properties->enable_crc64 = false;
+    put_properties->crc64 = NULL;
+    put_properties->crc64_context = NULL;
 }
 
 void init_get_properties(obs_get_conditions *get_conditions)
@@ -412,6 +444,7 @@ void init_get_properties(obs_get_conditions *get_conditions)
     get_conditions->if_not_match_etag = NULL;
     get_conditions->if_not_modified_since = -1;
     get_conditions->image_process_config = NULL;
+    get_conditions->enable_crc64 = false;
 }
 
 void init_server_callback(obs_upload_file_server_callback * server_callback)

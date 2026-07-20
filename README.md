@@ -2,6 +2,33 @@
 
 ## Release Notes
 
+### Version 3.26.6
+
+**New Features:**
+
+1. Bucket and object management: added the bucket inventory, bucket replication, bucket encryption (SSE-KMS), mirror back-to-source, DIS policy, compress policy, bucket object lock (WORM), public access block, and direct cold access features, as well as object tagging and object retention configuration (set/get/delete). Added the `put_object_content` and `put_file` simple upload interfaces for text content and local file upload.
+2. CRC64 verification: added CRC64 checksum verification for object upload and download (enable via `enable_crc64` in upload/download options; the server-returned CRC64 value is available in the response), and added the `obs_compute_file_crc64` interface to compute the CRC64 value of a local file for comparison with the server-returned value.
+3. Listing: the `list_objects` and `list_versions` interfaces support the `encoding_type` parameter to URL-encode object and version key fields.
+4. Custom headers: supports attaching user-defined headers to requests.
+5. Local address binding: supports binding the local outgoing NIC/IP and source port range.
+6. GM cipher and mutual authentication: supports the GM mode (SM2/SM3/SM4) and mutual TLS certificate authentication, including sign/encryption certificate and key paths and a password callback for password-protected certificates.
+
+**Documentation & Demo:**
+
+1. Added descriptions for the bucket and object management interfaces (bucket inventory, bucket replication, bucket encryption, mirror back-to-source, DIS policy, compress policy, bucket object lock, public access block, direct cold access, object tagging, object retention, and the `put_object_content` / `put_file` upload interfaces).
+2. Added a description for the CRC64 verification feature (upload/download checksum and the `obs_compute_file_crc64` interface).
+3. Added a description for the `encoding_type` parameter of the `list_objects` and `list_versions` interfaces.
+4. Added a description for the custom request header feature.
+5. Added a description for the local address binding feature.
+6. Added a description for the GM cipher and mutual authentication feature.
+
+**Resolved Issues:**
+
+1. Resolved the issue where the listing interface did not correctly handle object names containing special characters.
+2. Fixed a metadata array boundary check error in the response header handler.
+
+---
+
 ### Version 3.26.3
 
 > Warning: v3.26.3 is optimized for non-Windows environments only. Windows support is not included.

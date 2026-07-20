@@ -24,7 +24,7 @@ obs_status generate_storage_class_xml_document(obs_storage_class storage_class_p
     obs_status ret = OBS_STATUS_OK;
 
     if (use_api == OBS_USE_API_S3) {
-        char *storage_class_list[] = { "STANDARD","STANDARD_IA","GLACIER","DEEP_ARCHIVE","HIGH_PERFORMANCE" };
+        char *storage_class_list[] = { "STANDARD","STANDARD_IA","GLACIER","DEEP_ARCHIVE","HIGH_PERFORMANCE","INTELLIGENT_TIERING" };
 
         ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
             "%s", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
@@ -36,7 +36,7 @@ obs_status generate_storage_class_xml_document(obs_storage_class storage_class_p
             "%s", "</DefaultStorageClass></StoragePolicy>");
     }
     else {
-        char *storage_class_list[] = { "STANDARD","WARM","COLD","DEEP_ARCHIVE","HIGH_PERFORMANCE" };
+        char *storage_class_list[] = { "STANDARD","WARM","COLD","DEEP_ARCHIVE","HIGH_PERFORMANCE","INTELLIGENT_TIERING" };
 
         ret = append_xml_document(xml_document_len_return, xml_document, xml_document_buffer_size,
             "%s", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
@@ -61,6 +61,11 @@ void set_bucket_storage_class_policy(const obs_options *options,
     obs_use_api use_api = OBS_USE_API_S3;
     set_use_api_switch(options, &use_api);
     COMMLOG(OBS_LOGINFO, "set bucket storage policy start!");
+    if (!options->bucket_options.bucket_name || !options->bucket_options.bucket_name[0]) {
+        COMMLOG(OBS_LOGERROR, "bucket_name is empty!");
+        (void)(*(handler->complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
+        return;
+    }
     if (storage_class_policy >= OBS_STORAGE_CLASS_BUTT)
     {
         COMMLOG(OBS_LOGERROR, "storage_class_policy invalid!");

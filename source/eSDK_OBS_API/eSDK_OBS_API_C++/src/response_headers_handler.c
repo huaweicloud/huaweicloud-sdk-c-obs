@@ -241,12 +241,44 @@ void parse_xml_header(response_headers_handler *handler, char *header,
 		string_multibuffer_add(handler->responsePropertyStrings, c,
 			valuelen, fit);
 	}
-	else_if (prefix_cmp(header, OBS_METADATA_HEADER_NAME_PREFIX, 
+	else_if(prefix_cmp(header, "Content-Range", namelen)) {
+		/* 解析 Content-Range 响应头（用于检测 Range 请求） */
+		responseProperties->content_range =
+			string_multibuffer_current(handler->responsePropertyStrings);
+		string_multibuffer_add(handler->responsePropertyStrings, c,
+			valuelen, fit);
+	}
+	else_if(prefix_cmp(header, "x-obs-checksum-crc64ecma", namelen) ||
+		prefix_cmp(header, "x-amz-checksum-crc64ecma", namelen)) {
+		/* Parse CRC64 value */
+		COMMLOG(OBS_LOGINFO, "Received CRC64 header: %.*s = %.*s", namelen, header, valuelen, c);
+		responseProperties->crc64 = 0;
+		while (*c) {
+			responseProperties->crc64 *= 10;
+			responseProperties->crc64 += (*c++ - '0');
+		}
+		COMMLOG(OBS_LOGINFO, "Parsed CRC64 value: %llu", (unsigned long long)responseProperties->crc64);
+	}
+	else_if(prefix_cmp(header, "x-obs-object-lock-mode", namelen) ||
+		prefix_cmp(header, "x-amz-object-lock-mode", namelen)) {
+		responseProperties->object_lock_mode =
+			string_multibuffer_current(handler->responsePropertyStrings);
+		string_multibuffer_add(handler->responsePropertyStrings, c,
+			valuelen, fit);
+	}
+	else_if(prefix_cmp(header, "x-obs-object-lock-retain-until-date", namelen) ||
+		prefix_cmp(header, "x-amz-object-lock-retain-until-date", namelen)) {
+		responseProperties->object_lock_retain_until_date =
+			string_multibuffer_current(handler->responsePropertyStrings);
+		string_multibuffer_add(handler->responsePropertyStrings, c,
+			valuelen, fit);
+	}
+	else_if (prefix_cmp(header, OBS_METADATA_HEADER_NAME_PREFIX,
 		sizeof(OBS_METADATA_HEADER_NAME_PREFIX) - 1) ||
 		prefix_cmp(header, "x-obs-meta-", sizeof("x-obs-meta-") - 1)) 
 	{
-		if (handler->responseProperties.meta_data_count ==
-			sizeof(handler->responseMetaData)) {
+		if (handler->responseProperties.meta_data_count >=
+			sizeof(handler->responseMetaData) / sizeof(obs_name_value)) {
 				return;
 		}
 		char *metaName = &(header[sizeof(OBS_METADATA_HEADER_NAME_PREFIX) - 1]);

@@ -64,31 +64,19 @@ typedef struct update_bucket_common_data
     void *callback_data;
 } update_bucket_common_data;
 
-typedef struct xml_callback_data
-{
-    simple_xml simpleXml;
-
-    obs_response_properties_callback *responsePropertiesCallback;
-    obs_list_service_callback *listServiceCallback;
-    obs_response_complete_callback *responseCompleteCallback;
-    void *callback_data;
-
-    string_buffer(owner_id, 256);
-    string_buffer(owner_display_name, 256);
-    string_buffer(bucket_name, 256);
-    string_buffer(creationDate, 128);
-} xml_callback_data;
-
 typedef struct xml_obs_callback_data
 {
     simple_xml simpleXml;
 
     obs_response_properties_callback *responsePropertiesCallback;
     obs_list_service_obs_callback *listServiceCallback;
+    obs_list_service_callback *listServiceS3Callback;
     obs_response_complete_callback *responseCompleteCallback;
     void *callback_data;
+    obs_use_api use_api;
 
     string_buffer(owner_id, 256);
+    string_buffer(owner_display_name, 256);
     string_buffer(bucket_name, 256);
     string_buffer(creationDate, 128);
     string_buffer(location, 256);
@@ -124,6 +112,10 @@ typedef struct list_objects_data
 
     string_buffer(is_truncated, 64);
     string_buffer(next_marker, 1024);
+    string_buffer(encoding_type, 64);
+    string_buffer(delimiter, 1024);
+    string_buffer(marker, 1024);
+    string_buffer(prefix, 1024);
 
     int contents_count;
     one_object_content contents[MAX_CONTENTS];
@@ -168,6 +160,7 @@ typedef struct list_versions_data
     string_buffer(key_marker, 64);
     string_buffer(delimiter, 64);
     string_buffer(max_keys, 32);
+    string_buffer(encoding_type, 64);
 
     int versions_count;
     list_bucket_versions versions[MAX_VERSIONS];
@@ -252,7 +245,7 @@ typedef struct get_bucket_storage_class_policy_data
     void *callback_data;
     obs_use_api use_api;
 
-    string_buffer(storage_class_policy,15);     
+    string_buffer(storage_class_policy,32);
 } get_bucket_storage_class_policy_data;
 
 typedef struct get_bucket_trash_config_data
@@ -286,7 +279,7 @@ typedef struct get_bucket_tagging_data
     int tagging_return_size;
     char *tagging_return;
 
-    int tagging_count;
+    unsigned int tagging_count;
     tagging_kv tagging_list[MAX_NUM_TAGGING]; 
 } get_bucket_tagging_data;
 
@@ -557,5 +550,78 @@ obs_smn_event_enum get_event_enum_obs(const char* event_string);
 obs_smn_filter_rule_enum get_filter_rule_enum(const char* rule_string);
 
 void initialize_list_common_prefixes(list_common_prefixes* common_prefixes);
+
+/* Common tagging functions (shared by bucket and object tagging) */
+void get_tagging_xml_callback_existdata(get_bucket_tagging_data* tagging_data,
+    const char* element_path, const char* data, int data_len);
+
+obs_status get_tagging_xml_callback_nodata(get_bucket_tagging_data* tagging_data,
+    const char* element_path);
+
+obs_status get_tagging_xml_callback(const char *element_path,
+    const char *data, int data_len, void *callback_data);
+
+obs_status get_tagging_properties_callback(
+    const obs_response_properties *response_properties,
+    void *callback_data);
+
+obs_status make_list_tagging_callback(get_bucket_tagging_data *tagging_data);
+
+void get_tagging_complete_callback(obs_status status,
+    const obs_error_details *error_details,
+    void *callback_data);
+
+obs_status get_tagging_data_callback(int buffer_size, const char *buffer,
+    void *callback_data);
+
+obs_status generate_tagging_xml_document(obs_name_value *tagging_list,
+    unsigned int tag_number, int *xml_document_len_return,
+    char *xml_document, int xml_document_buffer_size);
+
+/* Mirror Back To Source Configuration */
+#define MAX_MIRROR_BACK_TO_SOURCE_DOC_LEN (64 * 1024)
+
+/* Compress Policy (Online Decompression) Configuration */
+#define MAX_COMPRESS_POLICY_DOC_LEN (64 * 1024)
+
+typedef struct set_compress_policy_data
+{
+    obs_response_properties_callback *response_properties_callback;
+    obs_response_complete_callback *response_complete_callback;
+    void *callback_data;
+
+    char doc[MAX_COMPRESS_POLICY_DOC_LEN];
+    int doc_len;
+    int doc_bytes_written;
+    char doc_md5[64];
+} set_compress_policy_data;
+
+/* DIS Notification Policy Configuration */
+#define MAX_DIS_POLICY_DOC_LEN (64 * 1024)
+
+typedef struct set_dis_policy_data
+{
+    obs_response_properties_callback *response_properties_callback;
+    obs_response_complete_callback *response_complete_callback;
+    void *callback_data;
+
+    char doc[MAX_DIS_POLICY_DOC_LEN];
+    int doc_len;
+    int doc_bytes_written;
+    char doc_md5[64];
+} set_dis_policy_data;
+
+typedef struct set_mirror_back_to_source_data
+{
+    obs_response_properties_callback *response_properties_callback;
+    obs_response_complete_callback *response_complete_callback;
+    void *callback_data;
+
+    char doc[MAX_MIRROR_BACK_TO_SOURCE_DOC_LEN];
+    int doc_len;
+    int doc_bytes_written;
+    char doc_md5[64];
+} set_mirror_back_to_source_data;
+void url_decode_buffer(char *buf, int buf_size);
 
 #endif

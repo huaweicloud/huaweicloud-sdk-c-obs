@@ -25,6 +25,7 @@
 #include "pcre2.h"
 #include <openssl/ssl.h>
 #include "eSDKOBS.h"
+#include "crc64/crc64.h"
 #if defined __GNUC__ || defined LINUX
 #include <sys/utsname.h>
 #include <pthread.h>
@@ -75,6 +76,9 @@ static void request_deinitialize(http_request *request)
 
     request->pause_handle = NULL;
     error_parser_deinitialize(&(request->errorParser));
+
+    /* 释放 CRC64 上下文 */
+    CHECK_NULL_FREE(request->crc64_context);
 
     curl_easy_reset(request->curl);
 }
@@ -186,7 +190,7 @@ obs_status request_api_initialize(unsigned int flags)
     }
     use_api_index = -1;
     int ret = snprintf_s(userAgentG, sizeof(userAgentG),_TRUNCATE,
-    "%s%s%s.%s",PRODUCT, "/",LIBOBS_VER_MAJOR, LIBOBS_VER_MINOR);
+    "%s/%s", PRODUCT, OBS_SDK_VERSION);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
     return OBS_STATUS_OK;
@@ -199,6 +203,12 @@ obs_status compose_obs_headers_withCondition(const obs_put_properties *propertie
 	obs_status status = OBS_STATUS_OK;
 
     request_compose_limit(values, params, len);
+
+	status = custom_headers_append(values, &params->request_option, len);
+	if (status != OBS_STATUS_OK)
+	{
+		return status;
+	}
 
 	if (properties) {
 		status = request_compose_properties(values, params, len);
@@ -455,38 +465,449 @@ obs_status set_curl_easy_setopt_safe(http_request *request, const request_params
     return OBS_STATUS_OK;
 }
 
-obs_status setup_CA(http_request *request,
-    const request_params *params,
-    const request_computed_values *values)
+/* ============================================================================
+ * SSL/TLS Configuration Helper Functions
+ * Helper functions for setup_mtls to improve readability and maintainability
+ * ============================================================================ */
+
+/**
+ * @brief Validate client certificate configuration integrity
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if validation passes, other values indicate failure
+ *
+ * Scenarios:
+ * - When mutual SSL is enabled, both client certificate and key must be provided
+ * - Checks for missing certificate/key and returns different error codes for easier troubleshooting
+ */
+static obs_status validate_client_cert_config(const obs_http_request_option *request_options)
 {
-    CURLcode status = CURLE_OK;
-    curl_easy_setopt_safe(CURLOPT_SSL_VERIFYPEER, 1);
-    curl_easy_setopt_safe(CURLOPT_SSL_VERIFYHOST, 0);
-    if (params->bucketContext.certificate_info)
-    {
-        curl_easy_setopt_safe(CURLOPT_SSL_CTX_DATA, (void *)params->bucketContext.certificate_info);
-        curl_easy_setopt_safe(CURLOPT_SSL_CTX_FUNCTION, *sslctx_function);
+    // Key scenario: Mutual SSL enabled but both certificate and key missing
+    if (!request_options->client_sign_cert_path && !request_options->client_sign_key_path) {
+        COMMLOG(OBS_LOGERROR, "%s Mutual SSL enabled but both client certificate and key not provided", __FUNCTION__);
+        return OBS_STATUS_SSL_MissingBothCertAndKey;
     }
-    if (params->request_option.server_cert_path)
-    {
-        curl_easy_setopt_safe(CURLOPT_CAINFO, params->request_option.server_cert_path);
+
+    // Key scenario: Certificate provided but key missing
+    if (!request_options->client_sign_cert_path) {
+        COMMLOG(OBS_LOGERROR, "%s Mutual SSL enabled but client certificate not provided", __FUNCTION__);
+        return OBS_STATUS_SSL_CertNotFound;
     }
+
+    // Key scenario: Key provided but certificate missing
+    if (!request_options->client_sign_key_path) {
+        COMMLOG(OBS_LOGERROR, "%s Mutual SSL enabled but client key not provided", __FUNCTION__);
+        return OBS_STATUS_SSL_KeyNotFound;
+    }
+
     return OBS_STATUS_OK;
 }
 
-
-obs_status setup_CheckCA(http_request *request,
-    const request_params *params,
-    const request_computed_values *values)
+/**
+ * @brief Configure GM dual certificate mode
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if configuration succeeds, other values indicate failure
+ *
+ * Scenarios:
+ * - GM mode requires separate signing and encryption certificates (dual certificate mechanism)
+ * - Signing certificate is used for identity authentication during communication
+ * - Encryption certificate is used for data encryption transmission
+ */
+static obs_status configure_gm_dual_cert(CURL *curl, const obs_http_request_option *request_options)
 {
-    CURLcode status = CURLE_OK;
-    if (params->isCheckCA) {
-        return setup_CA(request, params, values);
+#ifndef CURL_SSLVERSION_NTLSv1_1
+    // Key scenario: GM feature not supported at compile time
+    COMMLOG(OBS_LOGERROR, "%s GM mode requires Tongsuo libcurl. "
+                "Please ensure libcurl is built with Tongsuo support.", __FUNCTION__);
+    return OBS_STATUS_GM_TongsuoNotSupported;
+#else
+    // Key scenario: GM dual certificate mode check
+    if (!request_options->client_enc_cert_path || !request_options->client_enc_key_path) {
+        COMMLOG(OBS_LOGERROR, "%s GM mode requires explicit encryption certificate configuration. "
+                    "Please set client_enc_cert_path and client_enc_key_path.", __FUNCTION__);
+        return OBS_STATUS_GM_MissingDualCertPath;
     }
-    else {
-        curl_easy_setopt_safe(CURLOPT_SSL_VERIFYPEER, 0);
-        curl_easy_setopt_safe(CURLOPT_SSL_VERIFYHOST, 0);
+
+    // Set signing certificate (GM-specific option)
+    obs_status status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLSIGNCERT, request_options->client_sign_cert_path, OBS_STATUS_GM_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
     }
+    COMMLOG(OBS_LOGDEBUG, "%s [GM mode] Signing certificate path: %s", __FUNCTION__, request_options->client_sign_cert_path);
+
+    // Set signing private key
+    status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLSIGNKEY, request_options->client_sign_key_path, OBS_STATUS_GM_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGDEBUG, "%s [GM mode] Signing key path: %s", __FUNCTION__, request_options->client_sign_key_path);
+
+    // Set encryption certificate (GM-specific option)
+    status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLENCCERT, request_options->client_enc_cert_path, OBS_STATUS_GM_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGDEBUG, "%s [GM mode] Encryption certificate path: %s", __FUNCTION__, request_options->client_enc_cert_path);
+
+    // Set encryption private key
+    status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLENCKEY, request_options->client_enc_key_path, OBS_STATUS_GM_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGDEBUG, "%s [GM mode] Encryption key path: %s", __FUNCTION__, request_options->client_enc_key_path);
+
+    return OBS_STATUS_OK;
+#endif
+}
+
+/**
+ * @brief Configure standard SSL certificate mode
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if configuration succeeds, other values indicate failure
+ *
+ * Scenarios:
+ * - Standard SSL mode uses single certificate pair for identity authentication
+ * - Applicable to TLS 1.2/1.3 and other standard protocols
+ */
+static obs_status configure_standard_cert(CURL *curl, const obs_http_request_option *request_options)
+{
+    // Set client certificate
+    obs_status status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLCERT, request_options->client_sign_cert_path, OBS_STATUS_SSL_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGDEBUG, "%s [Standard SSL] Client certificate path: %s", __FUNCTION__, request_options->client_sign_cert_path);
+
+    // Set client private key
+    status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLKEY, request_options->client_sign_key_path, OBS_STATUS_SSL_CipherConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGDEBUG, "%s [Standard SSL] Client key path: %s", __FUNCTION__, request_options->client_sign_key_path);
+
+    return OBS_STATUS_OK;
+}
+
+/**
+ * @brief Configure private key password callback
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if configuration succeeds
+ *
+ * Scenarios:
+ * - When private key is password protected, retrieve password via callback when needed
+ * - Lazy loading mechanism: password is only obtained during SSL handshake for better security
+ */
+static obs_status configure_password_callback(CURL *curl, const obs_http_request_option *request_options)
+{
+    obs_status status = OBS_STATUS_OK;
+
+    if (request_options->password_callback) {
+        char temp_password[1024] = {0};
+        int ret = request_options->password_callback(
+            request_options->password_callback_context,
+            temp_password,
+            1024
+        );
+
+        if (ret != 0) {
+            COMMLOG(OBS_LOGERROR, "[CURL] User password callback failed with code: %d", ret);
+            OPENSSL_cleanse(temp_password, sizeof(temp_password));
+            return OBS_STATUS_SSL_PasswordCallbackError;
+        }
+        
+        status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_KEYPASSWD, temp_password, OBS_STATUS_SSL_PasswordConfigError);
+
+        OPENSSL_cleanse(temp_password, sizeof(temp_password));
+
+        if (status != OBS_STATUS_OK) {
+            return status;
+        }
+
+        COMMLOG(OBS_LOGINFO, "[CURL] Client key password configured and securely cleared from stack");
+    }
+
+    return OBS_STATUS_OK;
+}
+
+/**
+ * @brief Configure GM SSL protocol
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if configuration succeeds, other values indicate failure
+ *
+ * Scenarios:
+ * - GM protocol primarily uses NTLSv1.1 version
+ * - If user doesn't specify version, automatically uses default NTLSv1.1
+ */
+static obs_status configure_gm_ssl_version_options(CURL *curl, const obs_http_request_option *request_options)
+{
+    COMMLOG(OBS_LOGDEBUG, "%s [GM mode] Configuring GM SSL protocol options", __FUNCTION__);
+
+#ifdef CURL_SSLVERSION_NTLSv1_1
+    // Key scenario: Configure GM SSL version
+    int ssl_version = request_options->ssl_version;
+
+    // If user didn't specify version, use GM default version NTLSv1.1
+    if (ssl_version == 0) {
+        ssl_version = CURL_SSLVERSION_NTLSv1_1;
+        COMMLOG(OBS_LOGDEBUG, "%s [GM mode] SSL version not specified, using default: NTLSv1.1", __FUNCTION__);
+    }
+    // Verify if user-specified version is supported by GM mode
+    else if (ssl_version != CURL_SSLVERSION_NTLSv1_1) {
+        COMMLOG(OBS_LOGERROR, "%s [GM mode] Unsupported SSL version: %d. GM mode only supports NTLSv1.1", __FUNCTION__, ssl_version);
+        return OBS_STATUS_GM_UnsupportedSSLVersion;
+    }
+
+    obs_status status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLVERSION, ssl_version, OBS_STATUS_GM_VersionConfigError);
+    if (status != OBS_STATUS_OK) {
+        return status;
+    }
+    COMMLOG(OBS_LOGDEBUG, "%s [GM mode] SSL version set to: %d (NTLSv1.1)", __FUNCTION__, ssl_version);
+
+    return OBS_STATUS_OK;
+#else
+    // Key scenario: GM feature not supported at runtime
+    COMMLOG(OBS_LOGERROR, "%s [GM mode] Requires Tongsuo-enabled libcurl library", __FUNCTION__);
+    return OBS_STATUS_GM_TongsuoNotSupported;
+#endif
+}
+
+/**
+ * @brief Configure standard SSL protocol
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK if configuration succeeds, other values indicate failure
+ *
+ * Scenarios:
+ * - Standard SSL mode supports TLS 1.0/1.1/1.2/1.3 and other versions
+ */
+static obs_status configure_standard_ssl_version_options(CURL *curl, const obs_http_request_option *request_options)
+{
+    // Key scenario: Configure standard SSL version
+    if (request_options->ssl_version != 0) {
+        obs_status status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSLVERSION, request_options->ssl_version, OBS_STATUS_SSL_VersionConfigError);
+        if (status != OBS_STATUS_OK) {
+            return status;
+        }
+        COMMLOG(OBS_LOGDEBUG, "%s [Standard SSL] SSL version set to: %d", __FUNCTION__, request_options->ssl_version);
+    }
+
+    return OBS_STATUS_OK;
+}
+
+/* ============================================================================
+ * Main function: setup_mtls
+ * Purpose: Configure mutual SSL/TLS authentication settings
+ * ============================================================================ */
+/**
+ * @brief Configure mutual SSL/TLS authentication
+ * @param curl CURL handle pointer
+ * @param request_options Request options structure pointer
+ * @return OBS_STATUS_OK Configuration successful, other values indicate failure
+ *
+ * Main function for configuring mutual SSL/TLS authentication including:
+ * - Client certificate authentication
+ * - GM (Chinese national cryptography) dual certificate mode
+ * - Standard SSL certificate mode
+ *
+ * This function orchestrates the configuration by calling specialized helper functions
+ * for each configuration aspect, improving code readability and maintainability.
+ */
+obs_status setup_client_certificate(CURL *curl, const obs_http_request_option *request_options)
+{
+    obs_status status = OBS_STATUS_OK;
+
+     // Phase 1: Configure client certificate authentication
+    if (request_options->client_auth_switch == OBS_CLIENT_AUTH_OPEN) {
+        // Step 1.1: Validate client certificate configuration
+        if ((status = validate_client_cert_config(request_options)) != OBS_STATUS_OK) {
+            return status;
+        }
+
+        // Step 1.2: Configure certificates based on mode (GM or Standard)
+        if (request_options->gm_mode_switch == OBS_GM_MODE_OPEN) {
+            status = configure_gm_dual_cert(curl, request_options);
+        } else {
+            status = configure_standard_cert(curl, request_options);
+        }
+
+        if (status != OBS_STATUS_OK) {
+            return status;
+        }
+
+        // Step 1.3: Configure password callback for encrypted private keys
+        if ((status = configure_password_callback(curl, request_options)) != OBS_STATUS_OK) {
+            return status;
+        }
+
+        COMMLOG(OBS_LOGINFO, "%s Mutual SSL authentication enabled", __FUNCTION__);
+    }
+
+    return OBS_STATUS_OK;
+}
+
+obs_status setup_ssl_version_options(CURL *curl, const obs_http_request_option *request_options)
+{
+    if (request_options->gm_mode_switch == OBS_GM_MODE_OPEN) {
+        // Configure GM-specific SSL options (NTLSv1.1)
+        return configure_gm_ssl_version_options(curl, request_options);
+    }
+
+    // Configure standard SSL options (TLS 1.0-1.3)
+    return configure_standard_ssl_version_options(curl, request_options);
+}
+
+// Configure standard SSL cipher suite
+obs_status setup_ssl_cipher_options(CURL *curl, const obs_http_request_option *request_options)
+{
+    if (request_options->ssl_cipher_list != NULL) {
+        obs_status status = OBS_CURL_SETOPT_WITH_STATUS(curl, CURLOPT_SSL_CIPHER_LIST, request_options->ssl_cipher_list, OBS_STATUS_SSL_CipherConfigError);
+        if (status != OBS_STATUS_OK) {
+            return status;
+        }
+        COMMLOG(OBS_LOGDEBUG, "%s [Standard SSL] User-specified cipher suite: %s", __FUNCTION__, request_options->ssl_cipher_list);
+    }
+
+    return OBS_STATUS_OK;
+}
+
+obs_status setup_CA(CURL *curl, const obs_http_request_option *request_options, char *certificate_info)
+{
+    obs_status status = OBS_STATUS_OK;
+
+    // Basic SSL verification configuration
+    if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_VERIFYPEER, request_options->ssl_verify_peer)) != OBS_STATUS_OK) {
+        return status;
+    }
+
+    if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_VERIFYHOST, request_options->ssl_verify_host)) != OBS_STATUS_OK) {
+        return status;
+    }
+
+    // CA certificate configuration
+    if (certificate_info) {
+        if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_CTX_DATA, (void *)certificate_info)) != OBS_STATUS_OK) {
+            return status;
+        }
+        if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_CTX_FUNCTION, *sslctx_function)) != OBS_STATUS_OK) {
+            return status;
+        }
+    }
+
+    if (request_options->server_cert_path) {
+        if ((status = OBS_CURL_SETOPT(curl, CURLOPT_CAINFO, request_options->server_cert_path)) != OBS_STATUS_OK) {
+            return status;
+        }
+        COMMLOG(OBS_LOGDEBUG, "%s CA certificate path: %s", __FUNCTION__, request_options->server_cert_path);
+    }
+
+    return OBS_STATUS_OK;
+}
+
+obs_status setup_CheckCA(CURL *curl, const obs_http_request_option *request_options, char *certificate_info)
+{
+    obs_status status = OBS_STATUS_OK;
+
+    if (!certificate_info && !request_options->server_cert_path) {
+        // Disable SSL verification when no CA certificate is provided
+        if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_VERIFYPEER, request_options->ssl_verify_peer)) != OBS_STATUS_OK) {
+            return status;
+        }
+        if ((status = OBS_CURL_SETOPT(curl, CURLOPT_SSL_VERIFYHOST, request_options->ssl_verify_host)) != OBS_STATUS_OK) {
+            return status;
+        }
+    } else {
+        // Configure CA certificate verification
+        if ((status = setup_CA(curl, request_options, certificate_info)) != OBS_STATUS_OK) {
+            return status;
+        }
+        // Configure Client certificate verification
+        if ((status = setup_client_certificate(curl, request_options)) != OBS_STATUS_OK) {
+             /* Client certificate setup failed - indicates one-way authentication only (server authentication) */
+            COMMLOG(OBS_LOGWARN, "Client certificate setup failed, falling back to one-way SSL authentication");
+        }
+    }
+
+    // Configure SSL options (version)
+    if ((status = setup_ssl_version_options(curl, request_options)) != OBS_STATUS_OK) {
+        return status;
+    }
+
+    // Configure SSL options (cipher suites)
+    if ((status = setup_ssl_cipher_options(curl, request_options)) != OBS_STATUS_OK) {
+        return status;
+    }
+
+    return OBS_STATUS_OK;
+}
+
+// 校验本地源地址/端口绑定参数
+static obs_status validate_bind_request_options(const obs_http_request_option *request_options)
+{
+    // 校验 outgoing_interface
+    if (request_options->outgoing_interface != NULL && request_options->outgoing_interface[0] == '\0') {
+        COMMLOG(OBS_LOGERROR, "Invalid outgoing_interface: empty string");
+        return OBS_STATUS_InvalidParameter;
+    }
+
+    // 校验 local_port 和 local_port_range
+    unsigned int local_port = request_options->local_port;
+    unsigned int local_port_range = request_options->local_port_range;
+
+    // local_port 只允许 0 或 1..65535
+    if (local_port > 65535) {
+        COMMLOG(OBS_LOGERROR, "Invalid local_port: %u (must be 0 or 1..65535)", local_port);
+        return OBS_STATUS_InvalidParameter;
+    }
+
+    // local_port == 0 时，local_port_range 必须为 1
+    if (local_port == 0 && local_port_range != 1) {
+        COMMLOG(OBS_LOGERROR, "Invalid local_port_range: %u (must be 1 when local_port is 0)", local_port_range);
+        return OBS_STATUS_InvalidParameter;
+    }
+
+    // local_port > 0 时，local_port_range 必须为 1..65535
+    if (local_port > 0 && (local_port_range < 1 || local_port_range > 65535)) {
+        COMMLOG(OBS_LOGERROR, "Invalid local_port_range: %u (must be 1..65535 when local_port > 0)", local_port_range);
+        return OBS_STATUS_InvalidParameter;
+    }
+
+    // 端口范围不得超出 65535
+    if (local_port > 0 && local_port_range > 0) {
+        unsigned int end_port = local_port + local_port_range - 1;
+        if (end_port > 65535) {
+            COMMLOG(OBS_LOGERROR, "Invalid port range: %u-%u (exceeds 65535)",
+                local_port, end_port);
+            return OBS_STATUS_InvalidParameter;
+        }
+    }
+
+    return OBS_STATUS_OK;
+}
+
+// 应用本地源地址/端口绑定设置到 curl
+static obs_status apply_bind_request_options(CURL *curl, const obs_http_request_option *request_options)
+{
+    if (request_options->outgoing_interface != NULL) {
+        obs_status status = OBS_CURL_SETOPT(curl, CURLOPT_INTERFACE, request_options->outgoing_interface);
+        if (status != OBS_STATUS_OK) {
+            return status;
+        }
+    }
+
+    if (request_options->local_port > 0) {
+        obs_status status = OBS_CURL_SETOPT(curl, CURLOPT_LOCALPORT, request_options->local_port);
+        if (status != OBS_STATUS_OK) {
+            return status;
+        }
+        status = OBS_CURL_SETOPT(curl, CURLOPT_LOCALPORTRANGE, request_options->local_port_range);
+        if (status != OBS_STATUS_OK) {
+            return status;
+        }
+    }
+
     return OBS_STATUS_OK;
 }
 
@@ -506,6 +927,19 @@ static obs_status setup_curl(http_request *request,
     curl_easy_setopt_safe(CURLOPT_NOSIGNAL, 1);
     curl_easy_setopt_safe(CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt_safe(CURLOPT_TCP_NODELAY, 1);
+
+    // 校验本地源地址/端口绑定参数
+    obs_status bind_status = validate_bind_request_options(&params->request_option);
+    if (bind_status != OBS_STATUS_OK) {
+        return bind_status;
+    }
+
+    // 应用本地源地址/端口绑定设置
+    bind_status = apply_bind_request_options(request->curl, &params->request_option);
+    if (bind_status != OBS_STATUS_OK) {
+        return bind_status;
+    }
+
     if (params->request_option.keep_alive)
     {
         curl_easy_setopt_safe(CURLOPT_TCP_KEEPALIVE, 1);
@@ -531,7 +965,11 @@ static obs_status setup_curl(http_request *request,
 		curl_easy_setopt_safe(CURLOPT_MAXAGE_CONN, params->request_option.curl_max_age_conn);
 	}
     curl_easy_setopt_safe(CURLOPT_NETRC, CURL_NETRC_IGNORED);
-    setup_CheckCA(request, params, values);
+
+    obs_status ca_status = setup_CheckCA(request->curl, &params->request_option, params->bucketContext.certificate_info);
+    if (ca_status != OBS_STATUS_OK) {
+        return ca_status;
+    }
 
 	if (OBS_LOGDEBUG >= getRunLogLevel() && params->request_option.curl_log_verbose) {
 		curl_easy_setopt_safe(CURLOPT_VERBOSE, 1);
@@ -584,6 +1022,13 @@ static obs_status setup_curl(http_request *request,
     append_standard_header(rangeHeader);
     append_standard_header(authorizationHeader);
     append_standard_header(websiteredirectlocationHeader);
+    // CRC64 header should only be sent for PUT/POST operations, not for GET operations
+    // Sending it in GET requests causes PreconditionFailed errors from the server
+    if ((params->httpRequestType == http_request_type_put) ||
+        (params->httpRequestType == http_request_type_post)) {
+        COMMLOG(OBS_LOGINFO, "Sending CRC64 header: %s", values->crc64Header);
+        append_standard_header(crc64Header);  // 添加 CRC64 校验 HTTP 头
+    }
     int i;
     for (i = 0; i < values->amzHeadersCount; i++) {
         request->headers = curl_slist_append(request->headers, values->amzHeaders[i]);
@@ -670,8 +1115,8 @@ static obs_status request_get(const request_params *params,
         }
         memset_s(request,sizeof(http_request), 0, sizeof(http_request));
         if ((request->curl = curl_easy_init()) == NULL) {
-            free(request);  
-            request = NULL; 
+            free(request);
+            request = NULL;
             release_token();
             return OBS_STATUS_FailedToIInitializeRequest;
         }
@@ -705,11 +1150,36 @@ static obs_status request_get(const request_params *params,
     request->fromS3Callback = params->fromObsCallback;
     request->complete_callback = params->complete_callback;
     request->progressCallback = params->progressCallback;
+    request->userProgressCallback = params->userProgressCallback;
     request->callback_data = params->callback_data;
     response_headers_handler_initialize(&(request->responseHeadersHandler));
     request->propertiesCallbackMade = 0;
     request->pause_handle = params->pause_handle;
     error_parser_initialize(&(request->errorParser));
+
+    /* 初始化 CRC64 上下文 */
+    request->crc64_context = NULL;
+
+    /* 对于下载，如果启用了 CRC64，初始化上下文 */
+    if (params->get_conditions && params->get_conditions->enable_crc64) {
+        obs_crc64_internal *crc64_ctx = (obs_crc64_internal *)malloc(sizeof(obs_crc64_internal));
+        if (crc64_ctx) {
+            obs_crc64_internal_init(crc64_ctx);
+            request->crc64_context = crc64_ctx;
+        }
+    }
+    /* 对于上传，如果启用了 CRC64 且是流式上传（无文件或无手动指定 CRC64），初始化上下文 */
+    else if (params->put_properties && params->put_properties->enable_crc64 &&
+             (!params->put_properties->crc64 || !params->put_properties->crc64[0]) &&
+             (!params->put_properties->file_object_config ||
+              !params->put_properties->file_object_config->file_name)) {
+        obs_crc64_internal *crc64_ctx = (obs_crc64_internal *)malloc(sizeof(obs_crc64_internal));
+        if (crc64_ctx) {
+            obs_crc64_internal_init(crc64_ctx);
+            request->crc64_context = crc64_ctx;
+        }
+    }
+
     *reqReturn = request;
     return OBS_STATUS_OK;
 }
@@ -878,9 +1348,7 @@ static obs_status compose_auth_header(const request_params *params,
         CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
     }
 
-    char * userAgent = USER_AGENT_VALUE;
-    int strLen = (int)(strlen(userAgent));
-    int ret = snprintf_s(values->userAgent, sizeof(values->userAgent),_TRUNCATE,"User-Agent: %.*s", strLen, userAgent);
+    int ret = snprintf_s(values->userAgent, sizeof(values->userAgent), _TRUNCATE, "User-Agent: obs-sdk-c-%s", OBS_SDK_VERSION);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
 
     return OBS_STATUS_OK;
@@ -1010,7 +1478,7 @@ void request_finish_log_authorization_masked(struct curl_slist* tmp, OBS_LOGLEVE
 			if (checkIfErrorAndLogStrError(SYMBOL_NAME_STR(strncat_s), __FUNCTION__, __LINE__, error)) {
 				break;
 			}
-			COMMLOG(logLevel, masked_authorization);
+			COMMLOG(logLevel, "%s", masked_authorization);
 			return;
 		}
 	} while (false);
@@ -1102,7 +1570,7 @@ void request_finish(http_request **p_request)
 
     is_true = ((request->status != OBS_STATUS_OK) || (((request->httpResponseCode < 200) || (request->httpResponseCode > 299)) 
         && (100 != request->httpResponseCode)));
-    logLevel = is_true ? OBS_LOGWARN : OBS_LOGINFO;
+    logLevel = is_true ? OBS_LOGWARN : OBS_LOGDEBUG;
 
     struct curl_slist* tmp = request->headers;
     while (NULL != tmp)
@@ -1112,12 +1580,8 @@ void request_finish(http_request **p_request)
     }
     COMMLOG(logLevel, "%s request_finish status = %d,httpResponseCode = %d", __FUNCTION__,
         request->status, request->httpResponseCode);
-    COMMLOG(logLevel, "Message: %s", request->errorParser.obsErrorDetails.message);
     COMMLOG(logLevel, "Request Id: %s", request->responseHeadersHandler.responseProperties.request_id);
-	COMMLOG(logLevel, "Reserved Indicator: %s", request->responseHeadersHandler.responseProperties.reserved_indicator);
-    if(request->errorParser.codeLen) {
-        COMMLOG(logLevel, "Code: %s", request->errorParser.code);
-    }
+    COMMLOG(logLevel, "Reserved Indicator: %s", request->responseHeadersHandler.responseProperties.reserved_indicator);
     if (request->status == OBS_STATUS_OK) {
         error_parser_convert_status(&(request->errorParser),&(request->status));
         is_true = ((request->status == OBS_STATUS_OK) && ((request->httpResponseCode < 200) ||
@@ -1125,6 +1589,32 @@ void request_finish(http_request **p_request)
         if (is_true) {
             request->status = response_to_status(request);
         }
+
+        /* CRC64 下载校验 */
+        if (request->status == OBS_STATUS_OK && request->crc64_context) {
+            obs_crc64_internal *ctx = (obs_crc64_internal *)request->crc64_context;
+            uint64_t local_crc64 = obs_crc64_internal_finalize(ctx);
+            uint64_t server_crc64 = request->responseHeadersHandler.responseProperties.crc64;
+
+            /* Range请求不进行CRC64校验，因为服务器返回的是整个对象的CRC64，而不是分段的CRC64 */
+            bool is_range_request = (request->responseHeadersHandler.responseProperties.content_range != NULL);
+            if (!is_range_request && server_crc64 != 0 && local_crc64 != server_crc64) {
+                request->status = OBS_STATUS_InvalidDigest;
+                COMMLOG(OBS_LOGERROR, "CRC64 validation failed: local=%lu, server=%lu",
+                        local_crc64, server_crc64);
+            }
+        }
+    }
+    /* Print parsed error details after error_parser_convert_status() so that both
+     * XML and JSON error codes/messages are available for logging. */
+    if(request->errorParser.codeLen) {
+        COMMLOG(logLevel, "Code: %s", request->errorParser.code);
+    }
+    if(request->errorParser.obsErrorDetails.message) {
+        COMMLOG(logLevel, "Message: %s", request->errorParser.obsErrorDetails.message);
+    }
+    if(request->errorParser.isJsonError && request->errorParser.jsonErrorBuf) {
+        COMMLOG(logLevel, "JSON Error Body: %s", request->errorParser.jsonErrorBuf);
     }
     (*(request->complete_callback))
         (request->status, &(request->errorParser.obsErrorDetails),
@@ -1133,8 +1623,14 @@ void request_finish(http_request **p_request)
     *p_request = NULL;
 }
 
-int request_progress_callback(void *clientp,   curl_off_t  dltotal,   curl_off_t  dlnow,   curl_off_t  ultotal,   curl_off_t  ulnow) {
+int request_progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
     http_request *request = (http_request *)clientp;
+
+    // Safety check: validate request pointer
+    if (!request) {
+        return 0;
+    }
+
     static int i = 0;
     i++;
 
@@ -1148,7 +1644,11 @@ int request_progress_callback(void *clientp,   curl_off_t  dltotal,   curl_off_t
         request->progressCallback((uint64_t)ulnow, request->progress_total_size,request->callback_data);
     }
 
-    if (dlnow > 0 && request->progressCallback) {
+    if (dlnow > 0 && request->userProgressCallback) {
+        uint64_t total_size = (dltotal > 0) ? (uint64_t)dltotal : request->progress_total_size;
+        double progress = (total_size > 0) ? (100.0 * (uint64_t)dlnow / total_size) : 0.0;
+        request->userProgressCallback(progress, (uint64_t)dlnow, total_size, request->callback_data);
+    } else if (dlnow > 0 && request->progressCallback) {
         request->progressCallback((uint64_t)dlnow, request->progress_total_size, request->callback_data);
     }
 
@@ -1265,12 +1765,12 @@ obs_status checkParameters(const request_params *params) {
 
 void request_perform(const request_params *params)
 {
-    COMMLOG(OBS_LOGINFO, "enter request perform!!!");
+    COMMLOG(OBS_LOGDEBUG, "enter request perform!!!");
     http_request *request = NULL;
     obs_status status = OBS_STATUS_OK;
     int is_true = 0;
     int retry = RETRY_NUM;
-    COMMLOG(OBS_LOGINFO, "Enter request_perform object key= %s\n!", params->key);
+    COMMLOG(OBS_LOGDEBUG, "Enter request_perform object key= %s\n!", params->key);
  
 	if ((status = checkParameters(params)) != OBS_STATUS_OK) {
 		return_status(status);
@@ -1408,7 +1908,7 @@ size_t curl_read_func_for_api_version(void *ptr, size_t size, size_t nmemb, void
 	// in case of rewind failed 65;
 	return 0;
 }
-obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protocol, const obs_http_request_option *request_options, bool useCname)
+obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protocol, const obs_http_request_option *request_options, const obs_bucket_context *bucket_options)
 {
     COMMLOG(OBS_LOGINFO, "get api version start!");
     obs_status status = OBS_STATUS_ErrorUnknown;
@@ -1458,7 +1958,7 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
         return OBS_STATUS_FailedToIInitializeRequest;
     }
     obs_status statu = OBS_STATUS_OK;
-	statu = compose_api_version_uri(uri, uriSize, useCname ? "" : bucket_name, host_name, "apiversion", protocol);
+	statu = compose_api_version_uri(uri, uriSize, bucket_options->useCname ? "" : bucket_name, host_name, "apiversion", protocol);
     if (statu != OBS_STATUS_OK) {
         curl_easy_cleanup(curl);
         CHECK_NULL_FREE(uri);                                                          
@@ -1476,6 +1976,25 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
     easy_setopt_safe(CURLOPT_NOSIGNAL, 1);
     easy_setopt_safe(CURLOPT_TCP_NODELAY, 1);
     easy_setopt_safe(CURLOPT_NOPROGRESS, 1);
+
+    // 校验本地源地址/端口绑定参数
+    obs_status bind_status = validate_bind_request_options(request_options);
+    if (bind_status != OBS_STATUS_OK) {
+        curl_easy_cleanup(curl);
+        CHECK_NULL_FREE(uri);
+        CHECK_NULL_FREE(errorBuffer);
+        return bind_status;
+    }
+
+    // 应用本地源地址/端口绑定设置
+    bind_status = apply_bind_request_options(curl, request_options);
+    if (bind_status != OBS_STATUS_OK) {
+        curl_easy_cleanup(curl);
+        CHECK_NULL_FREE(uri);
+        CHECK_NULL_FREE(errorBuffer);
+        return bind_status;
+    }
+
     easy_setopt_safe(CURLOPT_FOLLOWLOCATION, 1);
     easy_setopt_safe(CURLOPT_URL, uri);
     easy_setopt_safe(CURLOPT_NOBODY, 1);
@@ -1502,6 +2021,14 @@ obs_status get_api_version(char *bucket_name,char *host_name,obs_protocol protoc
 		easy_setopt_safe(CURLOPT_MAXAGE_CONN, request_options->curl_max_age_conn);
 	}
     setCurlErrorBuffer(curl, errorBuffer, errorBufferSize);
+
+    if ((status = setup_CheckCA(curl, request_options, bucket_options->certificate_info)) != OBS_STATUS_OK) {
+        curl_easy_cleanup(curl); 
+        CHECK_NULL_FREE(uri);                                                          
+        CHECK_NULL_FREE(errorBuffer);       
+        return status;
+    }
+
     COMMLOG(OBS_LOGWARN, "curl_easy_setopt curl path= %s",uri);
     CURLcode code = curl_easy_perform(curl);
     if (code != CURLE_OK) {
@@ -1620,7 +2147,7 @@ void set_use_api_switch( const obs_options *options, obs_use_api *use_api_temp)
         use_api_index++;
         if(get_api_version(options->bucket_options.bucket_name,
 options->bucket_options.host_name,
-                           options->bucket_options.protocol, &options->request_options, options->bucket_options.useCname) == OBS_STATUS_OK )
+                           options->bucket_options.protocol, &options->request_options, &options->bucket_options) == OBS_STATUS_OK )
         {   
 			err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
             CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
@@ -1659,7 +2186,7 @@ options->bucket_options.host_name,
            {
                 if(get_api_version(options->bucket_options.bucket_name,
 options->bucket_options.host_name,
-                                   options->bucket_options.protocol, &options->request_options, options->bucket_options.useCname) == OBS_STATUS_OK )
+                                   options->bucket_options.protocol, &options->request_options, &options->bucket_options) == OBS_STATUS_OK )
                 {
                     api_switch[index].use_api = OBS_USE_API_OBS;
                     api_switch[index].time_switch = time_obs;
@@ -1681,7 +2208,7 @@ options->bucket_options.host_name,
             use_api_index++;
             if(get_api_version(options->bucket_options.bucket_name,
 options->bucket_options.host_name,
-                               options->bucket_options.protocol, &options->request_options, options->bucket_options.useCname) == OBS_STATUS_OK )
+                               options->bucket_options.protocol, &options->request_options, &options->bucket_options) == OBS_STATUS_OK )
             {
 				err = memcpy_s(api_switch[use_api_index].bucket_name, BUCKET_LEN-1, options->bucket_options.bucket_name, strlen(options->bucket_options.bucket_name));
                 CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);

@@ -632,7 +632,7 @@ void test_get_bucket_tagging(char *bucket_name)
 
      obs_get_bucket_tagging_handler response_handler = 
     {
-         {&response_properties_callback, &get_tagging_complete_callback}, 
+         {&response_properties_callback, &demo_get_tagging_complete_callback}, 
             &get_bucket_tagging_callback
     };
 
