@@ -115,6 +115,9 @@ obs_status compose_temp_header(const request_params* params,
 obs_status headers_append_list_bucket_type(obs_bucket_list_type bucket_list_type,
             request_computed_values *values, int *len);
 
+obs_status custom_headers_append(request_computed_values *values,
+    const obs_http_request_option *request_option, int *len);
+
 bool is_check_ca(const obs_options *options);
 
 obs_status copy_options_and_init_params(const obs_options *options, request_params* params,

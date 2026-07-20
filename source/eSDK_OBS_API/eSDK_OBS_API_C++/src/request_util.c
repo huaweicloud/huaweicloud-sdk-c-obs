@@ -28,6 +28,7 @@
 #include "object.h"
 #include "file_utils.h"
 #include "obs_time_util.h"
+#include "crc64/crc64.h"
 
 #if defined __GNUC__ || defined LINUX
 #include <sys/utsname.h>
@@ -79,58 +80,45 @@ static HANDLE* lockarray;
         }                                                                   \
     } while (0)
 
-#define do_get_header(params, values, fmt, sourceField, destField, badError, tooLongError)  \
-        do {                                                                            \
-            if ((params)->get_conditions &&                                                \
-                (params)->get_conditions-> sourceField &&                                  \
-                (params)->get_conditions-> sourceField[0]) {                                   \
-                const char *val = (params)->get_conditions-> sourceField;                  \
-                while (*val && is_blank(*val)) {                                        \
-                    val++;                                                              \
-                }                                                                       \
-                if (!*val) {                                                             \
-                    return badError;                                                    \
-                }                                                                       \
-                int len = snprintf_s((values)-> destField,                                \
-                    sizeof((values)-> destField),_TRUNCATE,  fmt, val);                   \
-                if (len >= (int) sizeof((values)-> destField) || len < 0) {               \
-                    return tooLongError;                                                \
-                }                                                                       \
-                while ((len > 0) && is_blank((values)-> destField[len])) {                \
-                    len--;                                                              \
-                }                                                                       \
-                (values)-> destField[len] = 0;                                            \
-            }                                                                           \
-            else {                                                                      \
-                (values)-> destField[0] = 0;                                              \
-            }                                                                           \
-        } while (0)
-
-#define do_gp_header(params, values, fmt, sourceField, destField, badError, tooLongError) \
-    do {                                                                                  \
-        if ((params)->put_properties && (params)->put_properties->get_conditions &&              \
-            (params)->put_properties->get_conditions-> sourceField &&                           \
-            (params)->put_properties->get_conditions-> sourceField[0]) {                        \
-            const char *val = (params)->put_properties->get_conditions-> sourceField;           \
+#define do_header_impl(params, values, fmt, conditions_ptr, sourceField, destField, badError, tooLongError)  \
+    do {                                                                                    \
+        if ((conditions_ptr) &&                                                              \
+            (conditions_ptr)-> sourceField &&                                                \
+            (conditions_ptr)-> sourceField[0]) {                                             \
+            const char *val = (conditions_ptr)-> sourceField;                                \
             while (*val && is_blank(*val)) {                                                \
                 val++;                                                                      \
             }                                                                               \
             if (!*val) {                                                                    \
                 return badError;                                                            \
             }                                                                               \
-            int len = snprintf_s((values)-> destField,                                        \
-                            sizeof((values)-> destField),_TRUNCATE,  fmt, val);               \
-            if (len >= (int) sizeof((values)-> destField) || len < 0) {                       \
+            int len = snprintf_s((values)-> destField,                                      \
+                sizeof((values)-> destField),_TRUNCATE,  fmt, val);                         \
+            if (len >= (int) sizeof((values)-> destField) || len < 0) {                     \
                 return tooLongError;                                                        \
-        }                                                                                   \
-        while ((len > 0) && is_blank((values)-> destField[len])) {                            \
-            len--;                                                                          \
-        }                                                                                   \
-        (values)-> destField[len] = 0;                                                        \
+            }                                                                               \
+            while ((len > 0) && is_blank((values)-> destField[len])) {                      \
+                len--;                                                                      \
+            }                                                                               \
+            (values)-> destField[len] = 0;                                                  \
         }                                                                                   \
         else {                                                                              \
-            (values)-> destField[0] = 0;                                                      \
+            (values)-> destField[0] = 0;                                                    \
         }                                                                                   \
+    } while (0)
+
+#define do_get_header(params, values, fmt, sourceField, destField, badError, tooLongError)  \
+    do_header_impl(params, values, fmt, (params)->get_conditions, sourceField, destField, badError, tooLongError)
+
+#define do_gp_header(params, values, fmt, sourceField, destField, badError, tooLongError) \
+    do {                                                                                  \
+        if ((params)->put_properties && (params)->put_properties->get_conditions) {       \
+            do_header_impl(params, values, fmt, (params)->put_properties->get_conditions, \
+                sourceField, destField, badError, tooLongError);                          \
+        }                                                                                 \
+        else {                                                                            \
+            (values)-> destField[0] = 0;                                                  \
+        }                                                                                 \
     } while (0)
 
 void request_headers_done(http_request *request)
@@ -236,6 +224,12 @@ size_t curl_read_func(void *ptr, size_t size, size_t nmemb, void *data)
         return CURL_READFUNC_ABORT;
     }
     else {
+        /* CRC64 自动计算：如果启用了 CRC64 且存在上下文，更新 CRC64 值 */
+        if (request->crc64_context && ret > 0) {
+            obs_crc64_internal *ctx = (obs_crc64_internal *)request->crc64_context;
+            obs_crc64_internal_update(ctx, (const unsigned char *)ptr, (size_t)ret);
+        }
+
         if (ret > request->toS3CallbackBytesRemaining) {
             ret = request->toS3CallbackBytesRemaining;
         }
@@ -259,10 +253,17 @@ size_t curl_write_func(void *ptr, size_t size, size_t nmemb,
 
     if ((request->httpResponseCode < 200) ||
         (request->httpResponseCode > 299)) {
-        request->status = error_parser_add
+        obs_status parser_status = error_parser_add
             (&(request->errorParser), (char *) ptr, (int)len);
+        request->status = parser_status;
     }
     else if (request->fromS3Callback) {
+        /* CRC64 自动计算：如果启用了 CRC64 且存在上下文，更新 CRC64 值 */
+        if (request->crc64_context && len > 0) {
+            obs_crc64_internal *ctx = (obs_crc64_internal *)request->crc64_context;
+            obs_crc64_internal_update(ctx, (const unsigned char *)ptr, (size_t)len);
+        }
+
         request->status = (*(request->fromS3Callback))
             ((int)len, (char *) ptr, request->callback_data);
     }
@@ -497,6 +498,16 @@ obs_status encode_key(const char *params, uint64_t paramsLen,  char *values)
     }
     else
     {
+        // Fast path: avoid urlEncode call when params is NULL or empty to prevent warning log
+        // When values is NULL but params is valid, urlEncode will return InvalidArgument
+        if (params == NULL || paramsLen == 0) {
+            if (values) {
+                *values = 0;
+            }
+            return OBS_STATUS_OK;
+        }
+
+        // values == NULL case: urlEncode will detect this and return error
         int nRet = urlEncode(values, params, paramsLen, OBS_MAX_KEY_SIZE, ingoreChar);
         if (nRet == -1) {
             return OBS_STATUS_InvalidArgument;
@@ -513,6 +524,7 @@ obs_status request_curl_code_to_status(CURLcode code) {
     case CURLE_COULDNT_RESOLVE_HOST:
         return OBS_STATUS_NameLookupError;
     case CURLE_COULDNT_CONNECT:
+    case CURLE_INTERFACE_FAILED:
         return OBS_STATUS_FailedToConnect;
     case CURLE_WRITE_ERROR:
     case CURLE_OPERATION_TIMEDOUT:
@@ -685,6 +697,7 @@ const char* STORAGE_CLASS_STANDARD_IA_STRING      =      "STANDARD_IA";
 const char* STORAGE_CLASS_GLACIER_STRING          =          "GLACIER";
 const char* STORAGE_CLASS_DEEP_ARCHIVE_STRING     =     "DEEP_ARCHIVE";
 const char* STORAGE_CLASS_HIGH_PERFORMANCE_STRING = "HIGH_PERFORMANCE";
+const char* STORAGE_CLASS_INTELLIGENT_TIERING_STRING = "INTELLIGENT_TIERING";
 
 const char* get_storage_class_string_s3(obs_storage_class storage_class_enum) {
     switch (storage_class_enum) {
@@ -698,6 +711,8 @@ const char* get_storage_class_string_s3(obs_storage_class storage_class_enum) {
             return STORAGE_CLASS_DEEP_ARCHIVE_STRING;
 		case OBS_STORAGE_CLASS_HIGH_PERFORMANCE:
 			return STORAGE_CLASS_HIGH_PERFORMANCE_STRING;
+		case OBS_STORAGE_CLASS_INTELLIGENT_TIERING:
+			return STORAGE_CLASS_INTELLIGENT_TIERING_STRING;
         default:
             return NULL;
     }
@@ -715,6 +730,8 @@ const char* get_storage_class_string_obs(obs_storage_class storage_class_enum) {
             return STORAGE_CLASS_DEEP_ARCHIVE_STRING;
 		case OBS_STORAGE_CLASS_HIGH_PERFORMANCE:
 			return STORAGE_CLASS_HIGH_PERFORMANCE_STRING;
+		case OBS_STORAGE_CLASS_INTELLIGENT_TIERING:
+			return STORAGE_CLASS_INTELLIGENT_TIERING_STRING;
         default:
             return NULL;
     }
@@ -850,6 +867,39 @@ obs_status meta_data_headerAppend(request_computed_values *values, const request
 	return ret;
 }
 
+obs_status custom_headers_append(request_computed_values *values,
+    const obs_http_request_option *request_option, int *len)
+{
+    int i;
+    obs_status ret = OBS_STATUS_OK;
+    for (i = 0; i < request_option->custom_headers_count; i++) {
+        const obs_name_value *header = &(request_option->custom_headers[i]);
+        if (!header->name || !header->value) {
+            COMMLOG(OBS_LOGWARN, "%s custom header name or value is NULL at index %d", __FUNCTION__, i);
+            continue;
+        }
+        if (values->amzHeadersCount >= (int)(OBS_MAX_METADATA_COUNT + 3)) {
+            COMMLOG(OBS_LOGWARN, "%s amzHeaders count exceeds limit", __FUNCTION__);
+            return OBS_STATUS_MetadataHeadersTooLong;
+        }
+        int nameLen = (int)strlen(header->name);
+        // x-obs-/x-amz- prefix headers: lowercase for signing, others: preserve original case
+        if (!strncasecmp(header->name, "x-obs-", 6) || !strncasecmp(header->name, "x-amz-", 6)) {
+            ret = header_name_tolower_copy(values, len, header->name, nameLen);
+            if (ret != OBS_STATUS_OK) {
+                return ret;
+            }
+            ret = headers_append(len, values, 0, ": %s", header->value, NULL);
+        } else {
+            ret = headers_append(len, values, 1, "%s: %s", header->name, header->value);
+        }
+        if (ret != OBS_STATUS_OK) {
+            return ret;
+        }
+    }
+    return ret;
+}
+
 obs_status request_compose_limit_s3_header(request_computed_values *values, uint64_t limit, int *len)
 {
     obs_status status;
@@ -964,7 +1014,7 @@ obs_status request_compose_properties(request_computed_values *values, const req
         }
 	}
 
-    ret_status = headers_append_bucket_type(params->bucketContext.bucket_type, 
+    ret_status = headers_append_bucket_type(params->bucketContext.bucket_type,
                             values,len);
     ret_status = headers_append_storage_class(params->bucketContext.storage_class, 
                             values, params, len);
@@ -1197,7 +1247,7 @@ obs_status httpcopy_s3(request_computed_values *values, const request_params *pa
 {
 	obs_status status = OBS_STATUS_OK;
 	if (params->copySourceBucketName && params->copySourceBucketName[0] &&
-		values->urlEncodedSrcKey && values->urlEncodedSrcKey[0])
+		values->urlEncodedSrcKey[0])
 	{
 		status = headers_append(len, values, 1, "x-amz-copy-source: /%s/%s",
 			params->copySourceBucketName, values->urlEncodedSrcKey);
@@ -1222,7 +1272,7 @@ obs_status httpcopy_obs(request_computed_values *values, const request_params *p
 {
 	obs_status status = OBS_STATUS_OK;
 	if (params->copySourceBucketName && params->copySourceBucketName[0] &&
-		values->urlEncodedSrcKey && values->urlEncodedSrcKey[0])
+		values->urlEncodedSrcKey[0])
 	{
 		status = headers_append(len, values, 1, "x-obs-copy-source: /%s/%s",
 			params->copySourceBucketName, values->urlEncodedSrcKey);
@@ -1353,13 +1403,70 @@ obs_status compose_put_header(const request_params *params,
                       websiteredirectlocationHeader, OBS_STATUS_BadContentEncoding,
                       OBS_STATUS_ContentEncodingTooLong);
     }
+
+    /* 处理 CRC64 头 */
+    if (params->put_properties && params->put_properties->enable_crc64) {
+        /* 如果手动指定了 CRC64，直接使用 */
+        if (params->put_properties->crc64 && params->put_properties->crc64[0]) {
+            const char *header_prefix = (params->use_api == OBS_USE_API_S3) ?
+                "x-amz-checksum-crc64ecma: " : "x-obs-checksum-crc64ecma: ";
+            int len = snprintf_s(values->crc64Header, sizeof(values->crc64Header),
+                               _TRUNCATE, "%s%s", header_prefix,
+                               params->put_properties->crc64);
+            if (len >= (int)sizeof(values->crc64Header) || len < 0) {
+                return OBS_STATUS_CRC64TooLong;
+            }
+        }
+        /* 如果未手动指定且有文件，自动计算 CRC64 */
+        else if (params->put_properties->file_object_config &&
+                 params->put_properties->file_object_config->file_name) {
+            uint64_t file_crc64 = obs_compute_file_crc64(
+                params->put_properties->file_object_config->file_name);
+            if (file_crc64 != 0) {
+                char crc64_str[32];
+                obs_crc64_to_string_internal(file_crc64, crc64_str, sizeof(crc64_str));
+                const char *header_prefix = (params->use_api == OBS_USE_API_S3) ?
+                    "x-amz-checksum-crc64ecma: " : "x-obs-checksum-crc64ecma: ";
+                int len = snprintf_s(values->crc64Header, sizeof(values->crc64Header),
+                                   _TRUNCATE, "%s%s", header_prefix, crc64_str);
+                if (len >= (int)sizeof(values->crc64Header) || len < 0) {
+                    return OBS_STATUS_CRC64TooLong;
+                }
+            } else {
+                values->crc64Header[0] = 0;
+            }
+        }
+        /* 流式上传，在数据回调中计算 */
+        else {
+            values->crc64Header[0] = 0;
+        }
+    } else {
+        values->crc64Header[0] = 0;
+    }
+
     return OBS_STATUS_OK;
 }
 
 
-obs_status compose_get_put_header_s3(const request_params *params,
-                            request_computed_values *values)
+static obs_status compose_get_put_header_impl(const request_params *params,
+                            request_computed_values *values, const char *copy_source_prefix)
 {
+    char if_match_fmt[64];
+    char if_none_match_fmt[64];
+    char if_modified_since_prefix[64];
+    char if_unmodified_since_prefix[64];
+
+    if (snprintf_s(if_match_fmt, sizeof(if_match_fmt), _TRUNCATE,
+        "%sif-match: %%s", copy_source_prefix) < 0 ||
+        snprintf_s(if_none_match_fmt, sizeof(if_none_match_fmt), _TRUNCATE,
+        "%sif-none-match: %%s", copy_source_prefix) < 0 ||
+        snprintf_s(if_modified_since_prefix, sizeof(if_modified_since_prefix), _TRUNCATE,
+        "%sif-modified-since: ", copy_source_prefix) < 0 ||
+        snprintf_s(if_unmodified_since_prefix, sizeof(if_unmodified_since_prefix), _TRUNCATE,
+        "%sif-unmodified-since: ", copy_source_prefix) < 0) {
+        return OBS_STATUS_Security_Function_Failed;
+    }
+
     int is_true1 = 0;
     int is_true2 = 0;
     is_true1 = (params->get_conditions && (params->get_conditions->if_modified_since >= 0));
@@ -1376,82 +1483,15 @@ obs_status compose_get_put_header_s3(const request_params *params,
         time_t t = (time_t) params->put_properties->get_conditions->if_modified_since;
         struct tm *flag = gmtime(&t);
         if(flag != NULL){
-			rfc1123_date_format(values->ifModifiedSinceHeader, sizeof(values->ifModifiedSinceHeader), 
-				flag, "x-amz-copy-source-if-modified-since: ", " UTC");
+			rfc1123_date_format(values->ifModifiedSinceHeader, sizeof(values->ifModifiedSinceHeader),
+				flag, if_modified_since_prefix, " UTC");
         }
     }
     else {
         values->ifModifiedSinceHeader[0] = 0;
     }
 
-    is_true1 = (params->get_conditions && (params->get_conditions->if_not_modified_since >= 0)); 
-    is_true2 = (params->put_properties&&params->put_properties->get_conditions &&
-            (params->put_properties->get_conditions->if_not_modified_since >= 0));
-    if (is_true1) {
-        time_t t = (time_t) params->get_conditions->if_not_modified_since;
-        struct tm *flag = gmtime(&t);
-        if(flag != NULL)
-        {
-			rfc1123_date_format(values->ifUnmodifiedSinceHeader, sizeof(values->ifUnmodifiedSinceHeader), 
-				flag, "If-Unmodified-Since: ", " UTC");
-        }
-    }
-    else if (is_true2) {
-      time_t t = (time_t) params->put_properties->get_conditions->if_not_modified_since;
-
-      struct tm *flag = gmtime(&t);
-      if(flag != NULL){
-		  rfc1123_date_format(values->ifUnmodifiedSinceHeader, sizeof(values->ifUnmodifiedSinceHeader),
-			  flag, "x-amz-copy-source-if-unmodified-since: ", " UTC");
-      }
-    }
-    else {
-      values->ifUnmodifiedSinceHeader[0] = 0;
-    }
-    do_get_header(params, values, "If-Match: %s", if_match_etag, ifMatchHeader,
-        OBS_STATUS_BadIfMatchEtag, OBS_STATUS_IfMatchEtagTooLong);
-    if(!values->ifMatchHeader[0]){
-        do_gp_header(params, values, "x-amz-copy-source-if-match: %s", if_match_etag, ifMatchHeader,
-            OBS_STATUS_BadIfMatchEtag, OBS_STATUS_IfMatchEtagTooLong);
-    }
-    do_get_header(params, values, "If-None-Match: %s", if_not_match_etag, ifNoneMatchHeader,
-        OBS_STATUS_BadIfNotMatchEtag, OBS_STATUS_IfNotMatchEtagTooLong);
-    if(!values->ifNoneMatchHeader[0]){
-        do_gp_header(params, values, "x-amz-copy-source-if-none-match: %s", if_not_match_etag, ifNoneMatchHeader,
-            OBS_STATUS_BadIfNotMatchEtag, OBS_STATUS_IfNotMatchEtagTooLong);
-    }
-    return OBS_STATUS_OK;
-}
-
-obs_status compose_get_put_header_obs(const request_params *params,
-                            request_computed_values *values)
-{
-    int is_true1 = 0;
-    int is_true2 = 0;
-    is_true1 = (params->get_conditions && (params->get_conditions->if_modified_since >= 0));
-    is_true2 = (params->put_properties && params->put_properties->get_conditions &&
-        (params->put_properties->get_conditions->if_modified_since >= 0));
-    if (is_true1) {
-        time_t t = (time_t) params->get_conditions->if_modified_since;
-        struct tm *flag = gmtime(&t);
-        if(flag != NULL){
-			rfc1123_date_format(values->ifModifiedSinceHeader, sizeof(values->ifModifiedSinceHeader),
-				flag, "If-Modified-Since: ", " UTC");
-        }
-    }
-    else if (is_true2) {
-        time_t t = (time_t) params->put_properties->get_conditions->if_modified_since;
-        struct tm *flag = gmtime(&t);
-        if(flag != NULL){
-			rfc1123_date_format(values->ifModifiedSinceHeader, sizeof(values->ifModifiedSinceHeader),
-				flag, "x-obs-copy-source-if-modified-since: ", " UTC");
-        }
-    }
-    else {
-        values->ifModifiedSinceHeader[0] = 0;
-    }
-
-    is_true1 = (params->get_conditions && (params->get_conditions->if_not_modified_since >= 0)); 
+    is_true1 = (params->get_conditions && (params->get_conditions->if_not_modified_since >= 0));
     is_true2 = (params->put_properties&&params->put_properties->get_conditions &&
             (params->put_properties->get_conditions->if_not_modified_since >= 0));
     if (is_true1) {
@@ -1469,7 +1509,7 @@ obs_status compose_get_put_header_obs(const request_params *params,
       struct tm *flag = gmtime(&t);
       if(flag != NULL){
 		  rfc1123_date_format(values->ifUnmodifiedSinceHeader, sizeof(values->ifUnmodifiedSinceHeader),
-			  flag, "x-obs-copy-source-if-unmodified-since: ", " UTC");
+			  flag, if_unmodified_since_prefix, " UTC");
       }
     }
     else {
@@ -1478,16 +1518,28 @@ obs_status compose_get_put_header_obs(const request_params *params,
     do_get_header(params, values, "If-Match: %s", if_match_etag, ifMatchHeader,
         OBS_STATUS_BadIfMatchEtag, OBS_STATUS_IfMatchEtagTooLong);
     if(!values->ifMatchHeader[0]){
-        do_gp_header(params, values, "x-obs-copy-source-if-match: %s", if_match_etag, ifMatchHeader,
+        do_gp_header(params, values, if_match_fmt, if_match_etag, ifMatchHeader,
             OBS_STATUS_BadIfMatchEtag, OBS_STATUS_IfMatchEtagTooLong);
     }
     do_get_header(params, values, "If-None-Match: %s", if_not_match_etag, ifNoneMatchHeader,
         OBS_STATUS_BadIfNotMatchEtag, OBS_STATUS_IfNotMatchEtagTooLong);
     if(!values->ifNoneMatchHeader[0]){
-        do_gp_header(params, values, "x-obs-copy-source-if-none-match: %s", if_not_match_etag, ifNoneMatchHeader,
+        do_gp_header(params, values, if_none_match_fmt, if_not_match_etag, ifNoneMatchHeader,
             OBS_STATUS_BadIfNotMatchEtag, OBS_STATUS_IfNotMatchEtagTooLong);
     }
     return OBS_STATUS_OK;
+}
+
+obs_status compose_get_put_header_s3(const request_params *params,
+                            request_computed_values *values)
+{
+    return compose_get_put_header_impl(params, values, "x-amz-copy-source-");
+}
+
+obs_status compose_get_put_header_obs(const request_params *params,
+                            request_computed_values *values)
+{
+    return compose_get_put_header_impl(params, values, "x-obs-copy-source-");
 }
 
 obs_status compose_get_put_header(const request_params *params,
@@ -1585,7 +1637,8 @@ obs_status basecode_callback_header(const request_params *params,
     obs_status status = OBS_STATUS_OK;
     size_t outLen = sizeof(char) * HEAD_CALLBACK_LEN;
     char *out = (char *)malloc(outLen);
-    if (!CheckAndLogNULL(out, SYMBOL_NAME_STR(out), SYMBOL_NAME_STR(malloc), __FUNCTION__, __LINE__)) {
+    if (!out) {
+        COMMLOG(OBS_LOGERROR, "malloc failed for out in %s:%d", __FUNCTION__, __LINE__);
         return OBS_STATUS_OutOfMemory;
     }
     memset_s(out, outLen, 0, outLen);
@@ -1709,11 +1762,20 @@ void pre_compute_header(const char **sortedHeaders, request_computed_values *val
         (*nCount)++;
     }
 
-    is_true = (0 != values->tokenHeader[0] 
+    is_true = (0 != values->tokenHeader[0]
       && strlen(values->tokenHeader) >= strlen(match_str)
       && 0 == strncmp(match_str,values->tokenHeader,strlen(match_str)));
     if (is_true) {
         sortedHeaders[*nCount] = values->tokenHeader;
+        (*nCount)++;
+    }
+
+    /* 添加 CRC64 头到签名计算 */
+    is_true = (0 != values->crc64Header[0]
+      && strlen(values->crc64Header) >= strlen(match_str)
+      && 0 == strncmp(match_str,values->crc64Header,strlen(match_str)));
+    if (is_true) {
+        sortedHeaders[*nCount] = values->crc64Header;
         (*nCount)++;
     }
 }
@@ -1813,6 +1875,10 @@ obs_storage_class get_storage_class_enum_s3(const char * str_storage_class)
 	{
 		return OBS_STORAGE_CLASS_HIGH_PERFORMANCE;
 	}
+	else if (!strcmp(str_storage_class, "INTELLIGENT_TIERING"))
+		{
+			return OBS_STORAGE_CLASS_INTELLIGENT_TIERING;
+		}
     else
     {
        return OBS_STORAGE_CLASS_BUTT;
@@ -1837,6 +1903,10 @@ obs_storage_class get_storage_class_enum_obs(const char * str_storage_class)
 	{
 		return OBS_STORAGE_CLASS_DEEP_ARCHIVE;
 	}
+	else if (!strcmp(str_storage_class, "INTELLIGENT_TIERING"))
+		{
+			return OBS_STORAGE_CLASS_INTELLIGENT_TIERING;
+		}
 	else if (!strcmp(str_storage_class, "HIGH_PERFORMANCE"))
 	{
 		return OBS_STORAGE_CLASS_HIGH_PERFORMANCE;

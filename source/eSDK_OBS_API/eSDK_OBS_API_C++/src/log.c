@@ -16,6 +16,7 @@
 #include "file_utils.h"
 #include "securec.h"
 #include <stdlib.h>
+#include <wchar.h>
 
 #ifdef WIN32
 #define strcasecmp _stricmp
@@ -871,6 +872,11 @@ void setUserCustomLog(OBSLogCallBack userCustomLogNew) {
 
 void COMMLOG(OBS_LOGLEVEL level, const char *pszFormat, ...)
 {
+    // Check log level first to avoid unnecessary formatting overhead
+    if (level < getRunLogLevel()) {
+        return;
+    }
+
     va_list pszArgp;
     const char *tempFormat = pszFormat;
     if (NULL == tempFormat)

@@ -15,6 +15,9 @@
 #ifndef DEMO_COMMON_H
 #define DEMO_COMMON_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 extern obs_status statusG;
 extern int  showResponsePropertiesG;
@@ -235,12 +238,12 @@ obs_status head_properties_callback(const obs_response_properties *properties, v
 void head_complete_callback(obs_status status, const obs_error_details *error, 
                                      void *callback_data);
 obs_status get_bucket_storageclass_handler(const char * storage_class, void * callBackData);
-obs_status get_bucket_tagging_callback(int tagging_count, obs_name_value *tagging_list, void *callback_data);
-void get_tagging_complete_callback(obs_status status, const obs_error_details *error, 
+obs_status get_bucket_tagging_callback(unsigned int tagging_count, obs_name_value *tagging_list, void *callback_data);
+void demo_get_tagging_complete_callback(obs_status status, const obs_error_details *error,
                                      void *callback_data);
 obs_status get_bucket_custom_domain_callback(int domain_count,
     obs_domain_response* domain_response_list, void* callback_data);
-void get_bucket_custom_domain_complete_callback(obs_status status,
+void demo_get_bucket_custom_domain_complete_callback(obs_status status,
     const obs_error_details* error,
     void* callback_data);
 obs_status get_bucket_websiteconf_callback(const char *hostname,
@@ -376,6 +379,10 @@ void dir_access_label_response_complete_callback(obs_status status,
 #define BUCKET_TYPE "bucket_type="
 #define BUCKET_TYPE_LEN (sizeof(BUCKET_TYPE) - 1)
 obs_bucket_type get_bucket_type_from_argv(char *param);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UTIL_H */
 

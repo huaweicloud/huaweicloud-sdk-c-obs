@@ -14,6 +14,7 @@
 */
 #include "bucket.h"
 #include "request_util.h"
+#include "util.h"
 #include <openssl/md5.h> 
 
 obs_status get_bucket_storage_policy_xml_callback(const char *element_path,
@@ -88,11 +89,7 @@ void get_bucket_storage_class_complete_callback(obs_status status,
         storage_class_data->callback_data);
     simplexml_deinitialize(&(storage_class_data->simpleXml));
 
-    if (storage_class_data)
-    {
-        free(storage_class_data);
-        storage_class_data = NULL;
-    }
+    CHECK_NULL_FREE(storage_class_data);
     COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
 }
 
@@ -105,6 +102,11 @@ void get_bucket_storage_class_policy(const obs_options *options,
     obs_use_api use_api = OBS_USE_API_S3;
     set_use_api_switch(options, &use_api);
     COMMLOG(OBS_LOGINFO, "get bucket storage class policy start!");
+    if (!options->bucket_options.bucket_name || !options->bucket_options.bucket_name[0]) {
+        COMMLOG(OBS_LOGERROR, "bucket_name is empty!");
+        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
+        return;
+    }
     get_bucket_storage_class_policy_data *storage_class_data =
         (get_bucket_storage_class_policy_data*)malloc(sizeof(get_bucket_storage_class_policy_data));
     if (!storage_class_data)

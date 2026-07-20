@@ -45,8 +45,7 @@ update_bucket_common_data* init_create_bucket_cbdata(const char *location_constr
         bucket_data->docBytesWritten = 0;
         if (mark)
         {
-            free(plocationConstraint);
-            plocationConstraint = NULL;
+            CHECK_NULL_FREE(plocationConstraint);
         }
     }
     else

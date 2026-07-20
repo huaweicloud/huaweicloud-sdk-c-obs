@@ -33,7 +33,7 @@ typedef struct response_headers_handler
 
     int done;
 
-    string_multibuffer(responsePropertyStrings, 5 * 129);
+    string_multibuffer(responsePropertyStrings, 7 * 129);
 
     string_multibuffer(responseMetaDataStrings, 
                        COMPACTED_METADATA_BUFFER_SIZE);

@@ -23,12 +23,8 @@
 #include "common.h"
 #include "cJSON.h"
 
-#ifdef WIN32
-#define LIBOBS_VER_MAJOR "3.25"
-#define LIBOBS_VER_MINOR "3"
-#endif
-
-#if defined __GNUC__ || defined LINUX
+#ifndef OBS_SDK_VERSION
+#define OBS_SDK_VERSION "3.26.6"
 #endif
 
 #define HEAD_NORMAL_LEN 128
@@ -37,9 +33,6 @@
 #define BUCKET_LEN 65
 #define DOMAIN_LEN 254
 #define HEAD_CALLBACK_LEN 8192
-
-#define OBS_SDK_VERSION "3.25.3"
-#define USER_AGENT_VALUE  "obs-sdk-c-3.25.3";
 
 #define DEFAULT_LOW_SPEED_LIMIT    (1)
 #define DEFAULT_LOW_SPEED_TIME_S   (20)
@@ -72,9 +65,41 @@
 #define curl_easy_setopt_safe(opt, val)                                 \
                 if ((status = curl_easy_setopt                                      \
                      (request->curl, opt, val)) != CURLE_OK) {                      \
-                    COMMLOG(OBS_LOGWARN, "curl_easy_setopt_safe failed, curl_ret_code: %d", status);    \
-                    return OBS_STATUS_FailedToIInitializeRequest;                       \
+                    COMMLOG(OBS_LOGERROR, "[CURL ERROR] %s:%d %s - Failed to set %s, " \
+                            "curl_ret_code: %d, error: %s",                         \
+                            __FUNCTION__, __LINE__, __FILE__, #opt, status,         \
+                            curl_easy_strerror(status));                          \
+                    return OBS_STATUS_FailedToIInitializeRequest;                   \
                 }
+
+/* OBS CURL options safe setting APIs */
+#define OBS_CURL_SETOPT_DEFAULT_ERROR OBS_STATUS_FailedToIInitializeRequest
+
+/* 辅助内联函数：只负责判断状态、打日志和返回 obs_status */
+static inline obs_status obs_curl_setopt_check(CURLcode curl_status, const char *opt_name, 
+                                                 obs_status error_status, const char *func, 
+                                                 int line, const char *file) {
+    if (curl_status != CURLE_OK) {
+        COMMLOG(OBS_LOGERROR, "[CURL ERROR] %s:%d %s - Failed to set %s, "
+                "curl_ret_code: %d, error: %s, returning status: %d",
+                file, line, func, opt_name, curl_status,
+                curl_easy_strerror(curl_status), (int)error_status);
+        return error_status;
+    }
+    return OBS_STATUS_OK;
+}
+
+/* 核心宏：保留变量类型，字符串化 #opt，并传递 __FILE__ 等宏 */
+#define OBS_CURL_SET_IMPL(curl, opt, val, error_status) \
+    obs_curl_setopt_check(curl_easy_setopt((curl), (opt), (val)), #opt, \
+                            (error_status), __func__, __LINE__, __FILE__)
+
+#define OBS_CURL_SETOPT(curl, opt, val) \
+    OBS_CURL_SET_IMPL((curl), (opt), (val), OBS_CURL_SETOPT_DEFAULT_ERROR)
+
+#define OBS_CURL_SETOPT_WITH_STATUS(curl, opt, val, error_status) \
+    OBS_CURL_SET_IMPL((curl), (opt), (val), (error_status))
+
                 
 #define append_standard_header(fieldName)                               \
                     if (values-> fieldName [0]) {                                       \
@@ -134,12 +159,14 @@ typedef struct http_request
     obs_get_object_data_callback *fromS3Callback;
     obs_response_complete_callback *complete_callback;
     obs_progress_callback_internal *progressCallback;
+    obs_progress_callback *userProgressCallback;
     uint64_t progress_total_size;
     void *callback_data;
     response_headers_handler responseHeadersHandler;
     int propertiesCallbackMade;
     error_parser errorParser;
     void* pause_handle;
+    void *crc64_context;  /* CRC64 计算上下文（用于自动计算 CRC64） */
 } http_request;
 
 typedef struct obs_cors_conf
@@ -161,7 +188,7 @@ typedef struct request_params
 
     temp_auth_configure *temp_auth;
 
-    char *key;
+    const char *key;
 
     char *queryParams;
 
@@ -198,6 +225,8 @@ typedef struct request_params
     obs_use_api use_api;
 
     obs_progress_callback_internal *progressCallback;
+
+    obs_progress_callback *userProgressCallback;
 
     void* pause_handle;
 
@@ -249,6 +278,8 @@ typedef struct request_computed_values
     char tokenHeader[HEAD_AUTH_LEN];
 
     char userAgent[HEAD_NORMAL_LEN];
+
+    char crc64Header[HEAD_NORMAL_LEN];        /**< CRC64 校验值 HTTP 头 */
 
 } request_computed_values;
 

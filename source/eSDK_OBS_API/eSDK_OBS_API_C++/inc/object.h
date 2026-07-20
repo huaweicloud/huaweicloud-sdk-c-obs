@@ -39,6 +39,7 @@
 #define MAX_SIZE_ETAG 64
 #define DEFAULT_PART_SIZE (5*1024*1024)
 #define MAX_PART_SIZE (5*1024*1024*1024ll)
+#define MAX_SINGLE_UPLOAD_SIZE (5ULL*1024*1024*1024)
 #define MAX_BKTNAME_SIZE 1024
 #define MAX_KEY_SIZE 1024
 #define MAX_THREAD_NUM 100
@@ -60,8 +61,6 @@
         } \
     } while (0)
 
-
-#define MAX_NUM_TAGGING 10
 
 typedef enum
 {
@@ -218,8 +217,9 @@ typedef struct _upload_file_part_info
     uint64_t part_size;
     part_upload_status uploadStatus;
     struct _upload_file_part_info * prev;
-    struct _upload_file_part_info * next; 
+    struct _upload_file_part_info * next;
     void * threadHandler;
+    char crc64[32];  /* 分段的CRC64值（字符串形式） */
 }upload_file_part_info;
 
 typedef struct _upload_file_summary
@@ -238,11 +238,12 @@ typedef struct _upload_params
     int enable_check_point;
     char * fileNameCheckpoint;
     char * upload_id;
-    char * fileNameUpload; 
+    char * fileNameUpload;
     char * objectName;
-    
+
     const obs_options *options;
     server_side_encryption_params *pstServerSideEncryptionParams;
+    obs_put_properties *put_properties;
     obs_response_handler * response_handler;
     void * callBackData;
 
@@ -304,6 +305,7 @@ typedef struct
     obs_storage_class storage_class;
     char  bucket_name[MAX_BKTNAME_SIZE];
     char  key[MAX_KEY_SIZE];
+    uint64_t crc64;  /* 对象的总CRC64值（从服务器获取） */
 }download_file_summary;
 
 typedef struct _download_file_part_info
@@ -313,9 +315,18 @@ typedef struct _download_file_part_info
     uint64_t start_byte;
     uint64_t part_size;
     download_status downloadStatus;
+    uint64_t crc64;  /* 分段的CRC64值（服务器返回的对象总CRC64） */
     struct _download_file_part_info * prev;
-    struct _download_file_part_info * next; 
+    struct _download_file_part_info * next;
 }download_file_part_info;
+
+typedef struct
+{
+    uint64_t *progressArr;
+    int arrSize;
+    uint64_t totalFileSize;
+    uint64_t downloadedSize;
+}download_file_progress_info;
 
 typedef struct _download_params
 {
@@ -324,15 +335,20 @@ typedef struct _download_params
     char * objectName;
     char * version_id;
     char * fileNameStore;
-    
+
     const obs_options *options;
     server_side_encryption_params *pstServerSideEncryptionParams;
     obs_get_conditions *get_conditions;
     obs_response_handler * response_handler;
-    void * callBackData;	
+    void * callBackData;
+
+    obs_progress_callback *progress_callback;
+    uint64_t totalFileSize;
+    uint64_t downloadedSize;
+    download_file_progress_info *progressInfo;
 }download_params;
 
-typedef struct 
+typedef struct
 {
     download_file_summary * pstFileInfo;
     obs_status retStatus;
@@ -344,6 +360,7 @@ typedef struct
     download_file_part_info  *pstDownloadFilePartInfo;
     void * callBackData;
     void * xmlWriteMutex;
+    int progressIndex;
 }download_file_proc_data;
 
 typedef struct _download_file_callback_data
@@ -353,11 +370,14 @@ typedef struct _download_file_callback_data
     int fdStorefile;
     int enableCheckPoint;
     uint64_t totalBytes;
-    uint64_t bytesRemaining;    
+    uint64_t bytesRemaining;
     obs_response_handler * respHandler;
-    download_file_part_info *pstDownloadFilePartInfo;// this store the info about one part        
+    download_file_part_info *pstDownloadFilePartInfo;// this store the info about one part
     void * callbackDataIn;//the callback data pass from client
     void * xmlWriteMutex;
+    download_file_progress_info *progressInfo;
+    obs_progress_callback *progressCallback;
+    int progressIndex;
 }download_file_callback_data;
 
 typedef struct  delete_object_contents

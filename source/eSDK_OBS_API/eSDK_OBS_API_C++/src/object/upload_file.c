@@ -20,7 +20,8 @@
 #include "object.h"
 #include "request_util.h"
 #include "file_utils.h"
-#include <openssl/md5.h> 
+#include <openssl/md5.h>
+#include "../crc64/crc64.h" 
 
 #if defined WIN32
 #include <io.h>
@@ -955,6 +956,38 @@ static void uploadProgressCallback(uint64_t ulnow, uint64_t utotal, void *callba
 
 
 
+static void init_upload_part_properties(upload_file_proc_data *pstPara,
+    obs_put_properties *stPutProperties, obs_name_value *metaProperties,
+    const char *uploadFileName, uint64_t start_byte, uint64_t part_size)
+{
+    memset_s(stPutProperties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
+    stPutProperties->expires = -1;
+    stPutProperties->canned_acl = OBS_CANNED_ACL_PUBLIC_READ_WRITE;
+    stPutProperties->meta_data = metaProperties;
+
+    if (pstPara->stUploadParams->put_properties &&
+        pstPara->stUploadParams->put_properties->enable_crc64) {
+        uint64_t part_crc64 = obs_crc64_compute_file_range(uploadFileName, start_byte, part_size);
+        if (part_crc64 != 0) {
+            char crc64_str[32];
+            obs_crc64_to_string_internal(part_crc64, crc64_str, sizeof(crc64_str));
+            if (snprintf_s(pstPara->stUploadFilePartInfo->crc64,
+                     sizeof(pstPara->stUploadFilePartInfo->crc64),
+                     sizeof(pstPara->stUploadFilePartInfo->crc64) - 1,
+                     "%s", crc64_str) < 0) {
+                pstPara->stUploadFilePartInfo->crc64[0] = '\0';
+            }
+            /* Note: Do NOT set stPutProperties.crc64 or enable_crc64 here.
+             * Sending CRC64 header during upload_part causes signature errors
+             * because the signature calculation doesn't include custom headers.
+             * The CRC64 is calculated and stored for reference only.
+             */
+        }
+    }
+
+    pstPara->stUploadFilePartInfo->uploadStatus = UPLOADING;
+}
+
 #if defined (WIN32)
 unsigned __stdcall UploadThreadProc_win32(void* param)
 {
@@ -1040,12 +1073,8 @@ unsigned __stdcall UploadThreadProc_win32(void* param)
                     updateCheckPoint(pathToUpdate, contentToSet, pstPara->stUploadParams->fileNameCheckpoint);
                     LeaveCriticalSection(&g_csThreadCheckpoint);
                 }
-                memset_s(&stPutProperties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
-
-                stPutProperties.expires = -1;
-                stPutProperties.canned_acl = OBS_CANNED_ACL_PUBLIC_READ_WRITE;
-                stPutProperties.meta_data = metaProperties;
-                pstPara->stUploadFilePartInfo->uploadStatus = UPLOADING;
+                init_upload_part_properties(pstPara, &stPutProperties, metaProperties,
+                    uploadFileName, start_byte, part_size);
                 if ((pstEncrypParam) && (pstEncrypParam->encryption_type == OBS_ENCRYPTION_KMS))
                 {
                     pstEncrypParam = NULL;
@@ -1077,9 +1106,8 @@ unsigned __stdcall UploadThreadProc_win32(void* param)
 #if defined __GNUC__ || defined LINUX
 void cleanup_fd(void *arg)
 {
-    int *fd = (int*)arg;
-    if (*fd != -1)
-    {
+    int *fd = (int *)arg;
+    if (*fd != -1) {
         close(*fd);
         *fd = -1;
     }
@@ -1090,40 +1118,35 @@ void *UploadThreadProc_linux(void* param)
     int oldstate = 0;
     int oldtype = 0;
 
-    upload_file_proc_data * pstPara = (upload_file_proc_data *)param;
-    char * uploadFileName = pstPara->stUploadParams->fileNameUpload;
+    upload_file_proc_data *pstPara = (upload_file_proc_data *)param;
+    char *uploadFileName = pstPara->stUploadParams->fileNameUpload;
     uint64_t start_byte = pstPara->stUploadFilePartInfo->start_byte;
     uint64_t part_size = pstPara->stUploadFilePartInfo->part_size;
     int part_num = pstPara->stUploadFilePartInfo->part_num;
-    server_side_encryption_params * pstEncrypParam = NULL;
+    server_side_encryption_params *pstEncrypParam = NULL;
     char *szUpload = NULL;
     pstPara->thread_start = 1;
 
     int fd = -1;
-    pthread_cleanup_push((void (*)(void*))pthread_mutex_unlock, (void*)&g_mutexThreadCheckpoint);
-    pthread_cleanup_push(cleanup_fd, (void*)&fd);
+    pthread_cleanup_push((void (*)(void *))pthread_mutex_unlock, (void *)&g_mutexThreadCheckpoint);
+    pthread_cleanup_push(cleanup_fd, (void *)&fd);
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
 
     fd = open(uploadFileName, O_RDONLY);
-    if (fd == -1)
-    {
+    if (fd == -1) {
         COMMLOG(OBS_LOGINFO, "open upload file failed, partnum[%d]\n", part_num);
-		checkAndLogStrError(SYMBOL_NAME_STR(open), __FUNCTION__, __LINE__);
-    }
-    else
-    {
-        obs_upload_handler uploadResponseHandler =
-        {
-            {&uploadPartCompletePropertiesCallback,
-            &uploadPartCompleteCallback},
+        checkAndLogStrError(SYMBOL_NAME_STR(open), __FUNCTION__, __LINE__);
+    } else {
+        obs_upload_handler uploadResponseHandler = {
+            {&uploadPartCompletePropertiesCallback, &uploadPartCompleteCallback},
             &uploadPartCallback,
-            &uploadProgressCallback
-        };
-        upload_file_callback_data  data;
+            &uploadProgressCallback};
+        upload_file_callback_data data;
         obs_put_properties stPutProperties;
         obs_name_value metaProperties[OBS_MAX_METADATA_COUNT];
-        memset_s(metaProperties, sizeof(obs_name_value)*OBS_MAX_METADATA_COUNT, 0, sizeof(obs_name_value)*OBS_MAX_METADATA_COUNT);
+        memset_s(metaProperties, sizeof(obs_name_value) * OBS_MAX_METADATA_COUNT, 0,
+                 sizeof(obs_name_value) * OBS_MAX_METADATA_COUNT);
 
         lseek(fd, (long long int)start_byte, SEEK_SET);
         szUpload = pstPara->stUploadParams->upload_id;
@@ -1144,12 +1167,12 @@ void *UploadThreadProc_linux(void* param)
 
         pstEncrypParam = pstPara->stUploadParams->pstServerSideEncryptionParams;
 
-        if (data.enableCheckPoint == 1)
-        {
+        if (data.enableCheckPoint == 1) {
             char pathToUpdate[1024];
             char contentToSet[32];
 
-            int ret = sprintf_s(pathToUpdate, ARRAY_LENGTH_1024, "%s%d/%s", "uploadinfo/partsinfo/part", part_num + 1, "uploadStatus");
+            int ret = sprintf_s(pathToUpdate, ARRAY_LENGTH_1024, "%s%d/%s", "uploadinfo/partsinfo/part", part_num + 1,
+                                "uploadStatus");
             if (ret < 0) {
                 COMMLOG(OBS_LOGWARN, "sprintf_s failed in function: %s, line: %d", __FUNCTION__, __LINE__);
             } else {
@@ -1162,17 +1185,10 @@ void *UploadThreadProc_linux(void* param)
             pthread_mutex_lock(&g_mutexThreadCheckpoint);
             updateCheckPoint(pathToUpdate, contentToSet, pstPara->stUploadParams->fileNameCheckpoint);
             pthread_mutex_unlock(&g_mutexThreadCheckpoint);
-
         }
-        memset_s(&stPutProperties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
-
-
-        stPutProperties.expires = -1;
-        stPutProperties.canned_acl = OBS_CANNED_ACL_PUBLIC_READ_WRITE;
-        stPutProperties.meta_data = metaProperties;
-        pstPara->stUploadFilePartInfo->uploadStatus = UPLOADING;
-        if ((pstEncrypParam) && (pstEncrypParam->encryption_type == OBS_ENCRYPTION_KMS))
-        {
+        init_upload_part_properties(pstPara, &stPutProperties, metaProperties,
+            uploadFileName, start_byte, part_size);
+        if ((pstEncrypParam) && (pstEncrypParam->encryption_type == OBS_ENCRYPTION_KMS)) {
             pstEncrypParam = NULL;
         }
         obs_upload_part_info upload_part_info;
@@ -1180,12 +1196,11 @@ void *UploadThreadProc_linux(void* param)
 
         upload_part_info.part_number = (unsigned int)(part_num + 1);
         upload_part_info.upload_id = szUpload;
-        upload_part(pstPara->stUploadParams->options, pstPara->stUploadParams->objectName,
-            &upload_part_info, part_size, &stPutProperties, pstEncrypParam, &uploadResponseHandler, &data);
+        upload_part(pstPara->stUploadParams->options, pstPara->stUploadParams->objectName, &upload_part_info, part_size,
+                    &stPutProperties, pstEncrypParam, &uploadResponseHandler, &data);
     }
 
-    if (fd != -1)
-    {
+    if (fd != -1) {
         close(fd);
         fd = -1;
     }
@@ -1324,13 +1339,13 @@ void startUploadThreads_win32(upload_file_proc_data * uploadFileProcDataList,
 #endif // WIN32
 
 #if defined __GNUC__ || defined LINUX
-void startUpload_pthreads(upload_params * pstUploadParams, int partCount, void* callback_data,
-    upload_file_proc_data * uploadFileProcDataList, pthread_t * arrThread);
+void startUpload_pthreads(upload_params *pstUploadParams, int partCount, void *callback_data,
+                          upload_file_proc_data *uploadFileProcDataList, pthread_t *arrThread);
 
-void startUploadThreads_linux(upload_params * pstUploadParams, int partCount, void* callback_data,
-    upload_file_proc_data * uploadFileProcDataList)
+void startUploadThreads_linux(upload_params *pstUploadParams, int partCount, void *callback_data,
+                              upload_file_proc_data *uploadFileProcDataList)
 {
-    pthread_t * arrThread = (pthread_t *)malloc(sizeof(pthread_t) * partCount);
+    pthread_t *arrThread = (pthread_t *)malloc(sizeof(pthread_t) * partCount);
     if (arrThread == NULL) {
         COMMLOG(OBS_LOGWARN, "startUploadThreads: pthread_t malloc failed!\n");
         if (pstUploadParams->response_handler->complete_callback) {
@@ -1341,9 +1356,9 @@ void startUploadThreads_linux(upload_params * pstUploadParams, int partCount, vo
     startUpload_pthreads(pstUploadParams, partCount, callback_data, uploadFileProcDataList, arrThread);
     CHECK_NULL_FREE(arrThread);
 }
-void startUpload_pthreads(upload_params * pstUploadParams, int partCount, void* callback_data,
-    upload_file_proc_data * uploadFileProcDataList, pthread_t * arrThread) {
-
+void startUpload_pthreads(upload_params *pstUploadParams, int partCount, void *callback_data,
+                          upload_file_proc_data *uploadFileProcDataList, pthread_t *arrThread)
+{
     int i = 0;
     int err;
 
@@ -1356,44 +1371,47 @@ void startUpload_pthreads(upload_params * pstUploadParams, int partCount, void* 
 
     for (i = 0; i < partCount; i++) {
         while (1) {
-            if(*(pstUploadParams->pause_upload_flag) == 1) {
+            if (*(pstUploadParams->pause_upload_flag) == 1) {
                 pthread_mutex_lock(&g_mutexThreadCheckpoint);
                 err = pthread_cancel(arrThread[i]);
                 pthread_mutex_unlock(&g_mutexThreadCheckpoint);
-                if(err != 0) {
-                    COMMLOG(OBS_LOGINFO, "cancel thread failed i[%d]\n",i);
+                if (err != 0) {
+                    COMMLOG(OBS_LOGINFO, "cancel thread failed i[%d]\n", i);
                 }
- 
+
                 err = pthread_join(arrThread[i], NULL);
-                if(err != 0) {
-                    COMMLOG(OBS_LOGINFO, "join thread failed i[%d]\n",i);
+                if (err != 0) {
+                    COMMLOG(OBS_LOGINFO, "join thread failed i[%d]\n", i);
                 }
- 
+
                 if (uploadFileProcDataList[i].stUploadParams->enable_check_point == 1) {
                     char pathToUpdate[ARRAY_LENGTH_1024];
                     char contentToSet[ARRAY_LENGTH_32];
-                    int ret = sprintf_s(pathToUpdate,ARRAY_LENGTH_1024,"%s%d/%s","uploadinfo/partsinfo/part", i + 1, "uploadStatus");
+                    int ret = sprintf_s(pathToUpdate, ARRAY_LENGTH_1024, "%s%d/%s", "uploadinfo/partsinfo/part", i + 1,
+                                        "uploadStatus");
                     CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
-                    ret = sprintf_s(contentToSet,ARRAY_LENGTH_32,"%s","UPLOAD_FAILED");
+                    ret = sprintf_s(contentToSet, ARRAY_LENGTH_32, "%s", "UPLOAD_FAILED");
                     CheckAndLogNeg(ret, "sprintf_s", __FUNCTION__, __LINE__);
                     pthread_mutex_lock(&g_mutexThreadCheckpoint);
-                    ret = updateCheckPoint(pathToUpdate, contentToSet, uploadFileProcDataList[i].stUploadParams->fileNameCheckpoint);
+                    ret = updateCheckPoint(pathToUpdate, contentToSet,
+                                           uploadFileProcDataList[i].stUploadParams->fileNameCheckpoint);
                     if (ret == -1) {
                         COMMLOG(OBS_LOGWARN, "Failed to update checkpoint in function: %s.", __FUNCTION__);
                     }
                     pthread_mutex_unlock(&g_mutexThreadCheckpoint);
                 }
- 
+
                 uploadFileProcDataList[i].stUploadFilePartInfo->uploadStatus = UPLOAD_FAILED;
                 COMMLOG(OBS_LOGERROR, "task i:%d is aborted by user!", i);
                 if (pstUploadParams->response_handler->complete_callback) {
-                    (pstUploadParams->response_handler->complete_callback)(OBS_STATUS_AbortedByCallback, 0, callback_data);
+                    (pstUploadParams->response_handler->complete_callback)(OBS_STATUS_AbortedByCallback, 0,
+                                                                           callback_data);
                 }
                 break;
-            } else if(uploadFileProcDataList[i].thread_start == 1 && uploadFileProcDataList[i].thread_end == 1) {
+            } else if (uploadFileProcDataList[i].thread_start == 1 && uploadFileProcDataList[i].thread_end == 1) {
                 err = pthread_join(arrThread[i], NULL);
-                if(err != 0) {
-                    COMMLOG(OBS_LOGINFO, "join thread failed i[%d]\n",i);
+                if (err != 0) {
+                    COMMLOG(OBS_LOGINFO, "join thread failed i[%d]\n", i);
                 }
                 break;
             } else {
@@ -1401,8 +1419,7 @@ void startUpload_pthreads(upload_params * pstUploadParams, int partCount, void* 
             }
         }
     }
-
-    }
+}
 #endif
 
 void startUploadThreads(upload_params * pstUploadParams,
@@ -1410,7 +1427,8 @@ void startUploadThreads(upload_params * pstUploadParams,
     int partCount, void* callback_data)
 {
     int i = 0;
-    upload_file_proc_data * uploadFileProcDataList = (upload_file_proc_data *)malloc(sizeof(upload_file_proc_data)*partCount);
+    upload_file_proc_data *uploadFileProcDataList =
+        (upload_file_proc_data *)malloc(sizeof(upload_file_proc_data) * partCount);
     if (uploadFileProcDataList == NULL) {
         COMMLOG(OBS_LOGWARN, "startUploadThreads: uploadFileProcDataList malloc failed!\n");
         if (pstUploadParams->response_handler->complete_callback) {
@@ -1418,12 +1436,12 @@ void startUploadThreads(upload_params * pstUploadParams,
         }
         return;
     }
-    if (partCount <= 0 || partCount > OBS_MAX_PARTCOUNT_SIZE){
+    if (partCount <= 0 || partCount > OBS_MAX_PARTCOUNT_SIZE) {
         COMMLOG(OBS_LOGERROR, "parameter of malloc is out of range in function: %s,line %d", __FUNCTION__, __LINE__);
-	    CHECK_NULL_FREE(uploadFileProcDataList);
+        CHECK_NULL_FREE(uploadFileProcDataList);
         return;
     }
-    uint64_t *uploadFileProgress = (uint64_t *)malloc(sizeof(uint64_t)*partCount);
+    uint64_t *uploadFileProgress = (uint64_t *)malloc(sizeof(uint64_t) * partCount);
     if (uploadFileProgress == NULL) {
         COMMLOG(OBS_LOGWARN, "startUploadThreads: uploadFileProgress malloc failed!\n");
         if (pstUploadParams->response_handler->complete_callback) {
@@ -1432,11 +1450,12 @@ void startUploadThreads(upload_params * pstUploadParams,
         CHECK_NULL_FREE(uploadFileProcDataList);
         return;
     }
-    memset_s(uploadFileProgress, sizeof(uint64_t)*partCount, 0, sizeof(uint64_t)*partCount);
+    memset_s(uploadFileProgress, sizeof(uint64_t) * partCount, 0, sizeof(uint64_t) * partCount);
 
-    upload_file_proc_data * pstUploadFileProcData = uploadFileProcDataList;
+    upload_file_proc_data *pstUploadFileProcData = uploadFileProcDataList;
     upload_file_part_info *pstOnePartInfo = uploadFilePartInfoList;
-    memset_s(uploadFileProcDataList, sizeof(upload_file_proc_data)*partCount, 0, sizeof(upload_file_proc_data)*partCount);
+    memset_s(uploadFileProcDataList, sizeof(upload_file_proc_data) * partCount, 0,
+             sizeof(upload_file_proc_data) * partCount);
 
     for (i = 0; i < partCount; i++) {
         pstUploadFileProcData[i].stUploadParams = pstUploadParams;
@@ -1464,26 +1483,17 @@ void startUploadThreads(upload_params * pstUploadParams,
     startUploadThreads_linux(pstUploadParams, partCount, callback_data, uploadFileProcDataList);
 #endif
 
-    if (uploadFileProcDataList) {
-        free(uploadFileProcDataList);
-        uploadFileProcDataList = NULL;
-    }
-    if (uploadFileProgress) {
-        free(uploadFileProgress);
-        uploadFileProgress = NULL;
-    }
+    CHECK_NULL_FREE(uploadFileProcDataList);
+    CHECK_NULL_FREE(uploadFileProgress);
 }
 
 
 int isPrevPartComplete(upload_file_part_info *ptrUploadPartPrev, int *isAllSuccess)
 {
-    while (ptrUploadPartPrev)
-    {
-        if (ptrUploadPartPrev->uploadStatus != UPLOAD_SUCCESS)
-        {
+    while (ptrUploadPartPrev) {
+        if (ptrUploadPartPrev->uploadStatus != UPLOAD_SUCCESS) {
             *isAllSuccess = 0;
-            if (ptrUploadPartPrev->uploadStatus != UPLOAD_FAILED)
-            {
+            if (ptrUploadPartPrev->uploadStatus != UPLOAD_FAILED) {
                 return 0;
             }
         }
@@ -1494,13 +1504,10 @@ int isPrevPartComplete(upload_file_part_info *ptrUploadPartPrev, int *isAllSucce
 
 int isNextPartComplete(upload_file_part_info *ptrUploadPartNext, int *isAllSuccess)
 {
-    while (ptrUploadPartNext)
-    {
-        if (ptrUploadPartNext->uploadStatus != UPLOAD_SUCCESS)
-        {
+    while (ptrUploadPartNext) {
+        if (ptrUploadPartNext->uploadStatus != UPLOAD_SUCCESS) {
             *isAllSuccess = 0;
-            if (ptrUploadPartNext->uploadStatus != UPLOAD_FAILED)
-            {
+            if (ptrUploadPartNext->uploadStatus != UPLOAD_FAILED) {
                 return 0;
             }
         }
@@ -1511,12 +1518,11 @@ int isNextPartComplete(upload_file_part_info *ptrUploadPartNext, int *isAllSucce
 
 int isAllPartsComplete(upload_file_part_info * uploadPartNode, int * isAllSuccess)
 {
-    upload_file_part_info * ptrUploadPartPrev = uploadPartNode;
-    upload_file_part_info * ptrUploadPartNext = uploadPartNode;
+    upload_file_part_info *ptrUploadPartPrev = uploadPartNode;
+    upload_file_part_info *ptrUploadPartNext = uploadPartNode;
     *isAllSuccess = 1;
 
-    if (uploadPartNode == NULL)
-    {
+    if (uploadPartNode == NULL) {
         *isAllSuccess = 0;
         return 0;
     }
@@ -1524,19 +1530,15 @@ int isAllPartsComplete(upload_file_part_info * uploadPartNode, int * isAllSucces
         return 0;
     }
 
-    if (!isNextPartComplete(ptrUploadPartNext, isAllSuccess))
-    {
+    if (!isNextPartComplete(ptrUploadPartNext, isAllSuccess)) {
         return 0;
     }
     return 1;
 }
 
 
-obs_status CompleteMultipartUploadCallback_Intern(const char *location,
-    const char *bucket,
-    const char *key,
-    const char *etag,
-    void *callback_data)
+obs_status CompleteMultipartUploadCallback_Intern(const char *location, const char *bucket, const char *key,
+                                                  const char *etag, void *callback_data)
 {
     (void)callback_data;
     COMMLOG(OBS_LOGINFO, "location = %s \n bucket = %s \n key = %s \n etag = %s \n", location, bucket, key, etag);
@@ -1546,18 +1548,16 @@ obs_status CompleteMultipartUploadCallback_Intern(const char *location,
 
 int completeUploadFileParts(upload_file_part_info * pstUploadInfoList, int partCount,
     const obs_options *options, char * key, obs_upload_file_server_callback server_callback,
-    const char * upload_id, obs_response_handler *handler, void *callback_data)
+    const char * upload_id, obs_response_handler *handler, void *callback_data,
+    const char *file_path, obs_put_properties *put_properties)
 {
-    obs_complete_upload_Info * pstUploadInfo = NULL;
-    obs_complete_upload_Info * upInfoList = NULL;
+    obs_complete_upload_Info *pstUploadInfo = NULL;
+    obs_complete_upload_Info *upInfoList = NULL;
     int i = 0;
 
-    upload_file_part_info * pstSrcUploadInfo = pstUploadInfoList;
-    obs_complete_multi_part_upload_handler response_handler =
-    {
-        {handler->properties_callback, handler->complete_callback},
-        &CompleteMultipartUploadCallback_Intern
-    };
+    upload_file_part_info *pstSrcUploadInfo = pstUploadInfoList;
+    obs_complete_multi_part_upload_handler response_handler = {
+        {handler->properties_callback, handler->complete_callback}, &CompleteMultipartUploadCallback_Intern};
 
     obs_put_properties stPutProperties;
     memset_s(&stPutProperties, sizeof(obs_put_properties), 0, sizeof(obs_put_properties));
@@ -1565,20 +1565,18 @@ int completeUploadFileParts(upload_file_part_info * pstUploadInfoList, int partC
     stPutProperties.expires = -1;
     stPutProperties.canned_acl = OBS_CANNED_ACL_PUBLIC_READ_WRITE;
     stPutProperties.server_callback = server_callback;
+    stPutProperties.enable_crc64 = put_properties ? put_properties->enable_crc64 : false;
 
     upInfoList = (obs_complete_upload_Info *)malloc(sizeof(obs_complete_upload_Info) * partCount);
-    if (upInfoList == NULL)
-    {
+    if (upInfoList == NULL) {
         COMMLOG(OBS_LOGERROR, "in completeUploadFileParts, malloc for upInfoList failed");
         return -1;
     }
 
 
     pstUploadInfo = upInfoList;
-    for (i = 0; i < partCount; i++)
-    {
-        if (!pstSrcUploadInfo)
-        {
+    for (i = 0; i < partCount; i++) {
+        if (!pstSrcUploadInfo) {
             CHECK_NULL_FREE(upInfoList);
             COMMLOG(OBS_LOGERROR, "due to some reasons, some part is not upload ,can not complete\n");
             return -1;
@@ -1588,62 +1586,87 @@ int completeUploadFileParts(upload_file_part_info * pstUploadInfoList, int partC
         pstUploadInfo++;
         pstSrcUploadInfo = pstSrcUploadInfo->next;
     }
+
+    /* CRC64 support for complete multipart upload:
+     * According to Java SDK implementation, we need to:
+     * 1. Calculate the CRC64 of the entire file
+     * 2. Send it in the complete request header
+     * 3. Server will verify and return the same CRC64 in response
+     */
+    if (file_path && put_properties && put_properties->enable_crc64) {
+        uint64_t file_crc64 = obs_compute_file_crc64(file_path);
+        if (file_crc64 != 0) {
+            char crc64_str[32];
+            obs_crc64_to_string_internal(file_crc64, crc64_str, sizeof(crc64_str));
+
+            /* Allocate and set CRC64 string */
+            char *crc64_ptr = (char *)malloc(32);
+            if (crc64_ptr) {
+                if (strcpy_s(crc64_ptr, 32, crc64_str) != EOK) {
+                    free(crc64_ptr);
+                    crc64_ptr = NULL;
+                }
+                stPutProperties.crc64 = crc64_ptr;
+                COMMLOG(OBS_LOGINFO, "completeUploadFileParts: file_crc64=%llu, sending in complete request\n", file_crc64);
+            } else {
+                COMMLOG(OBS_LOGERROR, "completeUploadFileParts: failed to allocate memory for CRC64\n");
+            }
+        } else {
+            COMMLOG(OBS_LOGWARN, "completeUploadFileParts: failed to compute file CRC64\n");
+        }
+    }
+
     //call complete part here
     complete_multi_part_upload(options, key, upload_id, partCount, upInfoList,
         &stPutProperties, &response_handler, callback_data);
+
+    // Free CRC64 string allocated for the complete request
+    CHECK_NULL_FREE(stPutProperties.crc64);
+
     //release the data
-    if (upInfoList)
-    {
-        free(upInfoList);
-        upInfoList = NULL;
-    }
+    CHECK_NULL_FREE(upInfoList);
 
     return 0;
 }
 
-
 int set_isFirstTimeSuccess(const obs_options *options, char *key, int isFirstTime, int uploadfileChanged,
-    upload_file_summary *pstUploadFileSum, upload_file_part_info **pstUploadPartList, int *partCount,
-    const char* checkpointFilename, upload_file_summary stUploadFileSummaryOld)
+                           upload_file_summary *pstUploadFileSum, upload_file_part_info **pstUploadPartList,
+                           int *partCount, const char *checkpointFilename, upload_file_summary stUploadFileSummaryOld)
 {
     uploadfileChanged = isUploadFileChanged(pstUploadFileSum, &stUploadFileSummaryOld);
-    if (uploadfileChanged || checkUploadFileInfo(&stUploadFileSummaryOld, options, key) == 0)
-    {
-        //here the upload info is not available
+    if (uploadfileChanged || checkUploadFileInfo(&stUploadFileSummaryOld, options, key) == 0) {
+        // here the upload info is not available
         isFirstTime = 1;
         abortMultipartUploadAndFree(options, key, stUploadFileSummaryOld.upload_id, checkpointFilename, CLEAN_FILE);
         *partCount = 0;
-    }
-    else
-    {
+    } else {
         isFirstTime = 0;
         errno_t err = EOK;
-        err = memcpy_s(pstUploadFileSum, sizeof(upload_file_summary), &stUploadFileSummaryOld, sizeof(upload_file_summary));
+        err = memcpy_s(pstUploadFileSum, sizeof(upload_file_summary), &stUploadFileSummaryOld,
+                       sizeof(upload_file_summary));
         CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     }
     return isFirstTime;
 }
 
 
-int get_uploadId_for_uploadFile_initUpload(const obs_options *options, char *key, obs_upload_file_configuration *upload_file_config,
-    char *upload_id, upload_params *pstUploadParams, upload_file_part_info *pstUploadPartList,
-    obs_response_handler *commonHandler, char *checkpointFilename, int isFirstTime)
+int get_uploadId_for_uploadFile_initUpload(const obs_options *options, char *key,
+                                           obs_upload_file_configuration *upload_file_config, char *upload_id,
+                                           upload_params *pstUploadParams, upload_file_part_info *pstUploadPartList,
+                                           obs_response_handler *commonHandler, char *checkpointFilename,
+                                           int isFirstTime)
 {
-    if ((isFirstTime == 1) || (NULL == pstUploadParams->upload_id) || (strlen(pstUploadParams->upload_id) == 0))
-    {
+    if ((isFirstTime == 1) || (NULL == pstUploadParams->upload_id) || (strlen(pstUploadParams->upload_id) == 0)) {
         initiate_multi_part_upload(options, key, MAX_SIZE_UPLOADID, upload_id, upload_file_config->put_properties,
-            pstUploadParams->pstServerSideEncryptionParams, commonHandler, pstUploadParams->callBackData);
-        if (strlen(upload_id) == 0)
-        {
-            if (upload_file_config->enable_check_point)
-            {
+                                   pstUploadParams->pstServerSideEncryptionParams, commonHandler,
+                                   pstUploadParams->callBackData);
+        if (strlen(upload_id) == 0) {
+            if (upload_file_config->enable_check_point) {
                 (void)remove_file(checkpointFilename);
             }
             return -1;
         }
-    }
-    else if (strlen(pstUploadParams->upload_id) != 0)
-    {
+    } else if (strlen(pstUploadParams->upload_id) != 0) {
         errno_t err = strcpy_s(upload_id, MAX_SIZE_UPLOADID, pstUploadParams->upload_id);
         CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
     }
@@ -1652,26 +1675,23 @@ int get_uploadId_for_uploadFile_initUpload(const obs_options *options, char *key
 
 
 int get_uploadId_for_uploadFile(const obs_options *options, char *key,
-    obs_upload_file_configuration *upload_file_config,
-    char *upload_id, upload_params *pstUploadParams, upload_file_part_info * pstUploadPartList,
-    int set_partlist_retVal,
-    obs_response_handler *commonHandler, char *checkpointFilename, int isFirstTime)
+                                obs_upload_file_configuration *upload_file_config, char *upload_id,
+                                upload_params *pstUploadParams, upload_file_part_info *pstUploadPartList,
+                                int set_partlist_retVal, obs_response_handler *commonHandler, char *checkpointFilename,
+                                int isFirstTime)
 {
-    if (set_partlist_retVal == -1)
-    {
+    if (set_partlist_retVal == -1) {
         COMMLOG(OBS_LOGINFO, "set_partlist_retVal = %d", set_partlist_retVal);
-        if (upload_file_config->enable_check_point)
-        {
+        if (upload_file_config->enable_check_point) {
             (void)remove_file(checkpointFilename);
         }
         return -1;
     }
 
 
-    // init upload task   
+    // init upload task
     if (get_uploadId_for_uploadFile_initUpload(options, key, upload_file_config, upload_id, pstUploadParams,
-        pstUploadPartList, commonHandler, checkpointFilename, isFirstTime))
-    {
+                                               pstUploadPartList, commonHandler, checkpointFilename, isFirstTime)) {
         return -1;
     }
 
@@ -1680,67 +1700,57 @@ int get_uploadId_for_uploadFile(const obs_options *options, char *key,
 
 
 void upload_complete_handle_allSuccess(const obs_options *options, char *key, obs_upload_file_response_handler *handler,
-    upload_file_part_info * pstUploadPartList, int partCount, const char *upload_id, int isAllSuccess,
-    obs_upload_file_configuration *upload_file_config, obs_upload_file_server_callback server_callback,
-    const char *checkpointFilename, obs_upload_file_part_info *resultInfo, void *callback_data)
+                                       upload_file_part_info *pstUploadPartList, int partCount, const char *upload_id,
+                                       int isAllSuccess, obs_upload_file_configuration *upload_file_config,
+                                       obs_upload_file_server_callback server_callback, const char *checkpointFilename,
+                                       obs_upload_file_part_info *resultInfo, void *callback_data)
 {
     int is_true = 0;
     int retComplete = -1;
     if (isAllSuccess == 1)
     {
         retComplete = completeUploadFileParts(pstUploadPartList, partCount, options, key, server_callback,
-            upload_id, &handler->response_handler, callback_data);
+            upload_id, &handler->response_handler, callback_data,
+            upload_file_config->upload_file, upload_file_config->put_properties);
         is_true = ((retComplete == 0) && upload_file_config->enable_check_point);
-        if (is_true)
-        {
+        if (is_true) {
             (void)remove_file(checkpointFilename);
         }
-        if (retComplete == 0)
-        {
-            if (handler->upload_file_callback)
-            {
+        if (retComplete == 0) {
+            if (handler->upload_file_callback) {
                 handler->upload_file_callback(OBS_STATUS_OK, "upload file success!\n", 0, NULL, callback_data);
             }
+        } else if (handler->upload_file_callback) {
+            handler->upload_file_callback(OBS_STATUS_InternalError, "complete multi part failed!\n", 0, NULL,
+                                          callback_data);
         }
-        else if (handler->upload_file_callback)
-        {
-            handler->upload_file_callback(OBS_STATUS_InternalError,
-                "complete multi part failed!\n", 0, NULL, callback_data);
-        }
-    }
-    else
-    {
+    } else {
         upload_file_part_info *printNode = pstUploadPartList;
         obs_upload_file_part_info *pstPartInfoRet;
-        resultInfo = (obs_upload_file_part_info*)malloc(sizeof(obs_upload_file_part_info)*partCount);
-        if (resultInfo == NULL)
-        {
+        resultInfo = (obs_upload_file_part_info *)malloc(sizeof(obs_upload_file_part_info) * partCount);
+        if (resultInfo == NULL) {
             COMMLOG(OBS_LOGERROR, "malloc resultInfo failed in upload_complete_handle_allSuccess\n");
             return;
         }
-        memset_s(resultInfo, sizeof(obs_upload_file_part_info)*partCount, 0,
-            sizeof(obs_upload_file_part_info)*partCount);
+        memset_s(resultInfo, sizeof(obs_upload_file_part_info) * partCount, 0,
+                 sizeof(obs_upload_file_part_info) * partCount);
         pstPartInfoRet = resultInfo;
-        while (printNode)
-        {
+        while (printNode) {
             pstPartInfoRet->part_num = printNode->part_num + 1;
             pstPartInfoRet->part_size = printNode->start_byte;
             pstPartInfoRet->status_return = printNode->uploadStatus;
             printNode = printNode->next;
             pstPartInfoRet++;
         }
-        if (handler->upload_file_callback)
-        {
-            handler->upload_file_callback(OBS_STATUS_InternalError,
-                "some part success , some parts failed!\n", partCount, resultInfo, callback_data);
+        if (handler->upload_file_callback) {
+            handler->upload_file_callback(OBS_STATUS_InternalError, "some part success , some parts failed!\n",
+                                          partCount, resultInfo, callback_data);
         }
         free(resultInfo);
         resultInfo = NULL;
     }
-    is_true = (((isAllSuccess == 0) || (retComplete != 0))
-        && (upload_file_config->enable_check_point == 0));
-    if (is_true)
-    {
+    is_true = (((isAllSuccess == 0) || (retComplete != 0)) && (upload_file_config->enable_check_point == 0));
+    if (is_true) {
         abortMultipartUploadAndFree(options, key, upload_id, NULL, DO_NOTHING);
     }
     return;
@@ -1748,43 +1758,41 @@ void upload_complete_handle_allSuccess(const obs_options *options, char *key, ob
 
 
 void upload_complete_handle(const obs_options *options, char *key, obs_upload_file_response_handler *handler,
-    upload_file_part_info * pstUploadPartList, int partCount, const char *upload_id,
-    obs_upload_file_configuration *upload_file_config, obs_upload_file_server_callback server_callback,
-    const char *checkpointFilename, void *callback_data)
+                            upload_file_part_info *pstUploadPartList, int partCount, const char *upload_id,
+                            obs_upload_file_configuration *upload_file_config,
+                            obs_upload_file_server_callback server_callback, const char *checkpointFilename,
+                            void *callback_data)
 {
     int isAllSuccess = 0;
-    obs_upload_file_part_info * resultInfo = NULL;
-    if (isAllPartsComplete(pstUploadPartList, &isAllSuccess) == 1)
-    {
-        upload_complete_handle_allSuccess(options, key, handler, pstUploadPartList, partCount, upload_id,
-            isAllSuccess, upload_file_config, server_callback, checkpointFilename, resultInfo, callback_data);
+    obs_upload_file_part_info *resultInfo = NULL;
+    if (isAllPartsComplete(pstUploadPartList, &isAllSuccess) == 1) {
+        upload_complete_handle_allSuccess(options, key, handler, pstUploadPartList, partCount, upload_id, isAllSuccess,
+                                          upload_file_config, server_callback, checkpointFilename, resultInfo,
+                                          callback_data);
         return;
     }
 
-    upload_file_part_info * printNode = pstUploadPartList;
-    if (!upload_file_config->enable_check_point)
-    {
+    upload_file_part_info *printNode = pstUploadPartList;
+    if (!upload_file_config->enable_check_point) {
         abortMultipartUploadAndFree(options, key, upload_id, NULL, DO_NOTHING);
     }
 
-    obs_upload_file_part_info * pstPartInfoRet = NULL;
-    resultInfo = (obs_upload_file_part_info*)malloc(sizeof(obs_upload_file_part_info)*partCount);
-    if (resultInfo == NULL)
-    {
+    obs_upload_file_part_info *pstPartInfoRet = NULL;
+    resultInfo = (obs_upload_file_part_info *)malloc(sizeof(obs_upload_file_part_info) * partCount);
+    if (resultInfo == NULL) {
         COMMLOG(OBS_LOGERROR, "malloc resultInfo failed in upload_complete_handle\n");
-        if (handler->response_handler.complete_callback){
+        if (handler->response_handler.complete_callback) {
             (handler->response_handler.complete_callback)(OBS_STATUS_OutOfMemory, 0, callback_data);
         }
         return;
     }
-    memset_s(resultInfo, sizeof(obs_upload_file_part_info)*partCount, 0,
-        sizeof(obs_upload_file_part_info)*partCount);
+    memset_s(resultInfo, sizeof(obs_upload_file_part_info) * partCount, 0,
+             sizeof(obs_upload_file_part_info) * partCount);
     pstPartInfoRet = resultInfo;
 
-    while (printNode)
-    {
+    while (printNode) {
         COMMLOG(OBS_LOGERROR, "part_num[%d], status[%s]\n", printNode->part_num,
-            g_uploadStatus[printNode->uploadStatus]);
+                g_uploadStatus[printNode->uploadStatus]);
 
         pstPartInfoRet->part_num = printNode->part_num + 1;
         pstPartInfoRet->part_size = printNode->part_size;
@@ -1794,10 +1802,9 @@ void upload_complete_handle(const obs_options *options, char *key, obs_upload_fi
         pstPartInfoRet++;
     }
 
-    if (handler->upload_file_callback)
-    {
-        handler->upload_file_callback(OBS_STATUS_InternalError,
-            "some part success, some parts failed!\n", partCount, resultInfo, callback_data);
+    if (handler->upload_file_callback) {
+        handler->upload_file_callback(OBS_STATUS_InternalError, "some part success, some parts failed!\n", partCount,
+                                      resultInfo, callback_data);
     }
     free(resultInfo);
     resultInfo = NULL;
@@ -1805,7 +1812,6 @@ void upload_complete_handle(const obs_options *options, char *key, obs_upload_fi
     COMMLOG(OBS_LOGERROR, "leave upload_complete_handle success\n");
     return;
 }
-
 
 int upload_file_setParams(upload_file_summary *stUploadFileSum, const obs_options *options, char *key, char *upload_id,
                           server_side_encryption_params *encryption_params, char *checkpointFilename,
@@ -1874,29 +1880,29 @@ size_t get_malloc_size_for_upload_file_part_info(upload_file_summary *pstUpLoadF
 	COMMLOG(OBS_LOGINFO, "partCount is %d.", partCountTemp);
 	return partCountTemp * sizeof(upload_file_part_info);
 }
+
 void upload_file(const obs_options *options, char *key, server_side_encryption_params *encryption_params,
     obs_upload_file_configuration *upload_file_config, obs_upload_file_server_callback server_callback,
     obs_upload_file_response_handler *handler, void *callback_data)
 {
     if (*(upload_file_config->pause_upload_flag) == 1) {
-		COMMLOG(OBS_LOGWARN, "*pause_upload_flag is %d",
-			(*(upload_file_config->pause_upload_flag)));
-	}
+        COMMLOG(OBS_LOGWARN, "*pause_upload_flag is %d", (*(upload_file_config->pause_upload_flag)));
+    }
     int isFirstTime = 1;
     int retVal = -1;
-    upload_file_part_info * pstUploadPartList = NULL;
-	upload_file_part_info * pstUploadPartListOrigin = NULL;
+    upload_file_part_info *pstUploadPartList = NULL;
+    upload_file_part_info *pstUploadPartListOrigin = NULL;
     upload_file_summary stUploadFileSum;
-    upload_file_part_info * pstUploadPartListDone = NULL;
-    upload_file_part_info * pstUploadPartListNotDone = NULL;
+    upload_file_part_info *pstUploadPartListDone = NULL;
+    upload_file_part_info *pstUploadPartListNotDone = NULL;
     int partCount = 0;
     int partCountToProc = 0;
-    char* checkpointFilename = getPathBuffer(ARRAY_LENGTH_1024);
-	if (checkpointFilename == NULL) {
-		COMMLOG(OBS_LOGERROR, "getPathBuffer failed in function: %s,line %d", __FUNCTION__, __LINE__);
-		(void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
-		return;
-	}
+    char *checkpointFilename = getPathBuffer(ARRAY_LENGTH_1024);
+    if (checkpointFilename == NULL) {
+        COMMLOG(OBS_LOGERROR, "getPathBuffer failed in function: %s,line %d", __FUNCTION__, __LINE__);
+        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
+        return;
+    }
     char upload_id[MAX_SIZE_UPLOADID];
     upload_params stUploadParams;
     int is_ture = 0;
@@ -1906,141 +1912,140 @@ void upload_file(const obs_options *options, char *key, server_side_encryption_p
     memset_s(&stUploadFileSum, sizeof(upload_file_summary), 0, sizeof(upload_file_summary));
 
     errno_t err = EOK;
-    if (upload_file_config->check_point_file)
-    {
+    if (upload_file_config->check_point_file) {
         err = path_copy(checkpointFilename, ARRAY_LENGTH_1024, upload_file_config->check_point_file,
-            file_path_strlen(upload_file_config->check_point_file) + 1);
+                        file_path_strlen(upload_file_config->check_point_file) + 1);
         CheckAndLogNoneZero(err, "path_copy", __FUNCTION__, __LINE__);
     }
-    //get the summary of the upload file 
+    // get the summary of the upload file
     retVal = getUploadFileSummary(&stUploadFileSum, upload_file_config);
-    if (retVal == -1)
-    {
+    if (retVal == -1) {
         CHECK_NULL_FREE(checkpointFilename);
         COMMLOG(OBS_LOGERROR, "the upload file is not exist");
         (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OpenFileFailed, 0, callback_data);
         return;
     }
 
-    //set the check point file
-    char* configCheckPointFileName = upload_file_config->check_point_file;
-	upload_file_config->check_point_file = checkpointFilename;
+    // set the check point file
+    char *configCheckPointFileName = upload_file_config->check_point_file;
+    upload_file_config->check_point_file = checkpointFilename;
 
-	is_ture = ((upload_file_config->part_size == 0)
-		|| (upload_file_config->part_size > MAX_PART_SIZE));
-	uploadPartSize = is_ture ? MAX_PART_SIZE : upload_file_config->part_size;
-	uploadPartSize = uploadPartSize > stUploadFileSum.fileSize ? stUploadFileSum.fileSize : uploadPartSize;
-	uint64_t upload_file_part_info_mem_size = get_malloc_size_for_upload_file_part_info(&stUploadFileSum, uploadPartSize);
-	{
-		//isFirstTime = set_isFirstTime(options, key, upload_file_config,
-		//    &pstUploadPartList, &partCount, &stUploadFileSum);
-		upload_file_summary stUploadFileSummaryOld = { 0 };
-		isFirstTime = 1;
-		xmlNodePtr curNode = NULL;
-		xmlDocPtr doc = NULL; 
-		int readCheckPointResult = -1;
+    is_ture = ((upload_file_config->part_size == 0) || (upload_file_config->part_size > MAX_PART_SIZE));
+    uploadPartSize = is_ture ? MAX_PART_SIZE : upload_file_config->part_size;
+    uploadPartSize = uploadPartSize > stUploadFileSum.fileSize ? stUploadFileSum.fileSize : uploadPartSize;
+    uint64_t upload_file_part_info_mem_size =
+        get_malloc_size_for_upload_file_part_info(&stUploadFileSum, uploadPartSize);
+    {
+        // isFirstTime = set_isFirstTime(options, key, upload_file_config,
+        //     &pstUploadPartList, &partCount, &stUploadFileSum);
+        upload_file_summary stUploadFileSummaryOld = {0};
+        isFirstTime = 1;
+        xmlNodePtr curNode = NULL;
+        xmlDocPtr doc = NULL;
+        int readCheckPointResult = -1;
 
-		if (upload_file_config->enable_check_point) {
-			int createdCheckPointFile = 
-				setCheckPointFile(upload_file_config->upload_file, checkpointFilename, &isFirstTime, UPLOAD_FILE_INFO);
-			if (createdCheckPointFile == -1)
-			{
-				//no need to return here, we can continue but treat enable_check_point as false
-				upload_file_config->enable_check_point = 0;
-			} else {
-				readCheckPointResult = readCheckpointFileXmlSuccessfully(checkpointFilename, ARRAY_LENGTH_1024, &doc, &curNode);
-				if (readCheckPointResult == 0)//read success
-				{
-					readCheckpointFileXmlAndGetPartCount(&partCount, curNode);
-					uint64_t upload_file_part_info_mem_size_old = partCount * sizeof(upload_file_part_info);
-					upload_file_part_info_mem_size =
-						upload_file_part_info_mem_size < upload_file_part_info_mem_size_old ?
-						upload_file_part_info_mem_size_old : upload_file_part_info_mem_size;
-				}
-
-			}
-		}
-		pstUploadPartListOrigin = (upload_file_part_info*)malloc(upload_file_part_info_mem_size);
-		if (!CheckAndLogNULL(pstUploadPartListOrigin,
-			SYMBOL_NAME_STR(pstUploadPartListOrigin), SYMBOL_NAME_STR(malloc), __FUNCTION__, __LINE__)) {
-			(void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
-			CHECK_NULL_FREE(checkpointFilename);
-			checkAndXmlFreeDoc(&doc);
-			return;
-		}
+        if (upload_file_config->enable_check_point) {
+            int createdCheckPointFile =
+                setCheckPointFile(upload_file_config->upload_file, checkpointFilename, &isFirstTime, UPLOAD_FILE_INFO);
+            if (createdCheckPointFile == -1) {
+                // no need to return here, we can continue but treat enable_check_point as false
+                upload_file_config->enable_check_point = 0;
+            } else {
+                readCheckPointResult =
+                    readCheckpointFileXmlSuccessfully(checkpointFilename, ARRAY_LENGTH_1024, &doc, &curNode);
+                if (readCheckPointResult == 0) // read success
+                {
+                    readCheckpointFileXmlAndGetPartCount(&partCount, curNode);
+                    uint64_t upload_file_part_info_mem_size_old = partCount * sizeof(upload_file_part_info);
+                    upload_file_part_info_mem_size =
+                        upload_file_part_info_mem_size < upload_file_part_info_mem_size_old ?
+                            upload_file_part_info_mem_size_old :
+                            upload_file_part_info_mem_size;
+                }
+            }
+        }
+        pstUploadPartListOrigin = (upload_file_part_info *)malloc(upload_file_part_info_mem_size);
+        if (!CheckAndLogNULL(pstUploadPartListOrigin, SYMBOL_NAME_STR(pstUploadPartListOrigin), SYMBOL_NAME_STR(malloc),
+                             __FUNCTION__, __LINE__)) {
+            (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
+            CHECK_NULL_FREE(checkpointFilename);
+            checkAndXmlFreeDoc(&doc);
+            return;
+        }
         pstUploadPartList = pstUploadPartListOrigin;
-		err = memset_s(pstUploadPartListOrigin, upload_file_part_info_mem_size, 0, upload_file_part_info_mem_size);
-		if (checkIfErrorAndLogStrError(SYMBOL_NAME_STR(memset_s), __FUNCTION__, __LINE__, err)) {
-			(void)(*(handler->response_handler.complete_callback))(OBS_STATUS_Security_Function_Failed, 0, callback_data);
-			CHECK_NULL_FREE(checkpointFilename);
-			CHECK_NULL_FREE(pstUploadPartListOrigin);
-			checkAndXmlFreeDoc(&doc);
-			return;
-		}
-		if (readCheckPointResult == 0)//read success
-		{
-			readCheckPointResult =
-				readCheckpointFileXmlInfo(&stUploadFileSummaryOld, &pstUploadPartList, &partCount, checkpointFilename, ARRAY_LENGTH_1024, curNode);
-		}
-		if (readCheckPointResult == 0)//read success
-		{
-			isFirstTime = set_isFirstTimeSuccess(options, key, isFirstTime, 0, &stUploadFileSum,
-				&pstUploadPartList, &partCount, checkpointFilename, stUploadFileSummaryOld);
-		}
-		checkAndXmlFreeDoc(&doc);
-	}
+        err = memset_s(pstUploadPartListOrigin, upload_file_part_info_mem_size, 0, upload_file_part_info_mem_size);
+        if (checkIfErrorAndLogStrError(SYMBOL_NAME_STR(memset_s), __FUNCTION__, __LINE__, err)) {
+            (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_Security_Function_Failed, 0,
+                                                                   callback_data);
+            CHECK_NULL_FREE(checkpointFilename);
+            CHECK_NULL_FREE(pstUploadPartListOrigin);
+            checkAndXmlFreeDoc(&doc);
+            return;
+        }
+        if (readCheckPointResult == 0) // read success
+        {
+            readCheckPointResult = readCheckpointFileXmlInfo(&stUploadFileSummaryOld, &pstUploadPartList, &partCount,
+                                                             checkpointFilename, ARRAY_LENGTH_1024, curNode);
+        }
+        if (readCheckPointResult == 0) // read success
+        {
+            isFirstTime = set_isFirstTimeSuccess(options, key, isFirstTime, 0, &stUploadFileSum, &pstUploadPartList,
+                                                 &partCount, checkpointFilename, stUploadFileSummaryOld);
+        }
+        checkAndXmlFreeDoc(&doc);
+    }
 
-	if (isFirstTime == -1) {
-		CHECK_NULL_FREE(checkpointFilename);
-		upload_file_config->check_point_file = configCheckPointFileName;
-		CHECK_NULL_FREE(pstUploadPartListOrigin);
-		COMMLOG(OBS_LOGERROR, "set_isFirstTime failed in function: %s,line %d", __FUNCTION__, __LINE__);
-		(void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
-		return;
-	}
+    if (isFirstTime == -1) {
+        CHECK_NULL_FREE(checkpointFilename);
+        upload_file_config->check_point_file = configCheckPointFileName;
+        CHECK_NULL_FREE(pstUploadPartListOrigin);
+        COMMLOG(OBS_LOGERROR, "set_isFirstTime failed in function: %s,line %d", __FUNCTION__, __LINE__);
+        (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_OutOfMemory, 0, callback_data);
+        return;
+    }
 
-    //set the part list to upload
+    // set the part list to upload
     retVal = setPartList(&stUploadFileSum, uploadPartSize, &pstUploadPartList, &partCount, isFirstTime);
     stUploadParams.upload_id = stUploadFileSum.upload_id;
     stUploadParams.totalFileSize = stUploadFileSum.fileSize;
     stUploadParams.pause_upload_flag = upload_file_config->pause_upload_flag;
     stUploadParams.callBackData = callback_data;
     stUploadParams.pstServerSideEncryptionParams = encryption_params;
+    stUploadParams.put_properties = upload_file_config->put_properties;
 
-    retVal = get_uploadId_for_uploadFile(options, key, upload_file_config, upload_id, &stUploadParams,
-        pstUploadPartList, retVal, &(handler->response_handler), checkpointFilename, isFirstTime);
-    if (-1 == retVal)
-    {
+    retVal =
+        get_uploadId_for_uploadFile(options, key, upload_file_config, upload_id, &stUploadParams, pstUploadPartList,
+                                    retVal, &(handler->response_handler), checkpointFilename, isFirstTime);
+    if (-1 == retVal) {
         CHECK_NULL_FREE(checkpointFilename);
-		upload_file_config->check_point_file = configCheckPointFileName;
-		CHECK_NULL_FREE(pstUploadPartListOrigin);
+        upload_file_config->check_point_file = configCheckPointFileName;
+        CHECK_NULL_FREE(pstUploadPartListOrigin);
         if (handler->response_handler.complete_callback) {
             (handler->response_handler.complete_callback)(OBS_STATUS_GET_UPLOAD_ID_FAILED, 0, callback_data);
         }
         return;
     }
     is_ture = upload_file_setParams(&stUploadFileSum, options, key, upload_id, encryption_params, checkpointFilename,
-        upload_file_config, handler, callback_data, err, isFirstTime, is_ture, partCount, pstUploadPartList,
-        &stUploadParams);
+                                    upload_file_config, handler, callback_data, err, isFirstTime, is_ture, partCount,
+                                    pstUploadPartList, &stUploadParams);
 
     (void)DividUploadPartList(pstUploadPartList, &pstUploadPartListDone, &pstUploadPartListNotDone);
 
     calcTotalUploadedSize(&stUploadParams, pstUploadPartListDone, 0);
     COMMLOG(OBS_LOGDEBUG, "upload_file before uploadedSize=%lu\n", stUploadParams.uploadedSize);
 
-    //start upload part threads now
+    // start upload part threads now
     partCountToProc = 0;
     upload_file_config->task_num = (upload_file_config->task_num == 0) ? MAX_THREAD_NUM : upload_file_config->task_num;
-    while (pstUploadPartListNotDone)
-    {
-#if defined (WIN32)
+    while (pstUploadPartListNotDone) {
+#if defined(WIN32)
         Sleep(SLEEP_TIMES_FOR_WIN32);
 #else
         sleep(1);
 #endif
 
-        (void)GetUploadPartListToProcess(&pstUploadPartListDone, &pstUploadPartListNotDone,
-            partCountToProc, &partCountToProc, upload_file_config->task_num);
+        (void)GetUploadPartListToProcess(&pstUploadPartListDone, &pstUploadPartListNotDone, partCountToProc,
+                                         &partCountToProc, upload_file_config->task_num);
 
         if (*(upload_file_config->pause_upload_flag) == 1) {
             COMMLOG(OBS_LOGERROR, "pstUploadPartListNotDone is aborted by user!");
@@ -2049,17 +2054,17 @@ void upload_file(const obs_options *options, char *key, server_side_encryption_p
             }
             break;
         }
- 
+
         startUploadThreads(&stUploadParams, pstUploadPartListNotDone, partCountToProc, callback_data);
         calcTotalUploadedSize(&stUploadParams, pstUploadPartListNotDone, partCountToProc);
     }
     pstUploadPartList = pstUploadPartListDone;
-    upload_complete_handle(options, key, handler, pstUploadPartList, partCount, upload_id,
-        upload_file_config, server_callback, checkpointFilename, callback_data);
+    upload_complete_handle(options, key, handler, pstUploadPartList, partCount, upload_id, upload_file_config,
+                           server_callback, checkpointFilename, callback_data);
 
 
-	CHECK_NULL_FREE(pstUploadPartListOrigin);
-	CHECK_NULL_FREE(checkpointFilename);
-	upload_file_config->check_point_file = configCheckPointFileName;
+    CHECK_NULL_FREE(pstUploadPartListOrigin);
+    CHECK_NULL_FREE(checkpointFilename);
+    upload_file_config->check_point_file = configCheckPointFileName;
     return;
 }

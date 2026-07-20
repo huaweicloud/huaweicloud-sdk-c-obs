@@ -25,17 +25,13 @@ obs_permission convert_obs_permission_str(const char *permission)
     obs_permission tmp_permission = OBS_PERMISSION_BUTT;
     if (!strcmp(permission, "READ")) {
         tmp_permission = OBS_PERMISSION_READ;
-    }
-    else if (!strcmp(permission, "WRITE")) {
+    } else if (!strcmp(permission, "WRITE")) {
         tmp_permission = OBS_PERMISSION_WRITE;
-    }
-    else if (!strcmp(permission, "READ_ACP")) {
+    } else if (!strcmp(permission, "READ_ACP")) {
         tmp_permission = OBS_PERMISSION_READ_ACP;
-    }
-    else if (!strcmp(permission, "WRITE_ACP")) {
+    } else if (!strcmp(permission, "WRITE_ACP")) {
         tmp_permission = OBS_PERMISSION_WRITE_ACP;
-    }
-    else if (!strcmp(permission, "FULL_CONTROL")) {
+    } else if (!strcmp(permission, "FULL_CONTROL")) {
         tmp_permission = OBS_PERMISSION_FULL_CONTROL;
     }
 
@@ -47,11 +43,9 @@ obs_grantee_type convert_group_uri_str(const char *group_uri_str)
     obs_grantee_type tmp_grantee_type = OBS_GRANTEE_TYPE_BUTT;
     if (!strcmp(group_uri_str, ACS_GROUP_AWS_USERS)) {
         tmp_grantee_type = OBS_GRANTEE_TYPE_ALL_OBS_USERS;
-    }
-    else if (!strcmp(group_uri_str, ACS_GROUP_ALL_USERS)) {
+    } else if (!strcmp(group_uri_str, ACS_GROUP_ALL_USERS)) {
         tmp_grantee_type = OBS_GRANTEE_TYPE_ALL_USERS;
-    }
-    else if (!strcmp(group_uri_str, ACS_GROUP_LOG_DELIVERY)) {
+    } else if (!strcmp(group_uri_str, ACS_GROUP_LOG_DELIVERY)) {
         tmp_grantee_type = OBS_GRANTEE_TYPE_LOG_DELIVERY;
     }
     return tmp_grantee_type;
@@ -79,28 +73,21 @@ obs_object_delivered convert_obs_object_delivered_str(const char *delivered)
     return tmp_delivered;
 }
 
-
-obs_status parse_xml_convert_acl_noGrant(convert_acl_data_info *caData, const char* elementPath,
-    const char *data, int dataLen)
+obs_status parse_xml_convert_acl_noGrant(convert_acl_data_info *caData, const char *elementPath, const char *data,
+                                         int dataLen)
 {
-    if (!strcmp(elementPath, "AccessControlPolicy/Owner/ID"))
-    {
-        caData->ownerIdLen +=
-            snprintf_s(&(caData->owner_id[caData->ownerIdLen]),
-                OBS_MAX_GRANTEE_DISPLAY_NAME_SIZE + 1 - caData->ownerIdLen,
-                OBS_MAX_GRANTEE_DISPLAY_NAME_SIZE - caData->ownerIdLen - 1,
-                "%.*s", dataLen, data);
+    if (!strcmp(elementPath, "AccessControlPolicy/Owner/ID")) {
+        caData->ownerIdLen += snprintf_s(
+            &(caData->owner_id[caData->ownerIdLen]), OBS_MAX_GRANTEE_DISPLAY_NAME_SIZE + 1 - caData->ownerIdLen,
+            OBS_MAX_GRANTEE_DISPLAY_NAME_SIZE - caData->ownerIdLen - 1, "%.*s", dataLen, data);
         if (caData->ownerIdLen >= OBS_MAX_GRANTEE_USER_ID_SIZE) {
             return OBS_STATUS_UserIdTooLong;
         }
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/Owner/DisplayName"))
-    {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/Owner/DisplayName")) {
         caData->ownerDisplayNameLen +=
             snprintf_s(&(caData->owner_display_name[caData->ownerDisplayNameLen]),
-                OBS_MAX_GRANTEE_DISPLAY_NAME_SIZE + 1 - caData->ownerDisplayNameLen,
-                OBS_MAX_GRANTEE_DISPLAY_NAME_SIZE - caData->ownerDisplayNameLen - 1,
-                "%.*s", dataLen, data);
+                       OBS_MAX_GRANTEE_DISPLAY_NAME_SIZE + 1 - caData->ownerDisplayNameLen,
+                       OBS_MAX_GRANTEE_DISPLAY_NAME_SIZE - caData->ownerDisplayNameLen - 1, "%.*s", dataLen, data);
         if (caData->ownerDisplayNameLen >= OBS_MAX_GRANTEE_DISPLAY_NAME_SIZE) {
             return OBS_STATUS_UserDisplayNameTooLong;
         }
@@ -108,47 +95,33 @@ obs_status parse_xml_convert_acl_noGrant(convert_acl_data_info *caData, const ch
     return OBS_STATUS_OK;
 }
 
-int parse_xml_convert_acl_withGrant(convert_acl_data_info *caData, const char* elementPath,
-    const char *data, int dataLen, int fit)
+int parse_xml_convert_acl_withGrant(convert_acl_data_info *caData, const char *elementPath, const char *data,
+                                    int dataLen, int fit)
 {
     if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/EmailADDress")) {
         string_buffer_append(caData->email_address, data, dataLen, fit);
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/ID"))
-    {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/ID")) {
         string_buffer_append(caData->userId, data, dataLen, fit);
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/DisplayName"))
-    {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/DisplayName")) {
         string_buffer_append(caData->userDisplayName, data, dataLen, fit);
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/URI"))
-    {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/URI")) {
         string_buffer_append(caData->groupUri, data, dataLen, fit);
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/Permission"))
-    {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/Permission")) {
         string_buffer_append(caData->permission, data, dataLen, fit);
     }
     return fit;
 }
 
-
-obs_status parse_xml_convert_acl(convert_acl_data_info *caData, const char *elementPath,
-    const char *data, int dataLen)
+obs_status parse_xml_convert_acl(convert_acl_data_info *caData, const char *elementPath, const char *data, int dataLen)
 {
     int fit = 1;
-    if (strstr(elementPath, "AccessControlPolicy/AccessControlList/Grant/"))
-    {
+    if (strstr(elementPath, "AccessControlPolicy/AccessControlList/Grant/")) {
         parse_xml_convert_acl_withGrant(caData, elementPath, data, dataLen, fit);
-    }
-    else
-    {
+    } else {
         return parse_xml_convert_acl_noGrant(caData, elementPath, data, dataLen);
     }
 
-    if (!fit)
-    {
+    if (!fit) {
         return OBS_STATUS_EmailAddressTooLong;
     }
     return OBS_STATUS_OK;
@@ -166,23 +139,15 @@ obs_status convert_acl_xml_callback_s3_nodata(convert_acl_data_info *caData)
     if (caData->email_address[0]) {
         grant->grantee_type = OBS_GRANTEE_TYPE_HUAWEI_CUSTOMER_BYEMAIL;
         err = strcpy_s(grant->grantee.huawei_customer_by_email.email_address,
-            sizeof(grant->grantee.huawei_customer_by_email.email_address),
-            caData->email_address);
-    }
-    else if (caData->userId[0] && caData->userDisplayName[0])
-    {
+                       sizeof(grant->grantee.huawei_customer_by_email.email_address), caData->email_address);
+    } else if (caData->userId[0] && caData->userDisplayName[0]) {
         grant->grantee_type = OBS_GRANTEE_TYPE_CANONICAL_USER;
         err = strcpy_s(grant->grantee.canonical_user.id, sizeof(grant->grantee.canonical_user.id), caData->userId);
-        err = strcpy_s(grant->grantee.canonical_user.display_name,
-            sizeof(grant->grantee.canonical_user.display_name),
-            caData->userDisplayName);
-    }
-    else if (caData->groupUri[0])
-    {
+        err = strcpy_s(grant->grantee.canonical_user.display_name, sizeof(grant->grantee.canonical_user.display_name),
+                       caData->userDisplayName);
+    } else if (caData->groupUri[0]) {
         grant->grantee_type = convert_group_uri_str(caData->groupUri);
-    }
-    else
-    {
+    } else {
         return OBS_STATUS_BadGrantee;
     }
     CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
@@ -198,10 +163,8 @@ obs_status convert_acl_xml_callback_s3_nodata(convert_acl_data_info *caData)
     return OBS_STATUS_OK;
 }
 
-
-static obs_status convert_acl_xml_callback_s3(const char *elementPath,
-    const char *data, int dataLen,
-    void *callback_data)
+static obs_status convert_acl_xml_callback_s3(const char *elementPath, const char *data, int dataLen,
+                                              void *callback_data)
 {
     convert_acl_data_info *caData = (convert_acl_data_info *)callback_data;
 
@@ -209,57 +172,39 @@ static obs_status convert_acl_xml_callback_s3(const char *elementPath,
 
     if (data) {
         ret_status = parse_xml_convert_acl(caData, elementPath, data, dataLen);
-        if (OBS_STATUS_OK != ret_status)
-        {
+        if (OBS_STATUS_OK != ret_status) {
             COMMLOG(OBS_LOGERROR, "parse_xml_convert_acl failed.");
             return ret_status;
         }
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant"))
-    {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant")) {
         return convert_acl_xml_callback_s3_nodata(caData);
     }
 
     return OBS_STATUS_OK;
 }
 
-obs_status convert_acl_xml_callback_obs_withData(const char *elementPath,
-    const char *data, int dataLen,
-    convert_acl_data_info *caData,
-    int fit)
+obs_status convert_acl_xml_callback_obs_withData(const char *elementPath, const char *data, int dataLen,
+                                                 convert_acl_data_info *caData, int fit)
 {
     if (!strcmp(elementPath, "AccessControlPolicy/Owner/ID")) {
         caData->ownerIdLen +=
-            snprintf_s(&(caData->owner_id[caData->ownerIdLen]),
-                OBS_MAX_GRANTEE_USER_ID_SIZE + 1 - caData->ownerIdLen,
-                OBS_MAX_GRANTEE_USER_ID_SIZE - caData->ownerIdLen - 1,
-                "%.*s", dataLen, data);
-        if (caData->ownerIdLen >= OBS_MAX_GRANTEE_USER_ID_SIZE)
-        {
+            snprintf_s(&(caData->owner_id[caData->ownerIdLen]), OBS_MAX_GRANTEE_USER_ID_SIZE + 1 - caData->ownerIdLen,
+                       OBS_MAX_GRANTEE_USER_ID_SIZE - caData->ownerIdLen - 1, "%.*s", dataLen, data);
+        if (caData->ownerIdLen >= OBS_MAX_GRANTEE_USER_ID_SIZE) {
             return OBS_STATUS_UserIdTooLong;
         }
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/Delivered"))
-    {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/Delivered")) {
         string_buffer(object_delivered_string, 32);
         string_buffer_initialize(object_delivered_string);
         string_buffer_append(object_delivered_string, data, dataLen, fit);
         *(caData->object_delivered) = convert_obs_object_delivered_str(object_delivered_string);
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/ID"))
-    {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/ID")) {
         string_buffer_append(caData->userId, data, dataLen, fit);
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/Canned"))
-    {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Grantee/Canned")) {
         string_buffer_append(caData->groupUri, data, dataLen, fit);
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Permission"))
-    {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Permission")) {
         string_buffer_append(caData->permission, data, dataLen, fit);
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Delivered"))
-    {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant/Delivered")) {
         string_buffer_append(caData->bucket_delivered, data, dataLen, fit);
     }
 
@@ -278,15 +223,12 @@ obs_status convert_acl_xml_callback_obs_noData(convert_acl_data_info *caData)
 
     if (caData->userId[0]) {
         grant->grantee_type = OBS_GRANTEE_TYPE_CANONICAL_USER;
-        errno_t err = strcpy_s(grant->grantee.canonical_user.id, sizeof(grant->grantee.canonical_user.id), caData->userId);
+        errno_t err =
+            strcpy_s(grant->grantee.canonical_user.id, sizeof(grant->grantee.canonical_user.id), caData->userId);
         CheckAndLogNoneZero(err, "strcpy_s", __FUNCTION__, __LINE__);
-    }
-    else if (caData->groupUri[0])
-    {
+    } else if (caData->groupUri[0]) {
         grant->grantee_type = OBS_GRANTEE_TYPE_ALL_USERS;
-    }
-    else
-    {
+    } else {
         return OBS_STATUS_BadGrantee;
     }
     grant->permission = convert_obs_permission_str(caData->permission);
@@ -300,10 +242,9 @@ obs_status convert_acl_xml_callback_obs_noData(convert_acl_data_info *caData)
 
     return OBS_STATUS_OK;
 }
-//
-static obs_status convert_acl_xml_callback_obs(const char *elementPath,
-    const char *data, int dataLen,
-    void *callback_data)
+
+static obs_status convert_acl_xml_callback_obs(const char *elementPath, const char *data, int dataLen,
+                                               void *callback_data)
 {
     convert_acl_data_info *caData = (convert_acl_data_info *)callback_data;
 
@@ -311,8 +252,7 @@ static obs_status convert_acl_xml_callback_obs(const char *elementPath,
 
     if (data) {
         return convert_acl_xml_callback_obs_withData(elementPath, data, dataLen, caData, fit);
-    }
-    else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant")) {
+    } else if (!strcmp(elementPath, "AccessControlPolicy/AccessControlList/Grant")) {
         return convert_acl_xml_callback_obs_noData(caData);
     }
 
@@ -320,23 +260,20 @@ static obs_status convert_acl_xml_callback_obs(const char *elementPath,
 }
 
 
-static obs_status convert_acl_xml_callback(const char *elementPath,
-    const char *data, int dataLen,
-    void *callback_data)
+static obs_status convert_acl_xml_callback(const char *elementPath, const char *data, int dataLen, void *callback_data)
 {
-
     convert_acl_data_info *caData = (convert_acl_data_info *)callback_data;
     if (caData->use_api == OBS_USE_API_S3) {
         return convert_acl_xml_callback_s3(elementPath, data, dataLen, callback_data);
-    }
-    else {
+    } else {
         return convert_acl_xml_callback_obs(elementPath, data, dataLen, callback_data);
     }
 }
 
 
-obs_status obs_convert_acl(const char *aclXml, char *owner_id, char *owner_display_name, obs_object_delivered *object_delivered,
-    int *acl_grant_count_return, obs_acl_grant *acl_grants, obs_use_api use_api)
+obs_status obs_convert_acl(const char *aclXml, char *owner_id, char *owner_display_name,
+                           obs_object_delivered *object_delivered, int *acl_grant_count_return,
+                           obs_acl_grant *acl_grants, obs_use_api use_api)
 {
     COMMLOG(OBS_LOGINFO, "Enter %s successfully !", __FUNCTION__);
     convert_acl_data_info data;
@@ -371,8 +308,7 @@ obs_status obs_convert_acl(const char *aclXml, char *owner_id, char *owner_displ
 }
 
 
-static obs_status getAclDataCallback(int buffer_size, const char *buffer,
-    void *callback_data)
+static obs_status getAclDataCallback(int buffer_size, const char *buffer, void *callback_data)
 {
     get_acl_data *gaData = (get_acl_data *)callback_data;
 
@@ -383,43 +319,38 @@ static obs_status getAclDataCallback(int buffer_size, const char *buffer,
     return fit ? OBS_STATUS_OK : OBS_STATUS_XmlDocumentTooLarge;
 }
 
-static obs_status getAclPropertiesCallback(
-    const obs_response_properties *responseProperties, void *callback_data)
+static obs_status getAclPropertiesCallback(const obs_response_properties *responseProperties, void *callback_data)
 {
     get_acl_data *gaData = (get_acl_data *)callback_data;
-    if (gaData->responsePropertiesCallback)
-    {
-        return (*(gaData->responsePropertiesCallback))(responseProperties,
-            gaData->callback_data);
+    if (gaData->responsePropertiesCallback) {
+        return (*(gaData->responsePropertiesCallback))(responseProperties, gaData->callback_data);
     }
 
     return OBS_STATUS_OK;
 }
 
-static void getAclCompleteCallback(obs_status requestStatus,
-    const obs_error_details *s3ErrorDetails,
-    void *callback_data)
+static void getAclCompleteCallback(obs_status requestStatus, const obs_error_details *s3ErrorDetails,
+                                   void *callback_data)
 {
     COMMLOG(OBS_LOGINFO, "Enter %s successfully !", __FUNCTION__);
 
     get_acl_data *gaData = (get_acl_data *)callback_data;
 
     if (requestStatus == OBS_STATUS_OK) {
-        requestStatus = obs_convert_acl
-        (gaData->aclXmlDocument, gaData->owner_id, gaData->owner_display_name, gaData->object_delivered,
-            gaData->acl_grant_count_return, gaData->acl_grants, gaData->use_api);
+        requestStatus = obs_convert_acl(gaData->aclXmlDocument, gaData->owner_id, gaData->owner_display_name,
+                                        gaData->object_delivered, gaData->acl_grant_count_return, gaData->acl_grants,
+                                        gaData->use_api);
     }
 
-    (void)(*(gaData->responseCompleteCallback))
-        (requestStatus, s3ErrorDetails, gaData->callback_data);
+    (void)(*(gaData->responseCompleteCallback))(requestStatus, s3ErrorDetails, gaData->callback_data);
 
     free(gaData);
     gaData = NULL;
     COMMLOG(OBS_LOGINFO, "Leave %s successfully !", __FUNCTION__);
-
 }
 
-void get_object_acl(const obs_options *options, manager_acl_info *aclinfo, obs_response_handler *handler, void *callback_data)
+void get_object_acl(const obs_options *options, manager_acl_info *aclinfo, obs_response_handler *handler,
+                    void *callback_data)
 {
     request_params params;
     obs_use_api use_api = OBS_USE_API_S3;
@@ -429,7 +360,8 @@ void get_object_acl(const obs_options *options, manager_acl_info *aclinfo, obs_r
     string_buffer_initialize(queryParams);
     int amp = 0;
     if (aclinfo->object_info.version_id) {
-        safe_append("versionId", aclinfo->object_info.version_id, strlen(aclinfo->object_info.version_id), handler->complete_callback);
+        safe_append("versionId", aclinfo->object_info.version_id, strlen(aclinfo->object_info.version_id),
+                    handler->complete_callback);
     }
     get_acl_data *gaData = (get_acl_data *)malloc(sizeof(get_acl_data));
     if (!gaData) {
@@ -455,17 +387,17 @@ void get_object_acl(const obs_options *options, manager_acl_info *aclinfo, obs_r
     gaData->owner_id = aclinfo->owner_id;
     gaData->owner_display_name = aclinfo->owner_display_name;
     gaData->object_delivered = &(aclinfo->object_delivered);
-    string_buffer_initialize(gaData->aclXmlDocument);                // gaData->aclXmlDocument[0] = 0; gaData->aclXmlDocumentLen = 0;
+    string_buffer_initialize(gaData->aclXmlDocument); // gaData->aclXmlDocument[0] = 0; gaData->aclXmlDocumentLen = 0;
     *(aclinfo->acl_grant_count_return) = 0;
     gaData->use_api = use_api;
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
     errno_t err = EOK;
     err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options,
-        sizeof(obs_bucket_context));
+                   sizeof(obs_bucket_context));
     CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options,
-        sizeof(obs_http_request_option));
+                   sizeof(obs_http_request_option));
     CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;

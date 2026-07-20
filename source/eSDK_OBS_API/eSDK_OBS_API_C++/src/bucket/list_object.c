@@ -14,8 +14,40 @@
 */
 #include "bucket.h"
 #include "request_util.h"
+#include "util.h"
 #include <openssl/md5.h> 
 #define OBS_MAX_PREFIX_SIZE 65536
+
+static int is_encoding_type_url(list_objects_data *lbData)
+{
+    return (lbData->encoding_type[0] && !strcmp(lbData->encoding_type, "url"));
+}
+
+void url_decode_buffer(char *buf, int buf_size)
+{
+    if (buf_size <= 0 || buf_size > 4096) {
+        COMMLOG(OBS_LOGWARN, "%s(%d): invalid buf_size: %d", __FUNCTION__, __LINE__, buf_size);
+        return;
+    }
+    /* In OBS encoding-type=url, '+' represents space (application/x-www-form-urlencoded) */
+    char *p = buf;
+    while (*p) {
+        if (*p == '+') *p = ' ';
+        p++;
+    }
+    /* URL decode is a shortening operation (%XX -> 1 byte), so decoded result
+       never exceeds buf_size. Use a stack buffer large enough for all callers. */
+    char decoded[4096];
+    (void)memset_s(decoded, sizeof(decoded), 0, sizeof(decoded));
+    if (!urlDecode(decoded, buf, buf_size)) {
+        COMMLOG(OBS_LOGWARN, "%s(%d): urlDecode failed, keeping original value", __FUNCTION__, __LINE__);
+        return;
+    }
+    errno_t err = memcpy_s(buf, buf_size, decoded, strlen(decoded) + 1);
+    if (err != EOK) {
+        COMMLOG(OBS_LOGWARN, "%s(%d): memcpy_s failed!(%d)", __FUNCTION__, __LINE__, err);
+    }
+}
 
 obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element_path,
     const char *data, int data_len)
@@ -27,6 +59,18 @@ obs_status parse_xml_list_objects(list_objects_data *lbData, const char *element
     }
     else if (!strcmp(element_path, "ListBucketResult/NextMarker")) {
         string_buffer_append(lbData->next_marker, data, data_len, fit);
+    }
+    else if (!strcmp(element_path, "ListBucketResult/EncodingType")) {
+        string_buffer_append(lbData->encoding_type, data, data_len, fit);
+    }
+    else if (!strcmp(element_path, "ListBucketResult/Delimiter")) {
+        string_buffer_append(lbData->delimiter, data, data_len, fit);
+    }
+    else if (!strcmp(element_path, "ListBucketResult/Marker")) {
+        string_buffer_append(lbData->marker, data, data_len, fit);
+    }
+    else if (!strcmp(element_path, "ListBucketResult/Prefix")) {
+        string_buffer_append(lbData->prefix, data, data_len, fit);
     }
     else if (!strcmp(element_path, "ListBucketResult/Contents/Key"))
     {
@@ -151,6 +195,14 @@ static obs_status make_list_bucket_callback(list_objects_data *lbData)
     int is_truncated = (!strcmp(lbData->is_truncated, "true") ||
         !strcmp(lbData->is_truncated, "1")) ? 1 : 0;
 
+    // URL decode fields if EncodingType=response is "url"
+    if (is_encoding_type_url(lbData)) {
+        url_decode_buffer(lbData->next_marker, sizeof(lbData->next_marker));
+        url_decode_buffer(lbData->delimiter, sizeof(lbData->delimiter));
+        url_decode_buffer(lbData->marker, sizeof(lbData->marker));
+        url_decode_buffer(lbData->prefix, sizeof(lbData->prefix));
+    }
+
     obs_list_objects_content *contents = NULL;
     int contents_count = 0;
     int i = 0;
@@ -169,6 +221,10 @@ static obs_status make_list_bucket_callback(list_objects_data *lbData)
         {
             obs_list_objects_content *contentDest = &(contents[i]);
             one_object_content *contentSrc = &(lbData->contents[i]);
+            // URL decode key if encoding-type=url
+            if (is_encoding_type_url(lbData)) {
+                url_decode_buffer(contentSrc->key, sizeof(contentSrc->key));
+            }
             contentDest->key = contentSrc->key;
             contentDest->last_modified = parseIso8601Time(contentSrc->last_modified);
             int nTimeZone = getTimeZone();
@@ -200,6 +256,10 @@ static obs_status make_list_bucket_callback(list_objects_data *lbData)
 
         for (i = 0; i < common_prefixes_count; i++)
         {
+            // URL decode common_prefix if encoding-type=url
+            if (is_encoding_type_url(lbData)) {
+                url_decode_buffer(lbData->common_prefixes[i], sizeof(lbData->common_prefixes[i]));
+            }
             common_prefixes[i] = lbData->common_prefixes[i];
         }
     }
@@ -283,7 +343,7 @@ static obs_status list_objects_xml_callback(const char *element_path,
 }
 
 static obs_status set_objects_query_params(const char *prefix, const char *marker, const char *delimiter, int maxkeys,
-    char* query_params)
+    const char *encoding_type, char* query_params)
 {
     string_buffer(queryParams, QUERY_STRING_LEN);
     string_buffer_initialize(queryParams);
@@ -312,6 +372,12 @@ static obs_status set_objects_query_params(const char *prefix, const char *marke
     {
         safe_append_status("prefix", prefix, strlen(prefix));
     }
+
+    if (encoding_type)
+    {
+        safe_append_status("encoding-type", encoding_type, strlen(encoding_type));
+    }
+
     errno_t err = EOK;
     err = memcpy_s(query_params, QUERY_STRING_LEN, queryParams, QUERY_STRING_LEN);
     CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
@@ -372,8 +438,9 @@ static void list_objects_complete_callback(obs_status requestStatus,
 }
 
 
-void list_bucket_objects(const obs_options *options, const char *prefix, const char *marker, const char *delimiter,
-    int maxkeys, obs_list_objects_handler *handler, void *callback_data)
+static void list_objects_internal(const obs_options *options, const char *prefix, const char *marker,
+    const char *delimiter, int maxkeys, const char *encoding_type,
+    obs_list_objects_handler *handler, void *callback_data)
 {
     request_params params;
     char queryParams[QUERY_STRING_LEN + 1] = { 0 };
@@ -381,7 +448,7 @@ void list_bucket_objects(const obs_options *options, const char *prefix, const c
     set_use_api_switch(options, &use_api);
     COMMLOG(OBS_LOGINFO, "list bucket objects start!");
 
-    obs_status ret_status = set_objects_query_params(prefix, marker, delimiter, maxkeys, queryParams);
+    obs_status ret_status = set_objects_query_params(prefix, marker, delimiter, maxkeys, encoding_type, queryParams);
     if (OBS_STATUS_OK != ret_status)
     {
         (void)(*(handler->response_handler.complete_callback))(ret_status, 0, callback_data);
@@ -407,6 +474,10 @@ void list_bucket_objects(const obs_options *options, const char *prefix, const c
 
     string_buffer_initialize(data->is_truncated);
     string_buffer_initialize(data->next_marker);
+    string_buffer_initialize(data->encoding_type);
+    string_buffer_initialize(data->delimiter);
+    string_buffer_initialize(data->marker);
+    string_buffer_initialize(data->prefix);
     initialize_list_objects_data(data);
 
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
@@ -430,4 +501,27 @@ void list_bucket_objects(const obs_options *options, const char *prefix, const c
     params.use_api = use_api;
     request_perform(&params);
     COMMLOG(OBS_LOGINFO, "list bucket objects finish !");
+}
+
+
+void list_bucket_objects(const obs_options *options, const char *prefix, const char *marker, const char *delimiter,
+    int maxkeys, obs_list_objects_handler *handler, void *callback_data)
+{
+    list_objects_internal(options, prefix, marker, delimiter, maxkeys, NULL, handler, callback_data);
+}
+
+
+void list_bucket_objects_with_params(const obs_options *options,
+    const obs_list_objects_params *params,
+    obs_list_objects_handler *handler, void *callback_data)
+{
+    if (!params || !handler) {
+        if (handler) {
+            (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidParameter, 0, callback_data);
+        }
+        COMMLOG(OBS_LOGERROR, "params or handler is NULL !");
+        return;
+    }
+    list_objects_internal(options, params->prefix, params->marker, params->delimiter,
+        params->maxkeys, params->encoding_type, handler, callback_data);
 }

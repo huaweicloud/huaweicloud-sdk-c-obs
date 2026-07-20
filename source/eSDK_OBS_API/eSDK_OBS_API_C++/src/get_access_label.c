@@ -41,14 +41,13 @@ static obs_status parse_dir_access_label_json(Access_label_data *data) {
 #define MAX_LABEL_JSON_LENGTH (512 * 54 + 511 + 6 + 13 + 1)
 char* initialize_json(void) {
 	char* json_str = (char*)malloc(sizeof(char)*MAX_LABEL_JSON_LENGTH);
-	if (!CheckAndLogNULL(json_str, SYMBOL_NAME_STR(json_str), SYMBOL_NAME_STR(malloc), __FUNCTION__, __LINE__)) {
+	if (!json_str) {
+		COMMLOG(OBS_LOGERROR, "malloc failed for json_str in %s:%d", __FUNCTION__, __LINE__);
 		return NULL;
 	}
-	else {
-		errno_t ret = memset_s(json_str, sizeof(char)*MAX_LABEL_JSON_LENGTH, 0, sizeof(char)*MAX_LABEL_JSON_LENGTH);
-		CheckAndLogNoneZero(ret, SYMBOL_NAME_STR(memset_s), __FUNCTION__, __LINE__);
-		return json_str;
-	}
+	errno_t ret = memset_s(json_str, sizeof(char)*MAX_LABEL_JSON_LENGTH, 0, sizeof(char)*MAX_LABEL_JSON_LENGTH);
+	CheckAndLogNoneZero(ret, SYMBOL_NAME_STR(memset_s), __FUNCTION__, __LINE__);
+	return json_str;
 }
 
 void get_access_label(const obs_options *options,

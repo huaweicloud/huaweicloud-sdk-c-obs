@@ -20,10 +20,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-void upload_part(const obs_options *options, char *key, obs_upload_part_info *upload_part_info,
-    uint64_t content_length, obs_put_properties *put_properties,
-    server_side_encryption_params *encryption_params,
-    obs_upload_handler *handler, void *callback_data)
+void upload_part(const obs_options *options, char *key, obs_upload_part_info *upload_part_info, uint64_t content_length,
+                 obs_put_properties *put_properties, server_side_encryption_params *encryption_params,
+                 obs_upload_handler *handler, void *callback_data)
 {
     request_params params;
     obs_use_api use_api = OBS_USE_API_S3;
@@ -31,37 +30,35 @@ void upload_part(const obs_options *options, char *key, obs_upload_part_info *up
     string_buffer(queryParams, QUERY_STRING_LEN);
     string_buffer_initialize(queryParams);
     COMMLOG(OBS_LOGINFO, "Enter upload_part successfully !");
-    if (!options->bucket_options.bucket_name)
-    {
+    if (!options->bucket_options.bucket_name) {
         COMMLOG(OBS_LOGERROR, "bucket_name is NULL!");
         (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidBucketName, 0, callback_data);
         return;
     }
-    if (0 == upload_part_info->part_number || NULL == upload_part_info->upload_id)
-    {
+    if (0 == upload_part_info->part_number || NULL == upload_part_info->upload_id) {
         COMMLOG(OBS_LOGERROR, "part_number or upload_id  is NULL!");
         (void)(*(handler->response_handler.complete_callback))(OBS_STATUS_InvalidArgument, 0, callback_data);
         return;
     }
     int amp = 0;
-    char part_number_string[64] = { 0 };
-    int ret = snprintf_s(part_number_string, sizeof(part_number_string), _TRUNCATE, "%u",
-        upload_part_info->part_number);
+    char part_number_string[64] = {0};
+    int ret =
+        snprintf_s(part_number_string, sizeof(part_number_string), _TRUNCATE, "%u", upload_part_info->part_number);
     CheckAndLogNeg(ret, "snprintf_s", __FUNCTION__, __LINE__);
-    safe_append_with_interface_log("partNumber", part_number_string,
-        sizeof(part_number_string), handler->response_handler.complete_callback);
+    safe_append_with_interface_log("partNumber", part_number_string, sizeof(part_number_string),
+                                   handler->response_handler.complete_callback);
 
     if (upload_part_info->upload_id) {
-        safe_append_with_interface_log("uploadId", upload_part_info->upload_id,
-            strlen(upload_part_info->upload_id), handler->response_handler.complete_callback);
+        safe_append_with_interface_log("uploadId", upload_part_info->upload_id, strlen(upload_part_info->upload_id),
+                                       handler->response_handler.complete_callback);
     }
     memset_s(&params, sizeof(request_params), 0, sizeof(request_params));
     errno_t err = EOK;
     err = memcpy_s(&params.bucketContext, sizeof(obs_bucket_context), &options->bucket_options,
-        sizeof(obs_bucket_context));
+                   sizeof(obs_bucket_context));
     CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
     err = memcpy_s(&params.request_option, sizeof(obs_http_request_option), &options->request_options,
-        sizeof(obs_http_request_option));
+                   sizeof(obs_http_request_option));
     CheckAndLogNoneZero(err, "memcpy_s", __FUNCTION__, __LINE__);
 
     params.temp_auth = options->temp_auth;
